@@ -1,0 +1,118 @@
+.page-container {
+  padding: 2rem;
+  background-color: var(--bg-card);
+  min-height: calc(100vh - var(--header-height));
+}
+
+.create-form-card {
+  width: 100%;
+  max-width: 900px;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.form-select, .form-control {
+  border: 1px solid var(--border);
+  background-color: #fff;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+  color: var(--text-main);
+}
+
+.form-select:disabled {
+  background-color: #f8fafc;
+}
+
+.select-wrapper {
+  position: relative;
+}
+
+.icon-prefix {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--primary);
+  z-index: 1;
+}
+
+.with-icon {
+  padding-left: 2.2rem;
+}
+
+/* Rich Text Editor Mockup */
+.rich-text-editor {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  padding: 0.5rem;
+  background-color: #fff;
+  border-bottom: 1px solid var(--border);
+  gap: 0.25rem;
+}
+
+.toolbar button {
+  border: none;
+  background: transparent;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toolbar button:hover {
+  background-color: #f1f5f9;
+}
+
+.divider {
+  width: 1px;
+  height: 20px;
+  background-color: var(--border);
+  margin: 0 0.5rem;
+}
+
+.text-area {
+  border: none;
+  border-radius: 0;
+  resize: vertical;
+}
+.text-area:focus {
+  box-shadow: none;
+}
+
+.toolbar-footer {
+  font-size: 13px;
+  padding: 0.25rem 0.75rem;
+  background-color: #fff;
+  border-top: 1px solid var(--border);
+}
+
+.timeline-detail-box {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.timeline-detail-box th, .timeline-detail-box td {
+  font-size: 13px;
+  vertical-align: middle;
+  padding: 0.75rem 1rem;
+}

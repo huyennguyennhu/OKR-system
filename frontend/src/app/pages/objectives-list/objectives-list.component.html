@@ -1,0 +1,296 @@
+<!-- Lớp phủ khóa trang trong suốt (không làm mờ, chặn tương tác khi đang tải) -->
+<div class="page-loading-overlay" *ngIf="loading"></div>
+
+<div class="objectives-page">
+  <!-- Tên trang + Subtitle + Nút hành động -->
+  <div class="page-top-bar d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h3 class="card-title mb-1" style="font-size: 18px; font-weight: 700;">Objectives</h3>
+      <p class="subtitle mb-0">
+        Quản lý mục tiêu chiến lược công ty, mục tiêu nhóm kỹ thuật và cá nhân, theo dõi tiến độ hoàn thành.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary btn-sm" (click)="createObjective()">
+        <i class="fa-solid fa-plus"></i> Tạo Objective
+      </button>
+    </div>
+  </div>
+
+  <!-- Thanh lọc: Tìm kiếm + Dropdown Cấp độ -->
+  <div class="filter-bar mb-3">
+    <div class="filter-search-wrapper">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" class="form-control filter-input" placeholder="Tìm theo mã hoặc tên mục tiêu..." [(ngModel)]="searchQuery">
+      <button type="button" class="clear-search-btn" *ngIf="searchQuery" (click)="searchQuery=''" title="Xóa tìm kiếm">
+        <i class="fa-solid fa-circle-xmark"></i>
+      </button>
+    </div>
+
+    <div class="custom-select-wrapper">
+      <button type="button" class="custom-select-trigger" (click)="toggleLevelDropdown($event)" [class.active]="isLevelDropdownOpen">
+        <span class="d-flex align-items-center gap-2">
+          <i class="fa-solid fa-layer-group text-primary" style="width: 16px; text-align: center;"></i>
+          <span>{{ getSelectedLevelLabel() }}</span>
+        </span>
+        <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isLevelDropdownOpen"></i>
+      </button>
+      <div class="custom-select-menu" *ngIf="isLevelDropdownOpen">
+        <div class="custom-select-option" [class.selected]="selectedLevel === 'all'" (click)="selectLevel('all')">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-layer-group text-muted" style="width: 16px; text-align: center;"></i>
+            <span>Tất cả cấp độ</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedLevel === 'all'"></i>
+        </div>
+        <div class="custom-select-option" [class.selected]="selectedLevel === 'COMPANY'" (click)="selectLevel('COMPANY')">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-building text-primary" style="width: 16px; text-align: center;"></i>
+            <span>Cấp Công ty (COMPANY)</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedLevel === 'COMPANY'"></i>
+        </div>
+        <div class="custom-select-option" [class.selected]="selectedLevel === 'TEAM'" (click)="selectLevel('TEAM')">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-users text-success" style="width: 16px; text-align: center;"></i>
+            <span>Cấp Nhóm (TEAM)</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedLevel === 'TEAM'"></i>
+        </div>
+        <div class="custom-select-option" [class.selected]="selectedLevel === 'PERSONAL'" (click)="selectLevel('PERSONAL')">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-user text-muted" style="width: 16px; text-align: center;"></i>
+            <span>Cấp Cá nhân (PERSONAL)</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedLevel === 'PERSONAL'"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bảng dữ liệu (không khung) -->
+  <div class="table-container">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Mã Mục tiêu</th>
+          <th>Tên Mục tiêu</th>
+          <th>Cấp độ</th>
+          <th>Tiến độ</th>
+          <th style="width: 48px; text-align: center;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading">
+          <td colspan="5" class="table-loading-cell">
+            <div class="table-loading-content">
+              <div class="loading-spinner-circle"></div>
+              <span>Đang tải dữ liệu...</span>
+            </div>
+          </td>
+        </tr>
+        <ng-container *ngIf="!loading">
+          <tr *ngFor="let obj of filteredObjectives" (click)="viewObjective(obj.objective_id)" class="cursor-pointer hover-row">
+            <td><strong>{{ obj.objective_id }}</strong></td>
+            <td>{{ obj.title }}</td>
+            <td>
+              <span class="badge" 
+                    [ngClass]="{'badge-info': obj.level === 'COMPANY', 'badge-success': obj.level === 'TEAM', 'badge-secondary': obj.level === 'PERSONAL'}">
+                {{ obj.level }}
+              </span>
+            </td>
+            <td>
+              <div class="progress-bar-container">
+                <div class="progress-bar" [style.width.%]="obj.progress"></div>
+              </div>
+              <small>{{ obj.progress }}%</small>
+            </td>
+            <td class="action-cell" (click)="$event.stopPropagation()" [style.z-index]="activeDropdownId === obj.objective_id ? 10000 : 'auto'">
+              <div class="action-menu-container" [style.z-index]="activeDropdownId === obj.objective_id ? 10000 : 'auto'">
+                <button class="btn-action-trigger" (click)="toggleDropdown(obj.objective_id, $event)" title="Thao tác" [class.active]="activeDropdownId === obj.objective_id">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div class="action-dropdown-menu" *ngIf="activeDropdownId === obj.objective_id" [class.dropup]="isDropup">
+                  <button class="action-dropdown-item" (click)="editObjective(obj); closeDropdown()">
+                    <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
+                  </button>
+                  <button class="action-dropdown-item" (click)="cloneObjective(obj); closeDropdown()">
+                    <i class="fa-solid fa-clone"></i> Clone
+                  </button>
+                  <button class="action-dropdown-item text-danger" (click)="deleteObjective(obj); closeDropdown()">
+                    <i class="fa-solid fa-trash-can"></i> Xóa
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="filteredObjectives.length === 0">
+            <td colspan="5" class="text-center py-4 text-muted">
+              {{ searchQuery || selectedLevel !== 'all' ? 'Không tìm thấy mục tiêu nào phù hợp bộ lọc.' : 'Chưa có mục tiêu nào. Hãy tạo mới!' }}
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Create Objective Modal -->
+<div class="modal-overlay" *ngIf="showCreateModal">
+  <div class="modal-container">
+    <div class="modal-header">
+      <h3 class="modal-title">Create Objective</h3>
+      <button class="close-btn" (click)="closeCreateModal()" type="button" aria-label="Close"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    
+    <div class="modal-body">
+      <div class="row mb-3">
+        <div class="col-md-4 form-group">
+          <label>Level</label>
+          <div class="select-wrapper">
+            <span class="icon-prefix text-primary"><i class="fa-solid fa-building"></i></span>
+            <select class="form-select with-icon" [(ngModel)]="newObjective.level">
+              <option value="COMPANY">COMPANY</option>
+              <option value="TEAM">TEAM</option>
+              <option value="PERSONAL">PERSONAL</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Category</label>
+          <select class="form-select" [(ngModel)]="newObjective.category">
+            <option value="Objective">Objective</option>
+            <option value="KPI">KPI</option>
+          </select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Indicator</label>
+          <select class="form-select text-muted" disabled>
+            <option>None</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group mb-3">
+        <label>Name <span class="text-danger">*</span></label>
+        <input type="text" class="form-control" [(ngModel)]="newObjective.title" />
+      </div>
+
+      <div class="form-group mb-4">
+        <label>Description</label>
+        <div class="rich-text-editor">
+          <div class="toolbar">
+            <button><i class="fa-solid fa-bold"></i></button>
+            <button><i class="fa-solid fa-italic"></i></button>
+            <button><i class="fa-solid fa-underline"></i></button>
+            <div class="divider"></div>
+            <button><i class="fa-solid fa-align-left"></i></button>
+            <button><i class="fa-solid fa-align-center"></i></button>
+            <button><i class="fa-solid fa-align-right"></i></button>
+            <div class="divider"></div>
+            <button><i class="fa-regular fa-file"></i></button>
+            <button><i class="fa-regular fa-image"></i></button>
+            <button><i class="fa-solid fa-video"></i></button>
+          </div>
+          <textarea class="form-control text-area" rows="4" placeholder="Insert text here..." [(ngModel)]="newObjective.description"></textarea>
+          <div class="toolbar-footer text-muted">characters : 0 words : 0</div>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-8 form-group">
+          <label>Metric</label>
+          <select class="form-select" [(ngModel)]="newObjective.metric_id">
+            <option [ngValue]="null">Select Metric</option>
+            <option *ngFor="let m of metrics" [value]="m.id">{{ m.name }} [System Metric]</option>
+          </select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Aggregation Type <i class="fa-solid fa-info-circle text-muted"></i></label>
+          <select class="form-select">
+            <option>SUM</option>
+            <option>AVERAGE</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-3">
+        <div class="col-md-4 form-group">
+          <label>Group</label>
+          <select class="form-select text-muted" disabled>
+            <option>Select Group</option>
+          </select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Team</label>
+          <select class="form-select text-muted" disabled>
+            <option>Select Team</option>
+          </select>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Assignee</label>
+          <select class="form-select" [(ngModel)]="newObjective.assignee_id">
+            <option [ngValue]="null" class="text-muted">Select User</option>
+            <option *ngFor="let emp of employees" [value]="emp.employee_id">{{ emp.full_name }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row mb-4">
+        <div class="col-md-8 form-group">
+          <label>Timeline <span class="text-danger">*</span></label>
+          <div class="input-group">
+            <select class="form-select" [(ngModel)]="newObjective.timeline_id">
+              <option [ngValue]="null">Select Timeline</option>
+              <option *ngFor="let t of timelines" [value]="t.id">{{ t.title }}</option>
+            </select>
+          </div>
+        </div>
+        <div class="col-md-4 form-group">
+          <label>Stakeholder</label>
+          <select class="form-select text-muted" disabled>
+            <option>Select User</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="timeline-detail-box mb-2">
+        <table class="table mb-0">
+          <thead>
+            <tr>
+              <th class="bg-light text-muted">Timeline Detail</th>
+              <th class="bg-light text-muted text-end" style="width: 100px;">Start</th>
+              <th class="bg-light text-muted text-end" style="width: 100px;">Expected</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><i class="fa-solid fa-chevron-down me-2"></i> 2026</td>
+              <td class="text-end">-</td>
+              <td class="text-end">-</td>
+            </tr>
+            <tr>
+              <td class="ps-4"><i class="fa-solid fa-chevron-down me-2"></i> Quarter 3</td>
+              <td class="text-end">-</td>
+              <td class="text-end">-</td>
+            </tr>
+            <tr>
+              <td class="ps-5">Month 8</td>
+              <td class="text-end">-</td>
+              <td class="text-end">-</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+    
+    <div class="modal-footer d-flex justify-end gap-2">
+      <button type="button" class="btn btn-secondary" (click)="closeCreateModal()" [disabled]="saving">Cancel</button>
+      <button type="button" class="btn btn-primary" (click)="saveObjective()" [disabled]="saving">
+        <i class="fa-solid fa-spinner fa-spin" *ngIf="saving"></i>
+        {{ saving ? 'Saving...' : 'Save' }}
+      </button>
+    </div>
+  </div>
+</div>

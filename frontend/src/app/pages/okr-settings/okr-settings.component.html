@@ -1,0 +1,449 @@
+<!-- Lớp phủ khóa trang trong suốt (không làm mờ, chặn tương tác khi đang tải) -->
+<div class="page-loading-overlay" *ngIf="loading"></div>
+
+<div class="okr-settings-page">
+  <!-- Tên trang + Subtitle -->
+  <div class="page-top-bar mb-4">
+    <h3 class="card-title mb-1" style="font-size: 18px; font-weight: 700;">
+      OKR Settings
+    </h3>
+    <p class="subtitle mb-0">
+      Thiết lập các không gian, chu kỳ, nhóm, team, mẫu mục tiêu và quy tắc đo lường tự động.
+    </p>
+  </div>
+
+  <!-- Nav Tabs -->
+  <nav class="nav-tabs mb-4">
+    <a class="nav-link" 
+       *ngFor="let tab of tabs" 
+       [class.active]="activeTab === tab" 
+       (click)="switchTab(tab)"
+       href="javascript:void(0)">
+      <i [class]="getTabIcon(tab)"></i>
+      <span>{{ tab }}</span>
+    </a>
+  </nav>
+
+  <!-- Objectives Tab -->
+  <div *ngIf="activeTab === 'Mục tiêu'" class="tab-pane">
+    <app-objectives-list></app-objectives-list>
+  </div>
+
+  <!-- Spaces Tab -->
+  <div *ngIf="activeTab === 'Không gian'" class="tab-pane">
+    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
+      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Quản lý Không gian</h4>
+      <button class="btn btn-primary btn-sm" (click)="openCreateSpaceModal()">
+        <i class="fa-solid fa-plus"></i> Tạo Không gian
+      </button>
+    </div>
+    <div class="table-container">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Tên</th>
+            <th>Mã Key</th>
+            <th style="width: 48px; text-align: center;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="4" class="table-loading-cell">
+              <div class="table-loading-content">
+                <div class="loading-spinner-circle"></div>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            </td>
+          </tr>
+          <ng-container *ngIf="!loading">
+            <tr *ngFor="let space of spaces">
+              <td>{{ space.id }}</td>
+              <td><strong>{{ space.name }}</strong></td>
+              <td><span class="badge badge-info">{{ space.space_key }}</span></td>
+              <td class="action-cell" [style.z-index]="activeDropdownId === space.id ? 10000 : 'auto'">
+                <div class="action-menu-container" [style.z-index]="activeDropdownId === space.id ? 10000 : 'auto'">
+                  <button class="btn-action-trigger" (click)="toggleDropdown(space.id, $event)" title="Thao tác" [class.active]="activeDropdownId === space.id">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === space.id" [class.dropup]="isDropup">
+                    <button class="action-dropdown-item" (click)="editSpace(space); closeDropdown()">
+                      <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
+                    </button>
+                    <button class="action-dropdown-item text-danger" (click)="deleteSpace(space); closeDropdown()">
+                      <i class="fa-solid fa-trash-can"></i> Xóa
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="spaces.length === 0">
+              <td colspan="4" class="text-center py-4 text-muted">Chưa có không gian nào. Hãy tạo mới!</td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Space Members Tab -->
+  <div *ngIf="activeTab === 'Thành viên'" class="tab-pane">
+    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
+      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Thành viên</h4>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Dropdown chọn Space bên trái nút Thêm Thành viên -->
+        <div class="custom-select-wrapper">
+          <button type="button" class="custom-select-trigger" (click)="toggleSpaceFilterDropdown($event)" [class.active]="isSpaceFilterDropdownOpen" style="min-width: 220px; height: 34px; padding: 0 0.75rem;">
+            <span class="d-flex align-items-center gap-2 text-truncate" style="max-width: 170px;">
+              <i class="fa-solid fa-layer-group text-primary" style="width: 16px; text-align: center;"></i>
+              <span class="text-truncate">{{ getSelectedSpaceFilterLabel() }}</span>
+            </span>
+            <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isSpaceFilterDropdownOpen"></i>
+          </button>
+          <div class="custom-select-menu" *ngIf="isSpaceFilterDropdownOpen" style="min-width: 240px; z-index: 1050; max-height: 280px; overflow-y: auto;">
+            <div class="custom-select-option" [class.selected]="selectedMemberSpaceId === 'all'" (click)="selectMemberSpace('all')">
+              <span class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-layer-group text-muted" style="width: 16px; text-align: center;"></i>
+                <span>Tất cả Không gian</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="selectedMemberSpaceId === 'all'"></i>
+            </div>
+            <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="selectedMemberSpaceId === s.id" (click)="selectMemberSpace(s.id)">
+              <span class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-folder text-primary" style="width: 16px; text-align: center;"></i>
+                <span>{{ s.name }} ({{ s.space_key }})</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="selectedMemberSpaceId === s.id"></i>
+            </div>
+            <div class="text-muted p-2 text-center" *ngIf="spaces.length === 0" style="font-size: 13px;">
+              Chưa có không gian nào
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-sm" (click)="openCreateMemberModal()">
+          <i class="fa-solid fa-plus"></i> Thêm Thành viên
+        </button>
+      </div>
+    </div>
+    <div class="table-container">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Không gian</th>
+            <th>Thành viên</th>
+            <th>Vai trò</th>
+            <th style="width: 48px; text-align: center;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="4" class="table-loading-cell">
+              <div class="table-loading-content">
+                <div class="loading-spinner-circle"></div>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            </td>
+          </tr>
+          <ng-container *ngIf="!loading">
+            <tr *ngFor="let member of filteredSpaceMembers">
+              <td>{{ getSpaceName(member.space_id) }}</td>
+              <td><strong>{{ member.user_name }}</strong></td>
+              <td>
+                <span class="badge" [ngClass]="member.role === 'Owner' ? 'badge-primary' : 'badge-secondary'">
+                  {{ member.role }}
+                </span>
+              </td>
+              <td class="action-cell" [style.z-index]="activeDropdownId === member.id ? 10000 : 'auto'">
+                <div class="action-menu-container" [style.z-index]="activeDropdownId === member.id ? 10000 : 'auto'">
+                  <button class="btn-action-trigger" (click)="toggleDropdown(member.id, $event)" title="Thao tác" [class.active]="activeDropdownId === member.id">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === member.id" [class.dropup]="isDropup">
+                    <button class="action-dropdown-item text-danger" (click)="deleteSpaceMember(member); closeDropdown()">
+                      <i class="fa-solid fa-trash-can"></i> Xóa
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="filteredSpaceMembers.length === 0">
+              <td colspan="4" class="text-center py-4 text-muted">Chưa có thành viên nào{{ selectedMemberSpaceId !== 'all' ? ' trong không gian này' : '' }}. Hãy tạo mới!</td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Timelines Tab -->
+  <div *ngIf="activeTab === 'Chu kỳ'" class="tab-pane">
+    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
+      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Chu kỳ Thời gian</h4>
+      <button class="btn btn-primary btn-sm" (click)="showTimelineModal = true; isEditingTimeline = false; newTimeline = {};">
+        <i class="fa-solid fa-plus"></i> Tạo Chu kỳ
+      </button>
+    </div>
+    <div class="table-container">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Tiêu đề</th>
+            <th>Phân loại</th>
+            <th>Thời gian</th>
+            <th>ID Không gian</th>
+            <th style="width: 48px; text-align: center;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="5" class="table-loading-cell">
+              <div class="table-loading-content">
+                <div class="loading-spinner-circle"></div>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            </td>
+          </tr>
+          <ng-container *ngIf="!loading">
+            <tr *ngFor="let tl of timelines">
+              <td><strong>{{ tl.title }}</strong></td>
+              <td><span class="badge badge-success">{{ tl.timeline_category }}</span></td>
+              <td>{{ tl.start_date }} <i class="fa-solid fa-arrow-right text-muted mx-1"></i> {{ tl.end_date }}</td>
+              <td>{{ tl.workspace_id }}</td>
+              <td class="action-cell" [style.z-index]="activeDropdownId === tl.id ? 10000 : 'auto'">
+                <div class="action-menu-container" [style.z-index]="activeDropdownId === tl.id ? 10000 : 'auto'">
+                  <button class="btn-action-trigger" (click)="toggleDropdown(tl.id, $event)" title="Thao tác" [class.active]="activeDropdownId === tl.id">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === tl.id" [class.dropup]="isDropup">
+                    <button class="action-dropdown-item" (click)="editTimeline(tl); closeDropdown()">
+                      <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
+                    </button>
+                    <button class="action-dropdown-item text-danger" (click)="deleteTimeline(tl); closeDropdown()">
+                      <i class="fa-solid fa-trash-can"></i> Xóa
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="timelines.length === 0">
+              <td colspan="5" class="text-center py-4 text-muted">Chưa có chu kỳ nào. Hãy tạo mới!</td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Metrics Tab -->
+  <div *ngIf="activeTab === 'Thước đo'" class="tab-pane">
+    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
+      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Danh sách Thước đo</h4>
+      <button class="btn btn-primary btn-sm" (click)="showMetricModal = true; isEditingMetric = false; newMetric = {};">
+        <i class="fa-solid fa-plus"></i> Thêm Thước đo
+      </button>
+    </div>
+    <div class="table-container">
+      <table class="table table-hover">
+        <thead>
+          <tr>
+            <th>Tên Thước đo</th>
+            <th>Mã Key</th>
+            <th>Đơn vị</th>
+            <th>Dạng Phần trăm</th>
+            <th style="width: 48px; text-align: center;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngIf="loading">
+            <td colspan="5" class="table-loading-cell">
+              <div class="table-loading-content">
+                <div class="loading-spinner-circle"></div>
+                <span>Đang tải dữ liệu...</span>
+              </div>
+            </td>
+          </tr>
+          <ng-container *ngIf="!loading">
+            <tr *ngFor="let m of metrics">
+              <td><strong>{{ m.name }}</strong></td>
+              <td><code>{{ m.metric_key }}</code></td>
+              <td>{{ m.unit }}</td>
+              <td>
+                <span class="badge" [ngClass]="m.is_percent ? 'badge-success' : 'badge-secondary'">
+                  {{ m.is_percent ? 'Có' : 'Không' }}
+                </span>
+              </td>
+              <td class="action-cell" [style.z-index]="activeDropdownId === m.id ? 10000 : 'auto'">
+                <div class="action-menu-container" [style.z-index]="activeDropdownId === m.id ? 10000 : 'auto'">
+                  <button class="btn-action-trigger" (click)="toggleDropdown(m.id, $event)" title="Thao tác" [class.active]="activeDropdownId === m.id">
+                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                  </button>
+                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === m.id" [class.dropup]="isDropup">
+                    <button class="action-dropdown-item" (click)="editMetric(m); closeDropdown()">
+                      <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
+                    </button>
+                    <button class="action-dropdown-item text-danger" (click)="deleteMetric(m); closeDropdown()">
+                      <i class="fa-solid fa-trash-can"></i> Xóa
+                    </button>
+                  </div>
+                </div>
+              </td>
+            </tr>
+            <tr *ngIf="metrics.length === 0">
+              <td colspan="5" class="text-center py-4 text-muted">Chưa có thước đo nào. Hãy tạo mới!</td>
+            </tr>
+          </ng-container>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MODALS -->
+  <div class="modal-overlay" *ngIf="showSpaceModal">
+    <div class="modal-content">
+      <div class="card-header mb-3">
+        <h3 class="card-title">{{ isEditingSpace ? 'Chỉnh sửa Không gian' : 'Tạo Không gian' }}</h3>
+        <button class="close-btn" (click)="closeSpaceModal()" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form (ngSubmit)="saveSpace()">
+        <div class="form-group mb-2">
+          <label>Tên Không gian <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="newSpace.name" (ngModelChange)="onSpaceNameChange($event)" name="name" required placeholder="Nhập tên không gian...">
+        </div>
+        <div class="form-group mb-3">
+          <label>Mã Key <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="newSpace.space_key" name="space_key" required placeholder="Ví dụ: SP_DEV">
+        </div>
+        <div class="d-flex justify-end gap-2 mt-4">
+          <button type="submit" class="btn btn-primary" [disabled]="isSavingSpace">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingSpace"></i>
+            {{ isSavingSpace ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showTimelineModal">
+    <div class="modal-content">
+      <div class="card-header mb-3">
+        <h3 class="card-title">{{ isEditingTimeline ? 'Chỉnh sửa Chu kỳ' : 'Tạo Chu kỳ' }}</h3>
+        <button class="close-btn" (click)="showTimelineModal = false" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form (ngSubmit)="saveTimeline()">
+        <div class="form-group mb-2">
+          <label>Tiêu đề <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="newTimeline.title" name="title" required placeholder="Ví dụ: Q3-2026">
+        </div>
+        <div class="form-group mb-2">
+          <label>Phân loại <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="newTimeline.timeline_category" name="cat" required placeholder="Ví dụ: Quarter">
+        </div>
+        <div class="form-group mb-2">
+          <label>Ngày bắt đầu</label>
+          <input type="date" class="form-control" [(ngModel)]="newTimeline.start_date" name="sd">
+        </div>
+        <div class="form-group mb-2">
+          <label>Ngày kết thúc</label>
+          <input type="date" class="form-control" [(ngModel)]="newTimeline.end_date" name="ed">
+        </div>
+        <div class="form-group mb-3">
+          <label>ID Không gian</label>
+          <input class="form-control" [(ngModel)]="newTimeline.workspace_id" name="ws" placeholder="ID không gian liên kết">
+        </div>
+        <div class="d-flex justify-end gap-2 mt-4">
+          <button type="button" class="btn btn-secondary" (click)="showTimelineModal = false" [disabled]="isSavingTimeline">Hủy</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSavingTimeline">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingTimeline"></i>
+            {{ isSavingTimeline ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showMetricModal">
+    <div class="modal-content">
+      <div class="card-header mb-3">
+        <h3 class="card-title">{{ isEditingMetric ? 'Chỉnh sửa Thước đo' : 'Thêm Thước đo' }}</h3>
+        <button class="close-btn" (click)="showMetricModal = false" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form (ngSubmit)="saveMetric()">
+        <div class="form-group mb-2">
+          <label>Tên Thước đo <span class="text-danger">*</span></label>
+          <input class="form-control" [(ngModel)]="newMetric.name" (ngModelChange)="onMetricNameChange($event)" name="name" required placeholder="Nhập tên thước đo...">
+        </div>
+        <div class="form-group mb-2">
+          <label>Mã Key</label>
+          <input class="form-control" [(ngModel)]="newMetric.metric_key" name="key" placeholder="Tự sinh hoặc tự nhập">
+        </div>
+        <div class="form-group mb-2">
+          <label>Đơn vị</label>
+          <input class="form-control" [(ngModel)]="newMetric.unit" name="unit" placeholder="Ví dụ: %, giờ, tasks">
+        </div>
+        <div class="form-group mb-3">
+          <label>Đo theo phần trăm?</label>
+          <input type="checkbox" [(ngModel)]="newMetric.is_percent" name="pct">
+        </div>
+        <div class="d-flex justify-end gap-2 mt-4">
+          <button type="button" class="btn btn-secondary" (click)="showMetricModal = false" [disabled]="isSavingMetric">Hủy</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSavingMetric">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingMetric"></i>
+            {{ isSavingMetric ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div class="modal-overlay" *ngIf="showMemberModal">
+    <div class="modal-content">
+      <div class="card-header mb-3">
+        <h3 class="card-title">Thêm Thành viên</h3>
+        <button class="close-btn" (click)="showMemberModal = false" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form (ngSubmit)="saveMember()">
+        
+        <div class="form-group mb-2 position-relative">
+          <label>Không gian <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" placeholder="Tìm kiếm Không gian..." 
+                 [(ngModel)]="spaceSearchText" name="spaceSearch" autocomplete="off"
+                 (focus)="showSpaceDropdown=true" (blur)="hideSpaceDropdown()" required>
+          <ul class="dropdown-menu show w-100" *ngIf="showSpaceDropdown" style="position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;">
+            <li *ngFor="let space of filteredSpaces" class="dropdown-item" (mousedown)="selectSpace(space)" style="cursor: pointer;">{{ space.name }}</li>
+            <li class="dropdown-item text-primary" *ngIf="spaces.length === 0" (mousedown)="openCreateSpace()" style="cursor: pointer;">+ Tạo không gian mới</li>
+          </ul>
+        </div>
+
+        <div class="form-group mb-2 position-relative">
+          <label>Thành viên <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" placeholder="Tìm kiếm Nhân viên..." 
+                 [(ngModel)]="employeeSearchText" name="empSearch" autocomplete="off"
+                 (focus)="showEmployeeDropdown=true" (blur)="hideEmployeeDropdown()" required>
+          <ul class="dropdown-menu show w-100" *ngIf="showEmployeeDropdown" style="position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;">
+            <li *ngFor="let emp of filteredEmployees" class="dropdown-item" (mousedown)="selectEmployee(emp)" style="cursor: pointer;">{{ emp.name }}</li>
+            <li class="dropdown-item text-muted" *ngIf="filteredEmployees.length === 0">Không tìm thấy nhân viên</li>
+          </ul>
+        </div>
+
+        <div class="form-group mb-3">
+          <label>Vai trò <span class="text-danger">*</span></label>
+          <select class="form-control" [(ngModel)]="newMember.role" name="role" required>
+            <option value="" disabled selected>Chọn vai trò...</option>
+            <option value="Owner">Owner</option>
+            <option value="Member">Member</option>
+          </select>
+        </div>
+
+        <div class="d-flex justify-end gap-2 mt-4">
+          <button type="button" class="btn btn-secondary" (click)="showMemberModal = false" [disabled]="isSavingMember">Hủy</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSavingMember">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingMember"></i>
+            {{ isSavingMember ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+</div>

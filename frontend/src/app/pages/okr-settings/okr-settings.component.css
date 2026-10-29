@@ -1,0 +1,274 @@
+/* ========================================================
+   MODERN UNDERLINE NAV TABS (Enterprise Tailwind Style)
+   ======================================================== */
+.nav-tabs {
+  border-bottom: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding: 0;
+  margin-bottom: 1.5rem;
+  list-style: none;
+  gap: 2rem; /* space-x-8 */
+  scrollbar-width: none;
+}
+.nav-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.nav-tabs .nav-item {
+  flex: 0 0 auto;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.25rem 0.875rem 0.25rem; /* whitespace-nowrap pb-4 px-1 */
+  white-space: nowrap;
+  color: #64748b; /* text-gray-500 */
+  background-color: transparent !important;
+  border: none;
+  border-bottom: 2px solid transparent; /* border-b-2 border-transparent */
+  border-radius: 0;
+  text-decoration: none;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: -1px; /* -mb-px */
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+}
+
+.nav-link i {
+  font-size: 15px;
+  color: #94a3b8;
+  transition: color 0.15s ease-in-out;
+}
+
+.nav-link:hover {
+  color: #1e293b; /* text-gray-700 */
+  border-bottom-color: #cbd5e1; /* hover:border-gray-300 */
+  background-color: transparent !important;
+}
+
+.nav-link:hover i {
+  color: #475569;
+}
+
+.nav-link.active {
+  color: #2563eb !important; /* Xanh nước biển text-blue-600 */
+  border-bottom: 2.5px solid #2563eb !important; /* border-blue-500 */
+  background-color: transparent !important;
+  font-weight: 600;
+  position: relative;
+  z-index: 2;
+}
+
+.nav-link.active i {
+  color: #2563eb !important;
+}
+
+/* Thanh gạch xanh nước biển nổi bật ở trên line xám */
+.nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2.5px;
+  background-color: #2563eb;
+  border-radius: 2px;
+  z-index: 10;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.table-container {
+  overflow: visible;
+}
+
+@media (max-width: 768px) {
+  .table-container {
+    overflow-x: auto;
+  }
+}
+
+table {
+  background-color: #ffffff;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 13px;
+}
+
+.badge-info { background: #e0f2fe; color: #0284c7; }
+.badge-success { background: #dcfce7; color: #16a34a; }
+.badge-secondary { background: #f1f5f9; color: #475569; }
+
+.modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.modal-content {
+  background: #ffffff;
+  padding: 0;
+  border-radius: 12px;
+  width: 500px;
+  max-width: 95%;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  overflow: hidden;
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-content .card-header {
+  padding: 1.25rem 1.5rem;
+  margin: 0;
+  border-bottom: 1px solid #e2e8f0;
+  background-color: #f8fafc;
+}
+
+.modal-content .card-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.modal-content form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #475569;
+  margin-bottom: 0.5rem;
+}
+
+.form-control {
+  padding: 0.65rem 0.875rem;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 13px;
+  color: #334155;
+  transition: all 0.2s ease;
+  background-color: #fff;
+  outline: none;
+}
+
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.15);
+}
+
+input[type="checkbox"] {
+  width: 1.25rem;
+  height: 1.25rem;
+  cursor: pointer;
+  accent-color: var(--primary);
+}
+
+.text-danger {
+  color: #ef4444;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.d-flex {
+  display: flex;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+.gap-2 {
+  gap: 0.75rem;
+}
+
+.btn {
+  padding: 0.5rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btn:disabled, .btn[disabled] {
+  opacity: 0.65;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+.btn-primary {
+  background-color: var(--accent);
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: var(--accent-hover);
+  box-shadow: 0 4px 6px -1px rgba(49, 87, 213, 0.3);
+}
+
+.btn-secondary {
+  background-color: #f1f5f9;
+  color: #475569;
+  border-color: #e2e8f0;
+}
+
+.btn-secondary:hover:not(:disabled) {
+  background-color: #e2e8f0;
+  color: #1e293b;
+}
+
+.modal-content .card-header .btn-secondary {
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  background: transparent;
+  border: none;
+  font-weight: bold;
+}
+
+.modal-content .card-header .btn-secondary:hover {
+  background-color: #e2e8f0;
+  color: #ef4444;
+}
+

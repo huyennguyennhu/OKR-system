@@ -1,0 +1,157 @@
+<!-- Lớp phủ khóa trang trong suốt (không làm mờ, chặn tương tác khi đang tải) -->
+<div class="page-loading-overlay" *ngIf="loading"></div>
+
+<div class="account-settings-page">
+  <!-- Tên trang + Subtitle + Nút hành động -->
+  <div class="page-top-bar d-flex align-items-center justify-content-between mb-4">
+    <div>
+      <h3 class="card-title mb-1" style="font-size: 18px; font-weight: 700;">Nhân viên</h3>
+      <p class="subtitle mb-0">
+        Danh sách hồ sơ nhân viên, định danh tài khoản GitLab (actor_id) và phân bổ đội ngũ tham gia dự án.
+      </p>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-primary btn-sm" (click)="openCreateModal()">
+        <i class="fa-solid fa-plus"></i> Tạo hồ sơ mới
+      </button>
+    </div>
+  </div>
+
+  <!-- Thanh lọc: Tìm kiếm + Dropdown Team -->
+  <div class="filter-bar mb-3">
+    <div class="filter-search-wrapper">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" class="form-control filter-input" placeholder="Tìm kiếm theo tên, mã NV, tài khoản GitLab..." [(ngModel)]="searchQuery">
+      <button type="button" class="clear-search-btn" *ngIf="searchQuery" (click)="searchQuery=''" title="Xóa tìm kiếm">
+        <i class="fa-solid fa-circle-xmark"></i>
+      </button>
+    </div>
+
+    <div class="custom-select-wrapper">
+      <button type="button" class="custom-select-trigger" (click)="toggleTeamDropdown($event)" [class.active]="isTeamDropdownOpen">
+        <span class="d-flex align-items-center gap-2">
+          <i class="fa-solid fa-users text-primary"></i>
+          <span>{{ getSelectedTeamLabel() }}</span>
+        </span>
+        <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isTeamDropdownOpen"></i>
+      </button>
+      <div class="custom-select-menu" *ngIf="isTeamDropdownOpen">
+        <div class="custom-select-option" [class.selected]="selectedTeam === 'all'" (click)="selectTeam('all')">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-layer-group text-muted" style="width: 16px;"></i>
+            <span>Tất cả Team</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedTeam === 'all'"></i>
+        </div>
+        <div class="custom-select-option" *ngFor="let t of teams" [class.selected]="selectedTeam === (t.id || t.code)" (click)="selectTeam(t.id || t.code)">
+          <span class="d-flex align-items-center gap-2">
+            <i class="fa-solid fa-user-group text-primary" style="width: 16px;"></i>
+            <span>{{ t.name }} ({{ t.code }})</span>
+          </span>
+          <i class="fa-solid fa-check check-icon" *ngIf="selectedTeam === (t.id || t.code)"></i>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bảng (không khung) -->
+  <div class="table-container">
+    <table class="table table-hover">
+      <thead>
+        <tr>
+          <th>Mã NV</th>
+          <th>Họ Tên</th>
+          <th>Tài khoản GitLab</th>
+          <th>Team</th>
+          <th>Vai trò</th>
+          <th>Ngày tạo</th>
+          <th>Ngày cập nhật</th>
+          <th style="width: 48px; text-align: center;"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="loading">
+          <td colspan="8" class="table-loading-cell">
+            <div class="table-loading-content">
+              <div class="loading-spinner-circle"></div>
+              <span>Đang tải dữ liệu...</span>
+            </div>
+          </td>
+        </tr>
+        <ng-container *ngIf="!loading">
+          <tr *ngFor="let emp of filteredEmployees">
+            <td><code>{{ emp.employee_id }}</code></td>
+            <td><strong>{{ emp.full_name }}</strong></td>
+            <td><code class="actor-tag"><i class="fa-regular fa-user"></i> {{ emp.gitlab_user_id }}</code></td>
+            <td><span class="badge badge-info">{{ emp.team_id }}</span></td>
+            <td><span class="badge badge-secondary">{{ emp.display_code || emp.role || 'Member' }}</span></td>
+            <td>{{ emp.created_at ? (emp.created_at | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
+            <td>{{ (emp.updated_at ? (emp.updated_at | date:'dd/MM/yyyy HH:mm') : (emp.created_at | date:'dd/MM/yyyy HH:mm')) || '-' }}</td>
+            <td class="action-cell" [style.z-index]="activeDropdownId === emp.employee_id ? 10000 : 'auto'">
+              <div class="action-menu-container" [style.z-index]="activeDropdownId === emp.employee_id ? 10000 : 'auto'">
+                <button class="btn-action-trigger" (click)="toggleDropdown(emp.employee_id, $event)" title="Thao tác" [class.active]="activeDropdownId === emp.employee_id">
+                  <i class="fa-solid fa-ellipsis-vertical"></i>
+                </button>
+                <div class="action-dropdown-menu" *ngIf="activeDropdownId === emp.employee_id" [class.dropup]="isDropup">
+                  <button class="action-dropdown-item" (click)="editEmployee(emp); closeDropdown()">
+                    <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
+                  </button>
+                  <button class="action-dropdown-item text-danger" (click)="deleteEmployee(emp); closeDropdown()">
+                    <i class="fa-solid fa-trash-can"></i> Xóa
+                  </button>
+                </div>
+              </div>
+            </td>
+          </tr>
+          <tr *ngIf="filteredEmployees.length === 0">
+            <td colspan="8" class="text-center py-4 text-muted">
+              {{ searchQuery || selectedTeam !== 'all' ? 'Không tìm thấy nhân viên nào phù hợp bộ lọc.' : 'Chưa có nhân viên nào. Hãy tạo mới!' }}
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+  <!-- Modal Create/Edit Employee -->
+  <div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="card-header">
+        <h3 class="card-title">{{ isEditing ? 'Chỉnh sửa Nhân viên' : 'Tạo hồ sơ mới' }}</h3>
+        <button class="close-btn" (click)="closeModal()" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form (submit)="saveEmployee(); $event.preventDefault()">
+        <div class="form-group mb-2">
+          <label>Mã Nhân viên <span class="text-danger">*</span></label>
+          <input type="text" [(ngModel)]="newEmployee.employee_id" name="empId" class="form-control" disabled style="background-color: #f1f5f9; cursor: not-allowed;">
+        </div>
+        <div class="form-group mb-2">
+          <label>Họ Tên <span class="text-danger">*</span></label>
+          <input type="text" [(ngModel)]="newEmployee.full_name" name="fName" class="form-control" placeholder="Nhập họ tên" required>
+        </div>
+        <div class="form-group mb-2">
+          <label>Email <span class="text-danger">*</span></label>
+          <input type="email" [(ngModel)]="newEmployee.email" name="email" class="form-control" placeholder="Nhập địa chỉ email" required>
+        </div>
+        <div class="form-group mb-2">
+          <label>Team <span class="text-danger">*</span></label>
+          <select [(ngModel)]="newEmployee.team_id" name="tId" class="form-control" style="background-color: #fff;" required>
+            <option value="">Chọn Team</option>
+            <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+          </select>
+        </div>
+        <div class="form-group mb-3">
+          <label>Role <span class="text-danger">*</span></label>
+          <input type="text" [(ngModel)]="newEmployee.role" name="role" class="form-control" placeholder="Nhập Role" required>
+        </div>
+        <div class="d-flex justify-end gap-2 mt-4">
+          <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="isSaving">Hủy</button>
+          <button type="submit" class="btn btn-primary" [disabled]="isSaving">
+            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSaving"></i>
+            {{ isSaving ? 'Đang lưu...' : 'Lưu' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>

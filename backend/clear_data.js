@@ -1,0 +1,1 @@
+﻿const { db } = require("./database"); async function clear() { try { const tables = await db.query("SELECT tablename FROM pg_tables WHERE schemaname = 'public'"); for (let row of tables.rows) { await db.query("TRUNCATE TABLE \"" + row.tablename + "\" CASCADE"); } console.log("Success"); process.exit(0); } catch (e) { console.error(e); process.exit(1); } } clear();
