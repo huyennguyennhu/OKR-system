@@ -1,2 +1,0 @@
-- MCP Activepiece: https://cloud.activepieces.com/mcp
-- Flow Backup: [Check GitLab Flow](./check_gitlab.json) (Dùng để import vào Activepieces kết nối với MCP)

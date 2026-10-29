@@ -7,6 +7,8 @@ ACTIVEPIECES_GUIDE.md
 CAU_HINH_ACTIVEPIECES_KR_A1.md
 README.md
 unique_urls.txt
+flow/
+**/flow/
 
 # 2. Private HAR Network Archives (Cookies, Session IDs, Production Tokens)
 har_private/
