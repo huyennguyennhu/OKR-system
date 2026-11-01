@@ -1,4 +1,4 @@
-.page-container {
+﻿.page-container {
   /* padding: 1.5rem; Removed to fit inside OKR Settings */
 }
 
@@ -202,4 +202,9 @@
   display: flex !important;
   align-items: center !important;
   gap: 10px !important;
+}
+
+/* Search Input without icon */
+.filter-search-wrapper .filter-input {
+  padding-left: 0.875rem !important;
 }

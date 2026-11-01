@@ -11,3 +11,6 @@ table {
   background-color: #ffffff;
 }
 
+.modal-content {
+  overflow: visible !important;
+}

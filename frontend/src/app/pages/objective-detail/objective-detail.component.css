@@ -179,7 +179,7 @@
   border-radius: 8px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   background: #ffffff;
-  overflow: hidden;
+  overflow: visible !important;
 }
 
 .prop-card .card-header {
@@ -212,6 +212,38 @@
 .prop-card .form-control:focus {
   border-color: var(--primary, #3157D5);
   box-shadow: 0 0 0 2px rgba(49, 87, 213, 0.15);
+}
+
+.prop-card .custom-select-trigger {
+  height: 34px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #ffffff;
+  font-size: 13px;
+  color: #1e293b;
+  min-width: 0 !important;
+}
+
+.prop-card .custom-select-trigger:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.prop-card .custom-select-trigger.active {
+  border-color: var(--primary, #3157D5);
+  box-shadow: 0 0 0 2px rgba(49, 87, 213, 0.15);
+}
+
+.prop-readonly-box {
+  min-height: 34px;
+  padding: 0.35rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid #cbd5e1;
+  background-color: #f8fafc;
+  font-size: 13px;
+  color: #1e293b;
+  width: 100%;
 }
 
 /* Tables inside cards */
@@ -307,14 +339,22 @@
   width: 110px;
   height: 110px;
   border-radius: 50%;
-  border: 7px solid #10b981;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: background 0.4s ease;
+}
+
+.progress-circle-inner {
+  width: 94px;
+  height: 94px;
+  border-radius: 50%;
+  background: #ffffff;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: #ffffff;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  transition: border-color 0.3s ease;
 }
 
 .progress-number {
@@ -328,7 +368,28 @@
   font-size: 11px;
   color: #64748b;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+.status-badge-wrapper {
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  text-align: center;
+  width: 100%;
+}
+
+.status-badge-wrapper .badge {
+  font-size: 12px;
+  padding: 0.4rem 1rem;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  letter-spacing: 0.03em;
 }
 
 /* Metric values grid */
@@ -421,6 +482,11 @@
 .comment-header {
   font-size: 12px;
   margin-bottom: 0.2rem;
+}
+
+.comment-header small {
+  font-size: 12px;
+  color: #64748b;
 }
 
 .comment-content {

@@ -25,12 +25,12 @@
   </nav>
 
   <!-- Objectives Tab -->
-  <div *ngIf="activeTab === 'Mục tiêu'" class="tab-pane">
+  <div *ngIf="activeTab === 'Objectives'" class="tab-pane">
     <app-objectives-list></app-objectives-list>
   </div>
 
   <!-- Spaces Tab -->
-  <div *ngIf="activeTab === 'Không gian'" class="tab-pane">
+  <div *ngIf="activeTab === 'Spaces'" class="tab-pane">
     <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
       <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Quản lý Không gian</h4>
       <button class="btn btn-primary btn-sm" (click)="openCreateSpaceModal()">
@@ -87,7 +87,7 @@
   </div>
 
   <!-- Space Members Tab -->
-  <div *ngIf="activeTab === 'Thành viên'" class="tab-pane">
+  <div *ngIf="activeTab === 'Members'" class="tab-pane">
     <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
       <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Thành viên</h4>
       <div class="d-flex align-items-center gap-2">
@@ -101,17 +101,10 @@
             <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isSpaceFilterDropdownOpen"></i>
           </button>
           <div class="custom-select-menu" *ngIf="isSpaceFilterDropdownOpen" style="min-width: 240px; z-index: 1050; max-height: 280px; overflow-y: auto;">
-            <div class="custom-select-option" [class.selected]="selectedMemberSpaceId === 'all'" (click)="selectMemberSpace('all')">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-layer-group text-muted" style="width: 16px; text-align: center;"></i>
-                <span>Tất cả Không gian</span>
-              </span>
-              <i class="fa-solid fa-check check-icon" *ngIf="selectedMemberSpaceId === 'all'"></i>
-            </div>
             <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="selectedMemberSpaceId === s.id" (click)="selectMemberSpace(s.id)">
               <span class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-folder text-primary" style="width: 16px; text-align: center;"></i>
-                <span>{{ s.name }} ({{ s.space_key }})</span>
+                <span>{{ s.name }}</span>
               </span>
               <i class="fa-solid fa-check check-icon" *ngIf="selectedMemberSpaceId === s.id"></i>
             </div>
@@ -130,15 +123,16 @@
       <table class="table table-hover">
         <thead>
           <tr>
-            <th>Không gian</th>
             <th>Thành viên</th>
+            <th>Email</th>
+            <th>Team</th>
             <th>Vai trò</th>
             <th style="width: 48px; text-align: center;"></th>
           </tr>
         </thead>
         <tbody>
           <tr *ngIf="loading">
-            <td colspan="4" class="table-loading-cell">
+            <td colspan="5" class="table-loading-cell">
               <div class="table-loading-content">
                 <div class="loading-spinner-circle"></div>
                 <span>Đang tải dữ liệu...</span>
@@ -147,10 +141,11 @@
           </tr>
           <ng-container *ngIf="!loading">
             <tr *ngFor="let member of filteredSpaceMembers">
-              <td>{{ getSpaceName(member.space_id) }}</td>
               <td><strong>{{ member.user_name }}</strong></td>
+              <td><span class="text-secondary" style="font-size: 13px;">{{ member.email || '—' }}</span></td>
+              <td><span class="badge bg-light text-dark border">{{ member.team_name || '—' }}</span></td>
               <td>
-                <span class="badge" [ngClass]="member.role === 'Owner' ? 'badge-primary' : 'badge-secondary'">
+                <span class="badge" [ngClass]="member.role === 'Tech Lead' || member.role === 'Product Owner' || member.role === 'Owner' ? 'bg-primary' : 'bg-secondary'">
                   {{ member.role }}
                 </span>
               </td>
@@ -168,7 +163,7 @@
               </td>
             </tr>
             <tr *ngIf="filteredSpaceMembers.length === 0">
-              <td colspan="4" class="text-center py-4 text-muted">Chưa có thành viên nào{{ selectedMemberSpaceId !== 'all' ? ' trong không gian này' : '' }}. Hãy tạo mới!</td>
+              <td colspan="5" class="text-center py-4 text-muted">Chưa có thành viên nào{{ selectedMemberSpaceId !== 'all' ? ' trong không gian này' : '' }}. Hãy tạo mới!</td>
             </tr>
           </ng-container>
         </tbody>
@@ -176,129 +171,159 @@
     </div>
   </div>
 
-  <!-- Timelines Tab -->
-  <div *ngIf="activeTab === 'Chu kỳ'" class="tab-pane">
-    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
-      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Chu kỳ Thời gian</h4>
-      <button class="btn btn-primary btn-sm" (click)="showTimelineModal = true; isEditingTimeline = false; newTimeline = {};">
-        <i class="fa-solid fa-plus"></i> Tạo Chu kỳ
-      </button>
-    </div>
-    <div class="table-container">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Tiêu đề</th>
-            <th>Phân loại</th>
-            <th>Thời gian</th>
-            <th>ID Không gian</th>
-            <th style="width: 48px; text-align: center;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngIf="loading">
-            <td colspan="5" class="table-loading-cell">
-              <div class="table-loading-content">
-                <div class="loading-spinner-circle"></div>
-                <span>Đang tải dữ liệu...</span>
-              </div>
-            </td>
-          </tr>
-          <ng-container *ngIf="!loading">
-            <tr *ngFor="let tl of timelines">
-              <td><strong>{{ tl.title }}</strong></td>
-              <td><span class="badge badge-success">{{ tl.timeline_category }}</span></td>
-              <td>{{ tl.start_date }} <i class="fa-solid fa-arrow-right text-muted mx-1"></i> {{ tl.end_date }}</td>
-              <td>{{ tl.workspace_id }}</td>
-              <td class="action-cell" [style.z-index]="activeDropdownId === tl.id ? 10000 : 'auto'">
-                <div class="action-menu-container" [style.z-index]="activeDropdownId === tl.id ? 10000 : 'auto'">
-                  <button class="btn-action-trigger" (click)="toggleDropdown(tl.id, $event)" title="Thao tác" [class.active]="activeDropdownId === tl.id">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                  </button>
-                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === tl.id" [class.dropup]="isDropup">
-                    <button class="action-dropdown-item" (click)="editTimeline(tl); closeDropdown()">
-                      <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
-                    </button>
-                    <button class="action-dropdown-item text-danger" (click)="deleteTimeline(tl); closeDropdown()">
-                      <i class="fa-solid fa-trash-can"></i> Xóa
-                    </button>
-                  </div>
-                </div>
-              </td>
-            </tr>
-            <tr *ngIf="timelines.length === 0">
-              <td colspan="5" class="text-center py-4 text-muted">Chưa có chu kỳ nào. Hãy tạo mới!</td>
-            </tr>
-          </ng-container>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <!-- Timelines Tab (Visual Tree Hierarchy) -->
+  <div *ngIf="activeTab === 'Timelines'" class="tab-pane">
+    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-4" style="margin-bottom: 24px !important;">
+      <div>
+        <h4 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">Chu kỳ Thời gian</h4>
+        <p class="subtitle mb-0" style="font-size: 13px; color: #64748b;">
+          Cấu trúc cây chu kỳ OKR phân cấp: Năm > Quý > Tháng
+        </p>
+      </div>
 
-  <!-- Metrics Tab -->
-  <div *ngIf="activeTab === 'Thước đo'" class="tab-pane">
-    <div class="tab-pane-header d-flex align-items-center justify-content-between mb-3">
-      <h4 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Danh sách Thước đo</h4>
-      <button class="btn btn-primary btn-sm" (click)="showMetricModal = true; isEditingMetric = false; newMetric = {};">
-        <i class="fa-solid fa-plus"></i> Thêm Thước đo
-      </button>
+      <div class="d-flex align-items-center gap-2">
+        <!-- Dropdown chọn Space bên trái nút Tạo Chu kỳ -->
+        <div class="custom-select-wrapper" *ngIf="spaces.length > 0">
+          <button type="button" class="custom-select-trigger" (click)="toggleTimelineSpaceFilterDropdown($event)" [class.active]="isTimelineSpaceFilterDropdownOpen" style="min-width: 220px; height: 34px; padding: 0 0.75rem;">
+            <span class="d-flex align-items-center gap-2 text-truncate" style="max-width: 170px;">
+              <i class="fa-solid fa-layer-group text-primary" style="width: 16px; text-align: center;"></i>
+              <span class="text-truncate">{{ getSelectedTimelineSpaceFilterLabel() }}</span>
+            </span>
+            <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isTimelineSpaceFilterDropdownOpen"></i>
+          </button>
+          <div class="custom-select-menu" *ngIf="isTimelineSpaceFilterDropdownOpen" style="min-width: 240px; z-index: 1050; max-height: 280px; overflow-y: auto;">
+            
+            <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="selectedTimelineSpaceId === s.id" (click)="selectTimelineSpace(s.id)">
+              <span class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-folder text-primary" style="width: 16px; text-align: center;"></i>
+                <span>{{ s.name }}</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="selectedTimelineSpaceId === s.id"></i>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary btn-sm" (click)="openCreateTimelineModal()">
+          <i class="fa-solid fa-plus"></i> Tạo Chu kỳ
+        </button>
+      </div>
     </div>
-    <div class="table-container">
-      <table class="table table-hover">
-        <thead>
-          <tr>
-            <th>Tên Thước đo</th>
-            <th>Mã Key</th>
-            <th>Đơn vị</th>
-            <th>Dạng Phần trăm</th>
-            <th style="width: 48px; text-align: center;"></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngIf="loading">
-            <td colspan="5" class="table-loading-cell">
-              <div class="table-loading-content">
-                <div class="loading-spinner-circle"></div>
-                <span>Đang tải dữ liệu...</span>
-              </div>
-            </td>
-          </tr>
-          <ng-container *ngIf="!loading">
-            <tr *ngFor="let m of metrics">
-              <td><strong>{{ m.name }}</strong></td>
-              <td><code>{{ m.metric_key }}</code></td>
-              <td>{{ m.unit }}</td>
-              <td>
-                <span class="badge" [ngClass]="m.is_percent ? 'badge-success' : 'badge-secondary'">
-                  {{ m.is_percent ? 'Có' : 'Không' }}
+
+    <!-- Tree View Table Container -->
+    <div class="timeline-tree-table-container">
+      <!-- Table Header -->
+      <div class="tree-table-header">
+        <div class="table-cell title-col">
+          <span class="header-label">Timeline</span>
+        </div>
+        <div class="table-cell period-col">
+          <span class="header-label">Period</span>
+          
+        </div>
+        <div class="table-cell action-col justify-end">
+          <button class="btn-toggle-all" (click)="toggleExpandCollapseAll()" [title]="isAllTimelinesCollapsed ? 'Mở rộng tất cả' : 'Thu gọn tất cả'">
+            <span class="material-icons-outlined" style="font-size: 20px;">
+              {{ isAllTimelinesCollapsed ? 'unfold_more' : 'unfold_less' }}
+            </span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Loading State -->
+      <div *ngIf="loading" class="table-loading-row py-5 text-center">
+        <div class="loading-spinner-circle mb-2"></div>
+        <div class="text-muted" style="font-size: 13px;">Đang tải dữ liệu chu kỳ...</div>
+      </div>
+
+      <!-- Empty State -->
+      <div *ngIf="!loading && visibleTimelineRows.length === 0" class="empty-timeline-row py-5 text-center text-muted">
+        <i class="fa-regular fa-calendar-xmark fa-2x mb-2 text-secondary"></i>
+        <div class="mb-3" style="font-size: 13.5px;">Chưa có chu kỳ thời gian nào{{ selectedTimelineSpaceId !== 'all' ? ' trong không gian này' : '' }}.</div>
+        <button class="btn btn-primary btn-sm" (click)="openCreateTimelineModal()">
+          <i class="fa-solid fa-plus"></i> Khởi tạo Chu kỳ Ngay
+        </button>
+      </div>
+
+      <!-- Tree Rows Content -->
+      <div *ngIf="!loading && visibleTimelineRows.length > 0" class="tree-table-body">
+        <div *ngFor="let row of visibleTimelineRows" class="table-row tree-row" [class.parent-year-row]="row.depth === 0">
+          
+          <!-- Column 1: Title & Hierarchy Indentation -->
+          <div class="table-cell align-middle title-col">
+            <div class="d-flex align-items-center">
+              
+              <!-- Margin Left Indentation (0px, 20px, 40px, ...) -->
+              <span [style.margin-left.px]="row.depth * 20" class="d-inline-flex align-items-center">
+                <!-- Toggle Chevron (if has children) -->
+                <span *ngIf="row.hasChildren"
+                      class="toggle-icon material-icons-round mr-1 cursor-pointer"
+                      (click)="toggleNodeCollapse(row.id, $event)"
+                      [title]="row.isCollapsed ? 'Mở rộng' : 'Thu gọn'">
+                  {{ row.isCollapsed ? 'keyboard_arrow_right' : 'keyboard_arrow_down' }}
                 </span>
-              </td>
-              <td class="action-cell" [style.z-index]="activeDropdownId === m.id ? 10000 : 'auto'">
-                <div class="action-menu-container" [style.z-index]="activeDropdownId === m.id ? 10000 : 'auto'">
-                  <button class="btn-action-trigger" (click)="toggleDropdown(m.id, $event)" title="Thao tác" [class.active]="activeDropdownId === m.id">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
+                <!-- Invisible Spacer (if no children) to keep exact alignment -->
+                <span *ngIf="!row.hasChildren"
+                      class="toggle-icon material-icons-round mr-1 btn-flex btn-white p-1 rounded-full opacity-0 pointer-events-none">
+                  keyboard_arrow_down
+                </span>
+              </span>
+
+              <!-- Icon (event for year, date_range for quarters and months) -->
+              <span class="fa material-icons-outlined icon-md text-secondary" style="font-size: 18px; margin-right: 8px;">
+                {{ row.icon }}
+              </span>
+
+              <!-- Title Text -->
+              <span class="timeline-title-text" [ngClass]="{'fw-bold text-dark': row.depth === 0, 'fw-semibold text-dark': row.depth === 1, 'text-body': row.depth > 1}">
+                {{ row.title }}
+              </span>
+
+            </div>
+          </div>
+
+          <!-- Column 2: Period Date Range -->
+          <div class="table-cell align-middle period-col">
+            {{ row.period }}
+          </div>
+
+          <!-- Column 3: Action Buttons (+ and more_vert) -->
+          <div class="table-cell align-middle action-col">
+            <div class="d-flex align-items-center flex-1 justify-end gap-1">
+              
+              <!-- Button Add Child Timeline (+) -->
+              <button class="btn btn-flex btn-white btn-icon btn-sm" 
+                      (click)="openAddChildTimeline(row, $event)" 
+                      title="Thêm chu kỳ con">
+                <span class="material-icons" style="font-size: 18px;">add</span>
+              </button>
+
+              <!-- Dropdown Action Menu (more_vert) -->
+              <div class="action-menu-container" [style.z-index]="activeDropdownId === row.id ? 10000 : 'auto'">
+                <button class="default btn btn-icon btn-dropdown w-unset btn-action-trigger" 
+                        (click)="toggleDropdown(row.id, $event)" 
+                        title="Thao tác" 
+                        [class.active]="activeDropdownId === row.id">
+                  <span class="material-icons-outlined" style="font-size: 18px;">more_vert</span>
+                </button>
+                <div class="action-dropdown-menu" *ngIf="activeDropdownId === row.id" [class.dropup]="isDropup">
+                  <button class="action-dropdown-item" (click)="editTimeline(row); closeDropdown()">
+                    <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
                   </button>
-                  <div class="action-dropdown-menu" *ngIf="activeDropdownId === m.id" [class.dropup]="isDropup">
-                    <button class="action-dropdown-item" (click)="editMetric(m); closeDropdown()">
-                      <i class="fa-solid fa-pen-to-square"></i> Chỉnh sửa
-                    </button>
-                    <button class="action-dropdown-item text-danger" (click)="deleteMetric(m); closeDropdown()">
-                      <i class="fa-solid fa-trash-can"></i> Xóa
-                    </button>
-                  </div>
+                  <button class="action-dropdown-item text-danger" (click)="deleteTimeline(row); closeDropdown()">
+                    <i class="fa-solid fa-trash-can"></i> Xóa
+                  </button>
                 </div>
-              </td>
-            </tr>
-            <tr *ngIf="metrics.length === 0">
-              <td colspan="5" class="text-center py-4 text-muted">Chưa có thước đo nào. Hãy tạo mới!</td>
-            </tr>
-          </ng-container>
-        </tbody>
-      </table>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- MODALS -->
+    <!-- MODALS -->
   <div class="modal-overlay" *ngIf="showSpaceModal">
     <div class="modal-content">
       <div class="card-header mb-3">
@@ -325,40 +350,413 @@
   </div>
 
   <div class="modal-overlay" *ngIf="showTimelineModal">
-    <div class="modal-content">
-      <div class="card-header mb-3">
-        <h3 class="card-title">{{ isEditingTimeline ? 'Chỉnh sửa Chu kỳ' : 'Tạo Chu kỳ' }}</h3>
-        <button class="close-btn" (click)="showTimelineModal = false" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
+    <div class="modal-content" [style.max-width]="isEditingTimeline ? '580px' : '680px'" style="max-height: 90vh; display: flex; flex-direction: column;">
+      
+      <!-- Modal Header -->
+      <div class="card-header mb-0">
+        <h3 class="card-title">{{ isEditingTimeline ? 'Chỉnh sửa Chu kỳ' : 'Create Timeline' }}</h3>
+        <button class="close-btn" (click)="showTimelineModal = false" type="button" aria-label="Đóng">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
       </div>
-      <form (ngSubmit)="saveTimeline()">
-        <div class="form-group mb-2">
-          <label>Tiêu đề <span class="text-danger">*</span></label>
-          <input class="form-control" [(ngModel)]="newTimeline.title" name="title" required placeholder="Ví dụ: Q3-2026">
+
+      <!-- Modal Body (Scrollable) -->
+      <div class="modal-body" style="overflow-y: auto; flex: 1;">
+        
+        <!-- MODE 1: Create Tree Timeline -->
+        <div *ngIf="!isEditingTimeline" class="okr-timeline-generate">
+          <!-- Title Input -->
+          <div class="form-group mb-3">
+            <label>Title <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" [(ngModel)]="newTimeline.title" placeholder="2027">
+          </div>
+
+          <!-- Space and Tree Timeline (2 Columns) -->
+          <div class="timeline-grid-2 mb-3">
+            <!-- Space Dropdown (Custom Format) -->
+            <div class="form-group mb-0">
+              <label>Space</label>
+              <div class="custom-select-wrapper position-relative w-100" [style.z-index]="isCreateTimelineSpaceDropdownOpen ? 1080 : 'auto'">
+                <button type="button" class="custom-select-trigger w-100" 
+                        [class.active]="isCreateTimelineSpaceDropdownOpen" 
+                        (click)="isCreateTimelineSpaceDropdownOpen = !isCreateTimelineSpaceDropdownOpen; isTreeTimelineDropdownOpen = false; $event.stopPropagation();">
+                  <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                    <i class="fa-solid fa-layer-group text-primary flex-shrink-0"></i>
+                    <span class="text-truncate">{{ getCreateTimelineSpaceName() }}</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isCreateTimelineSpaceDropdownOpen"></i>
+                </button>
+                <div class="custom-select-menu w-100" *ngIf="isCreateTimelineSpaceDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1090;">
+                  <div class="custom-select-option" *ngFor="let s of spaces" 
+                       [class.selected]="newTimeline.workspace_id === s.id" 
+                       (click)="selectCreateTimelineSpace(s)">
+                    <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                      <i class="fa-solid fa-folder text-muted flex-shrink-0"></i>
+                      <span class="text-truncate" [title]="s.name">{{ s.name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary flex-shrink-0 ms-2" *ngIf="newTimeline.workspace_id === s.id"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tree Timeline Dropdown (Custom Multi-select Format) -->
+            <div class="form-group okr-tree-timeline mb-0">
+              <label>Tree Timeline</label>
+              <div class="custom-select-wrapper position-relative w-100" [style.z-index]="isTreeTimelineDropdownOpen ? 1080 : 'auto'">
+                <div class="custom-select-trigger w-100 tree-timeline-trigger" 
+                     [class.active]="isTreeTimelineDropdownOpen" 
+                     (click)="isTreeTimelineDropdownOpen = !isTreeTimelineDropdownOpen; isCreateTimelineSpaceDropdownOpen = false; $event.stopPropagation();">
+                  <div class="d-flex align-items-center gap-1 flex-wrap flex-grow-1 overflow-hidden">
+                    <span class="tree-timeline-pill" *ngFor="let tag of treeTimelineHierarchy" (click)="$event.stopPropagation()">
+                      <span>{{ tag }}</span>
+                      <button type="button" class="tag-remove-btn" (click)="removeTreeHierarchyTag(tag, $event)" title="Xóa cấp {{ tag }}">
+                        <i class="fa-solid fa-xmark"></i>
+                      </button>
+                    </span>
+                    <span *ngIf="treeTimelineHierarchy.length === 0" class="text-muted" style="font-size: 13px;">Chọn cấp chu kỳ...</span>
+                  </div>
+                  <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isTreeTimelineDropdownOpen"></i>
+                </div>
+
+                <!-- Dropdown Menu for Tree Timeline hierarchy -->
+                <div class="custom-select-menu w-100" *ngIf="isTreeTimelineDropdownOpen" style="z-index: 1090;">
+                  <div class="custom-select-option" 
+                       [class.selected]="treeTimelineHierarchy.includes('Quarterly')"
+                       (click)="addTreeHierarchyTag('Quarterly', $event)">
+                    <span class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-calendar-week text-primary"></i>
+                      <span><strong>Quarterly</strong></span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary" *ngIf="treeTimelineHierarchy.includes('Quarterly')"></i>
+                  </div>
+                  <div class="custom-select-option" 
+                       [class.selected]="treeTimelineHierarchy.includes('Monthly')"
+                       (click)="addTreeHierarchyTag('Monthly', $event)">
+                    <span class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-calendar-day text-info"></i>
+                      <span><strong>Monthly</strong></span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary" *ngIf="treeTimelineHierarchy.includes('Monthly')"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Multiple years timeline toggle switch -->
+          <div class="mb-3">
+            <div class="custom-control custom-switch d-flex align-items-center gap-2">
+              <label class="custom-switch-slider mb-0 cursor-pointer">
+                <input type="checkbox" [(ngModel)]="multipleYearsTimeline" style="display: none;">
+                <span class="switch-round" [class.checked]="multipleYearsTimeline"></span>
+              </label>
+              <span class="switch-label text-dark" style="font-size: 13px; font-weight: 500;">Multiple years timeline</span>
+            </div>
+          </div>
+
+          <!-- Year Slider (2022 to 2032 with cyan active thumb) -->
+          <div class="timeline-slider-wrapper mb-4">
+            <div class="range-slider-container position-relative">
+              <!-- Slider Track Line -->
+              <div class="slider-track-line"></div>
+              
+              <!-- Ticks and Years -->
+              <div class="slider-ticks-row">
+                <div *ngFor="let yr of timelineYearsList" 
+                     class="slider-tick-item cursor-pointer"
+                     (click)="onTimelineYearChange(yr)">
+                  <div class="slider-tick-dot" [class.active]="selectedTimelineYear === yr"></div>
+                  <span class="slider-year-label" [class.active]="selectedTimelineYear === yr">
+                    {{ yr }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Start Date & End Date (2 Columns) -->
+          <div class="timeline-grid-2 mb-3">
+            <div class="form-group mb-0">
+              <label>Start Date <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="newTimeline.start_date" placeholder="Jan 01, 2027">
+            </div>
+
+            <div class="form-group mb-0">
+              <label>End Date <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="newTimeline.end_date" placeholder="Dec 31, 2027">
+            </div>
+          </div>
+
+          <!-- Preview Timeline Header with Toggle Button -->
+          <div class="d-flex align-items-center mb-2">
+            <label class="mb-0">Preview Timeline</label>
+            <button type="button" 
+                    class="btn-preview-toggle ms-2" 
+                    (click)="togglePreviewCollapseAll()"
+                    title="Mở rộng / Thu gọn toàn bộ">
+              <i class="fa-solid fa-up-right-and-down-left-from-center" style="font-size: 11px; color: #475569;"></i>
+            </button>
+          </div>
+
+          <!-- Preview Timeline Tree Table -->
+          <div class="mb-2">
+            <div class="custom-table second-table border rounded" style="max-height: 240px; overflow-y: auto; background: #fff;">
+              <!-- Table Header -->
+              <div class="table-header d-flex border-bottom py-2 px-3" style="background-color: #f8fafc; font-weight: 600; font-size: 13px; color: #475569;">
+                <div style="flex: 1;">Timeline</div>
+                <div style="width: 200px;">Period</div>
+              </div>
+              
+              <!-- Table Body -->
+              <div class="table-body">
+                <ng-container *ngFor="let yr of previewTimelineItems">
+                  <!-- Year Row (Indent 0px) -->
+                  <div class="table-row d-flex align-items-center border-bottom py-2 px-3 hover-bg">
+                    <div class="d-flex align-items-center" style="flex: 1; padding-left: 0px;">
+                      <!-- Collapse Chevron -->
+                      <span class="chevron-toggle cursor-pointer me-1" (click)="togglePreviewNodeCollapse(yr, $event)" *ngIf="yr.children?.length" style="display: inline-flex; align-items: center;">
+                        <span class="material-icons-round text-muted" style="font-size: 18px;">
+                          {{ yr.collapsed ? 'keyboard_arrow_right' : 'keyboard_arrow_down' }}
+                        </span>
+                      </span>
+                      <span *ngIf="!yr.children?.length" style="width: 18px; display: inline-block;" class="me-1"></span>
+
+                      <!-- Checkbox -->
+                      <input type="checkbox" [(ngModel)]="yr.checked" (change)="togglePreviewCheck(yr)" class="form-check-input mt-0 me-2 custom-tree-checkbox cursor-pointer">
+                      
+                      <!-- OKR SVG Icon -->
+                      <span class="icon-timeline me-2" style="display: inline-flex; align-items: center;">
+                        <svg data-name="Group 16352" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 26 26" fit="" preserveAspectRatio="xMidYMid meet" focusable="false">
+                          <rect data-name="Rectangle 7584" width="26" height="26" rx="3" style="fill:#42526e"></rect>
+                          <g data-name="Group 16349"><path data-name="Rectangle 7599" style="fill:#42526e" d="M0 0h24v24H0z" transform="translate(1 1)"></path></g>
+                          <g data-name="Group 16351"><g data-name="Group 16350" transform="translate(3.05 3.05)"><path d="M4.07 13H2.05a10.013 10.013 0 0 0 2.21 5.33l1.43-1.43A7.941 7.941 0 0 1 4.07 13z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M5.69 7.1 4.26 5.67A10.013 10.013 0 0 0 2.05 11h2.02a7.941 7.941 0 0 1 1.62-3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M11 4.07V2.05a10.013 10.013 0 0 0-5.33 2.21L7.1 5.69A7.941 7.941 0 0 1 11 4.07z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M18.33 4.26A10.013 10.013 0 0 0 13 2.05v2.02a7.941 7.941 0 0 1 3.9 1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="m18.31 16.9 1.43 1.43A9.981 9.981 0 0 0 21.95 13h-2.02a7.941 7.941 0 0 1-1.62 3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M19.93 11h2.02a10.013 10.013 0 0 0-2.21-5.33L18.31 7.1a7.941 7.941 0 0 1 1.62 3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M13 19.93v2.02a10.013 10.013 0 0 0 5.33-2.21l-1.43-1.43a7.941 7.941 0 0 1-3.9 1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><path d="M5.67 19.74A9.981 9.981 0 0 0 11 21.95v-2.02a7.941 7.941 0 0 1-3.9-1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path><circle cx="5" cy="5" r="5" transform="translate(4.949 4.95)" style="fill:#fff"></circle></g></g>
+                        </svg>
+                      </span>
+
+                      <!-- Title -->
+                      <span class="fw-bold text-dark me-2" style="font-size: 13.5px;">{{ yr.title }}</span>
+                    </div>
+
+                    <!-- Period -->
+                    <div class="text-secondary" style="width: 200px; font-size: 13px;">{{ yr.period }}</div>
+                  </div>
+
+                  <!-- Quarters & Months (if year not collapsed) -->
+                  <ng-container *ngIf="!yr.collapsed">
+                    <ng-container *ngFor="let q of yr.children">
+                      <!-- Quarter Row (Indent 20px) -->
+                      <div class="table-row d-flex align-items-center border-bottom py-2 px-3 hover-bg" style="background-color: #fafbfc;">
+                        <div class="d-flex align-items-center" style="flex: 1; padding-left: 20px;">
+                          <!-- Collapse Chevron -->
+                          <span class="chevron-toggle cursor-pointer me-1" (click)="togglePreviewNodeCollapse(q, $event)" *ngIf="q.children?.length">
+                            <span class="material-icons-round text-muted" style="font-size: 18px;">
+                              {{ q.collapsed ? 'keyboard_arrow_right' : 'keyboard_arrow_down' }}
+                            </span>
+                          </span>
+
+                          <!-- Checkbox -->
+                          <input type="checkbox" [(ngModel)]="q.checked" (change)="togglePreviewCheck(q)" class="form-check-input mt-0 me-2 custom-tree-checkbox cursor-pointer">
+
+                          <!-- Quarter Event Icon -->
+                          <span class="material-icons-outlined text-secondary me-2" style="font-size: 18px;">event</span>
+
+                          <!-- Title -->
+                          <span class="fw-semibold text-dark" style="font-size: 13px;">{{ q.title }}</span>
+                        </div>
+
+                        <!-- Period -->
+                        <div class="text-secondary" style="width: 200px; font-size: 13px;">{{ q.period }}</div>
+                      </div>
+
+                      <!-- Month Rows (Indent 48px) (if quarter not collapsed) -->
+                      <ng-container *ngIf="!q.collapsed">
+                        <div *ngFor="let m of q.children" class="table-row d-flex align-items-center border-bottom py-1-5 px-3 hover-bg">
+                          <div class="d-flex align-items-center" style="flex: 1; padding-left: 48px;">
+                            <!-- Checkbox -->
+                            <input type="checkbox" [(ngModel)]="m.checked" (change)="onPreviewChildCheckChange(q, yr)" class="form-check-input mt-0 me-2 custom-tree-checkbox cursor-pointer">
+
+                            <!-- Month Date Range Icon -->
+                            <span class="material-icons-outlined text-muted me-2" style="font-size: 17px;">date_range</span>
+
+                            <!-- Title -->
+                            <span class="text-dark" style="font-size: 13px;">{{ m.title }}</span>
+                          </div>
+
+                          <!-- Period -->
+                          <div class="text-muted" style="width: 200px; font-size: 12.5px;">{{ m.period }}</div>
+                        </div>
+                      </ng-container>
+                    </ng-container>
+                  </ng-container>
+
+                </ng-container>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="form-group mb-2">
-          <label>Phân loại <span class="text-danger">*</span></label>
-          <input class="form-control" [(ngModel)]="newTimeline.timeline_category" name="cat" required placeholder="Ví dụ: Quarter">
-        </div>
-        <div class="form-group mb-2">
-          <label>Ngày bắt đầu</label>
-          <input type="date" class="form-control" [(ngModel)]="newTimeline.start_date" name="sd">
-        </div>
-        <div class="form-group mb-2">
-          <label>Ngày kết thúc</label>
-          <input type="date" class="form-control" [(ngModel)]="newTimeline.end_date" name="ed">
-        </div>
-        <div class="form-group mb-3">
-          <label>ID Không gian</label>
-          <input class="form-control" [(ngModel)]="newTimeline.workspace_id" name="ws" placeholder="ID không gian liên kết">
-        </div>
-        <div class="d-flex justify-end gap-2 mt-4">
-          <button type="button" class="btn btn-secondary" (click)="showTimelineModal = false" [disabled]="isSavingTimeline">Hủy</button>
-          <button type="submit" class="btn btn-primary" [disabled]="isSavingTimeline">
-            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingTimeline"></i>
-            {{ isSavingTimeline ? 'Đang lưu...' : 'Lưu' }}
-          </button>
-        </div>
-      </form>
+
+        <!-- MODE 2: Edit Form (if editing single timeline) -->
+        <form *ngIf="isEditingTimeline" (ngSubmit)="saveTimeline()">
+          <!-- Title Input -->
+          <div class="form-group mb-3">
+            <label>Title <span class="text-danger">*</span></label>
+            <input class="form-control" [(ngModel)]="newTimeline.title" name="title" required placeholder="Ví dụ: 2027, Quarter 1, Month 1...">
+          </div>
+
+          <!-- Space and Level (2 Columns) -->
+          <div class="timeline-grid-2 mb-3">
+            <!-- Space Dropdown -->
+            <div class="form-group mb-0">
+              <label>Space</label>
+              <div class="custom-select-wrapper position-relative w-100">
+                <button type="button" class="custom-select-trigger w-100" 
+                        [class.active]="isEditTimelineSpaceDropdownOpen" 
+                        (click)="isEditTimelineSpaceDropdownOpen = !isEditTimelineSpaceDropdownOpen; isEditTimelineLevelDropdownOpen = false; isEditTimelineParentDropdownOpen = false; $event.stopPropagation();">
+                  <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                    <i class="fa-solid fa-layer-group text-primary flex-shrink-0"></i>
+                    <span class="text-truncate">{{ getEditTimelineSpaceName() }}</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isEditTimelineSpaceDropdownOpen"></i>
+                </button>
+                <div class="custom-select-menu w-100" *ngIf="isEditTimelineSpaceDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+                  <div class="custom-select-option" *ngFor="let s of spaces" 
+                       [class.selected]="newTimeline.workspace_id === s.id" 
+                       (click)="selectEditTimelineSpace(s)">
+                    <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                      <i class="fa-solid fa-folder text-muted flex-shrink-0"></i>
+                      <span class="text-truncate" [title]="s.name">{{ s.name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary flex-shrink-0 ms-2" *ngIf="newTimeline.workspace_id === s.id"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Level Dropdown (Year / Quarter / Month) -->
+            <div class="form-group mb-0">
+              <label>Level</label>
+              <div class="custom-select-wrapper position-relative w-100">
+                <button type="button" class="custom-select-trigger w-100" 
+                        [class.active]="isEditTimelineLevelDropdownOpen" 
+                        (click)="isEditTimelineLevelDropdownOpen = !isEditTimelineLevelDropdownOpen; isEditTimelineSpaceDropdownOpen = false; isEditTimelineParentDropdownOpen = false; $event.stopPropagation();">
+                  <span class="d-flex align-items-center gap-2 text-truncate">
+                    <i [class]="getEditTimelineLevelIcon()" class="text-primary"></i>
+                    <span class="text-truncate">{{ getEditTimelineLevelLabel() }}</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isEditTimelineLevelDropdownOpen"></i>
+                </button>
+                <div class="custom-select-menu w-100" *ngIf="isEditTimelineLevelDropdownOpen" style="z-index: 1060;">
+                  <div class="custom-select-option" 
+                       [class.selected]="newTimeline.level === 'year'" 
+                       (click)="selectEditTimelineLevel('year')">
+                    <span class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-calendar-days text-primary"></i>
+                      <span><strong>Year</strong></span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary" *ngIf="newTimeline.level === 'year'"></i>
+                  </div>
+                  <div class="custom-select-option" 
+                       [class.selected]="newTimeline.level === 'quarter'" 
+                       (click)="selectEditTimelineLevel('quarter')">
+                    <span class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-calendar-week text-primary"></i>
+                      <span><strong>Quarter</strong></span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary" *ngIf="newTimeline.level === 'quarter'"></i>
+                  </div>
+                  <div class="custom-select-option" 
+                       [class.selected]="newTimeline.level === 'month'" 
+                       (click)="selectEditTimelineLevel('month')">
+                    <span class="d-flex align-items-center gap-2">
+                      <i class="fa-solid fa-calendar-day text-info"></i>
+                      <span><strong>Month</strong></span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary" *ngIf="newTimeline.level === 'month'"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Parent Timeline (Custom Dropdown) -->
+          <div class="form-group mb-3">
+            <label>Parent Timeline</label>
+            <div class="custom-select-wrapper position-relative w-100">
+              <button type="button" class="custom-select-trigger w-100" 
+                      [class.active]="isEditTimelineParentDropdownOpen" 
+                      (click)="isEditTimelineParentDropdownOpen = !isEditTimelineParentDropdownOpen; isEditTimelineSpaceDropdownOpen = false; isEditTimelineLevelDropdownOpen = false; $event.stopPropagation();">
+                <span class="d-flex align-items-center gap-2 text-truncate">
+                  <i class="fa-solid fa-sitemap text-primary"></i>
+                  <span class="text-truncate">{{ getEditTimelineParentLabel() }}</span>
+                </span>
+                <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isEditTimelineParentDropdownOpen"></i>
+              </button>
+              <div class="custom-select-menu w-100" *ngIf="isEditTimelineParentDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+                <div class="custom-select-option" 
+                     [class.selected]="!newTimeline.parent_id" 
+                     (click)="selectEditTimelineParent(null)">
+                  <span class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-ban text-muted"></i>
+                    <span>(None - Root Year / Cấp cao nhất)</span>
+                  </span>
+                  <i class="fa-solid fa-check text-primary" *ngIf="!newTimeline.parent_id"></i>
+                </div>
+                <div class="custom-select-option" *ngFor="let t of availableParentTimelines" 
+                     [class.selected]="newTimeline.parent_id === t.id" 
+                     (click)="selectEditTimelineParent(t)">
+                  <span class="d-flex align-items-center gap-2 text-truncate">
+                    <i class="fa-solid fa-calendar-days text-muted" *ngIf="t.level === 'year'"></i>
+                    <i class="fa-solid fa-calendar-week text-info" *ngIf="t.level === 'quarter'"></i>
+                    <i class="fa-solid fa-calendar-day text-secondary" *ngIf="t.level === 'month'"></i>
+                    <span>{{ t.level ? '[' + t.level.toUpperCase() + '] ' : '' }}{{ t.title }}</span>
+                  </span>
+                  <i class="fa-solid fa-check text-primary" *ngIf="newTimeline.parent_id === t.id"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Start Date & End Date (2 Columns) -->
+          <div class="timeline-grid-2 mb-3">
+            <div class="form-group mb-0">
+              <label>Start Date <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="newTimeline.start_date" name="sd" placeholder="Jan 01, 2027">
+            </div>
+            <div class="form-group mb-0">
+              <label>End Date <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" [(ngModel)]="newTimeline.end_date" name="ed" placeholder="Dec 31, 2027">
+            </div>
+          </div>
+        </form>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="modal-footer d-flex align-items-center justify-content-end gap-2 border-top">
+        <button type="button" class="btn btn-secondary" (click)="showTimelineModal = false" [disabled]="isSavingTimeline">
+          Hủy
+        </button>
+        
+        <button *ngIf="!isEditingTimeline" 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="saveEnhancedTimeline()" 
+                [disabled]="isSavingTimeline">
+          <i class="fa-solid fa-spinner fa-spin me-1" *ngIf="isSavingTimeline"></i>
+          {{ isSavingTimeline ? 'Đang tạo...' : 'Lưu' }}
+        </button>
+
+        <button *ngIf="isEditingTimeline" 
+                type="button" 
+                class="btn btn-primary" 
+                (click)="saveTimeline()" 
+                [disabled]="isSavingTimeline">
+          <i class="fa-solid fa-spinner fa-spin me-1" *ngIf="isSavingTimeline"></i>
+          {{ isSavingTimeline ? 'Đang lưu...' : 'Lưu' }}
+        </button>
+      </div>
+
     </div>
   </div>
 
@@ -397,49 +795,101 @@
   </div>
 
   <div class="modal-overlay" *ngIf="showMemberModal">
-    <div class="modal-content">
-      <div class="card-header mb-3">
-        <h3 class="card-title">Thêm Thành viên</h3>
+    <div class="modal-content" style="max-width: 520px; width: 100%;">
+      <div class="card-header mb-0">
+        <h3 class="card-title">Add Member</h3>
         <button class="close-btn" (click)="showMemberModal = false" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form (ngSubmit)="saveMember()">
         
-        <div class="form-group mb-2 position-relative">
-          <label>Không gian <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" placeholder="Tìm kiếm Không gian..." 
-                 [(ngModel)]="spaceSearchText" name="spaceSearch" autocomplete="off"
-                 (focus)="showSpaceDropdown=true" (blur)="hideSpaceDropdown()" required>
-          <ul class="dropdown-menu show w-100" *ngIf="showSpaceDropdown" style="position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;">
-            <li *ngFor="let space of filteredSpaces" class="dropdown-item" (mousedown)="selectSpace(space)" style="cursor: pointer;">{{ space.name }}</li>
-            <li class="dropdown-item text-primary" *ngIf="spaces.length === 0" (mousedown)="openCreateSpace()" style="cursor: pointer;">+ Tạo không gian mới</li>
-          </ul>
-        </div>
-
-        <div class="form-group mb-2 position-relative">
-          <label>Thành viên <span class="text-danger">*</span></label>
-          <input type="text" class="form-control" placeholder="Tìm kiếm Nhân viên..." 
-                 [(ngModel)]="employeeSearchText" name="empSearch" autocomplete="off"
-                 (focus)="showEmployeeDropdown=true" (blur)="hideEmployeeDropdown()" required>
-          <ul class="dropdown-menu show w-100" *ngIf="showEmployeeDropdown" style="position: absolute; z-index: 1000; max-height: 200px; overflow-y: auto;">
-            <li *ngFor="let emp of filteredEmployees" class="dropdown-item" (mousedown)="selectEmployee(emp)" style="cursor: pointer;">{{ emp.name }}</li>
-            <li class="dropdown-item text-muted" *ngIf="filteredEmployees.length === 0">Không tìm thấy nhân viên</li>
-          </ul>
-        </div>
-
+        <!-- Field 1: Không gian -->
         <div class="form-group mb-3">
-          <label>Vai trò <span class="text-danger">*</span></label>
-          <select class="form-control" [(ngModel)]="newMember.role" name="role" required>
-            <option value="" disabled selected>Chọn vai trò...</option>
-            <option value="Owner">Owner</option>
-            <option value="Member">Member</option>
-          </select>
+          <label>Không gian <span class="text-danger">*</span></label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isMemberSpaceDropdownOpen" 
+                    (click)="isMemberSpaceDropdownOpen = !isMemberSpaceDropdownOpen; isMemberEmpDropdownOpen = false; isMemberTeamDropdownOpen = false; isMemberRoleDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-layer-group text-primary"></i>
+                <span class="text-truncate">{{ getMemberModalSpaceName() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isMemberSpaceDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isMemberSpaceDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" *ngFor="let s of spaces" 
+                   [class.selected]="newMember.space_id === s.id" 
+                   (click)="selectMemberModalSpace(s)">
+                <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                  <i class="fa-solid fa-folder text-muted flex-shrink-0"></i>
+                  <span class="text-truncate" [title]="s.name">{{ s.name }}</span>
+                </span>
+                <i class="fa-solid fa-check text-primary flex-shrink-0 ms-2" *ngIf="newMember.space_id === s.id"></i>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="d-flex justify-end gap-2 mt-4">
+        <!-- Field 2: Thành viên -->
+        <div class="form-group mb-3">
+          <label>Thành viên (Nhân sự) <span class="text-danger">*</span></label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isMemberEmpDropdownOpen" 
+                    (click)="isMemberEmpDropdownOpen = !isMemberEmpDropdownOpen; isMemberSpaceDropdownOpen = false; isMemberTeamDropdownOpen = false; isMemberRoleDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-user text-primary"></i>
+                <span class="text-truncate">{{ newMember.user_name || 'Chọn Nhân sự...' }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isMemberEmpDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isMemberEmpDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" *ngFor="let emp of employees" 
+                   [class.selected]="newMember.user_name === emp.full_name" 
+                   (click)="selectMemberModalEmployee(emp)">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-id-badge text-muted"></i>
+                  <span><strong>{{ emp.full_name }}</strong> ({{ emp.display_code }})</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="newMember.user_name === emp.full_name"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Field 3: Team (Tự động điền theo Nhân sự, Khóa không chỉnh sửa) -->
+        <div class="form-group mb-3">
+          <label>Team <span class="text-danger">*</span></label>
+          <div class="position-relative w-100">
+            <div class="custom-select-trigger w-100" style="background-color: #f1f5f9; cursor: not-allowed; border-color: #cbd5e1; color: #475569;">
+              <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                <i class="fa-solid fa-users text-muted flex-shrink-0"></i>
+                <span class="text-truncate" [class.text-muted]="!newMember.team_name">{{ newMember.team_name || 'Tự động hiển thị khi chọn Nhân sự...' }}</span>
+              </span>
+              <i class="fa-solid fa-lock text-muted flex-shrink-0" style="font-size: 11px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Field 4: Vai trò (Tự động điền theo Nhân sự, Khóa không chỉnh sửa) -->
+        <div class="form-group mb-4">
+          <label>Role <span class="text-danger">*</span></label>
+          <div class="position-relative w-100">
+            <div class="custom-select-trigger w-100" style="background-color: #f1f5f9; cursor: not-allowed; border-color: #cbd5e1; color: #475569;">
+              <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                <i class="fa-solid fa-shield-halved text-muted flex-shrink-0"></i>
+                <span class="text-truncate" [class.text-muted]="!newMember.role">{{ newMember.role || 'Tự động hiển thị khi chọn Nhân sự...' }}</span>
+              </span>
+              <i class="fa-solid fa-lock text-muted flex-shrink-0" style="font-size: 11px;"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
           <button type="button" class="btn btn-secondary" (click)="showMemberModal = false" [disabled]="isSavingMember">Hủy</button>
           <button type="submit" class="btn btn-primary" [disabled]="isSavingMember">
-            <i class="fa-solid fa-spinner fa-spin" *ngIf="isSavingMember"></i>
-            {{ isSavingMember ? 'Đang lưu...' : 'Lưu' }}
+            <i class="fa-solid fa-spinner fa-spin me-1" *ngIf="isSavingMember"></i>
+            {{ isSavingMember ? 'Đang lưu...' : 'Lưu Thành viên' }}
           </button>
         </div>
       </form>

@@ -23,15 +23,15 @@ import { ConfirmDialogService, ConfirmOptions } from '../../services/confirm-dia
         </div>
 
         <div class="confirm-body">
-          <p class="confirm-message">{{ options.message }}</p>
+          <p class="confirm-message" [innerHTML]="formattedMessage"></p>
         </div>
 
         <div class="confirm-footer">
-          <button type="button" class="btn btn-secondary" (click)="cancel()">
+          <button type="button" class="btn btn-secondary" *ngIf="options.cancelText" (click)="cancel()">
             {{ options.cancelText }}
           </button>
-          <button type="button" class="btn btn-danger" [ngClass]="'btn-' + options.type" (click)="accept()">
-            <i class="fa-solid fa-trash-can" *ngIf="options.type === 'danger'"></i>
+          <button type="button" class="btn" [ngClass]="getConfirmBtnClass()" (click)="accept()">
+            <i class="fa-solid fa-trash-can" *ngIf="options.type === 'danger' && options.cancelText"></i>
             {{ options.confirmText }}
           </button>
         </div>
@@ -139,10 +139,15 @@ import { ConfirmDialogService, ConfirmOptions } from '../../services/confirm-dia
     }
 
     .confirm-message {
-      font-size: 13px !important;
+      font-size: 13.5px !important;
       line-height: 1.6 !important;
       color: #475569 !important;
       margin: 0 !important;
+    }
+    .confirm-message strong,
+    .confirm-message b {
+      font-weight: 700 !important;
+      color: #0f172a !important;
     }
 
     .confirm-footer {
@@ -198,6 +203,17 @@ import { ConfirmDialogService, ConfirmOptions } from '../../services/confirm-dia
     .btn-warning:hover {
       background-color: #d97706;
     }
+
+    .btn-primary, .btn-info {
+      background-color: var(--primary, #3157D5);
+      border: 1px solid transparent;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover, .btn-info:hover {
+      background-color: #2645af;
+      box-shadow: 0 4px 6px -1px rgba(49, 87, 213, 0.25);
+    }
   `]
 })
 export class ConfirmDialogComponent implements OnInit, OnDestroy {
@@ -244,12 +260,28 @@ export class ConfirmDialogComponent implements OnInit, OnDestroy {
     this.cancel();
   }
 
+  get formattedMessage(): string {
+    const msg = this.options.message || '';
+    if (msg.includes('<strong>') || msg.includes('<b>')) {
+      return msg;
+    }
+    // Auto-bold any text wrapped in double quotes: "..." or “...”
+    return msg.replace(/"([^"]+)"/g, '<strong>"$1"</strong>')
+              .replace(/“([^”]+)”/g, '<strong>“$1”</strong>');
+  }
+
   getIconClass(): string {
     switch (this.options.type) {
       case 'danger': return 'fa-triangle-exclamation';
       case 'warning': return 'fa-circle-exclamation';
       default: return 'fa-circle-info';
     }
+  }
+
+  getConfirmBtnClass(): string {
+    if (this.options.type === 'info') return 'btn-primary';
+    if (this.options.type === 'warning') return 'btn-warning';
+    return 'btn-danger';
   }
 
   accept(): void {

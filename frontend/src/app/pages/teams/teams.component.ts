@@ -15,7 +15,7 @@ export class TeamsComponent implements OnInit {
   teams: Team[] = [];
   showModal = false;
   isEditing = false;
-  loading = false;
+  loading = true;
   searchQuery = '';
   
   newTeam: Partial<Team> = {
@@ -108,7 +108,13 @@ export class TeamsComponent implements OnInit {
         this.teams = this.teams.filter(t => (t.id || t.code) !== id);
       },
       error: (err) => {
-        alert('Lỗi khi xóa Team: ' + (err.error?.error || err.message));
+        this.confirmService.confirm({
+          title: 'Lỗi khi xóa Team',
+          message: err.error?.error || err.message || 'Không thể xóa Team này.',
+          confirmText: 'Đóng',
+          cancelText: '',
+          type: 'danger'
+        });
       }
     });
   }

@@ -46,7 +46,7 @@
         <div class="custom-select-option" *ngFor="let t of teams" [class.selected]="selectedTeam === (t.id || t.code)" (click)="selectTeam(t.id || t.code)">
           <span class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-user-group text-primary" style="width: 16px;"></i>
-            <span>{{ t.name }} ({{ t.code }})</span>
+            <span>{{ t.name }}</span>
           </span>
           <i class="fa-solid fa-check check-icon" *ngIf="selectedTeam === (t.id || t.code)"></i>
         </div>
@@ -59,13 +59,13 @@
     <table class="table table-hover">
       <thead>
         <tr>
-          <th>Mã NV</th>
+          <th style="width: 100px;">Mã NV</th>
           <th>Họ Tên</th>
           <th>Tài khoản GitLab</th>
+          <th>Email GitLab</th>
           <th>Team</th>
           <th>Vai trò</th>
           <th>Ngày tạo</th>
-          <th>Ngày cập nhật</th>
           <th style="width: 48px; text-align: center;"></th>
         </tr>
       </thead>
@@ -82,11 +82,15 @@
           <tr *ngFor="let emp of filteredEmployees">
             <td><code>{{ emp.employee_id }}</code></td>
             <td><strong>{{ emp.full_name }}</strong></td>
-            <td><code class="actor-tag"><i class="fa-regular fa-user"></i> {{ emp.gitlab_user_id }}</code></td>
-            <td><span class="badge badge-info">{{ emp.team_id }}</span></td>
-            <td><span class="badge badge-secondary">{{ emp.display_code || emp.role || 'Member' }}</span></td>
+            <td><code class="actor-tag"><i class="fa-brands fa-gitlab text-warning me-1"></i> {{ emp.gitlab_user_id }}</code></td>
+            <td>
+              <span class="text-secondary small d-flex align-items-center gap-1">
+                <i class="fa-regular fa-envelope text-muted"></i> {{ emp.email || '—' }}
+              </span>
+            </td>
+            <td><span class="badge badge-info">{{ getTeamName(emp.team_id) }}</span></td>
+            <td><span class="badge badge-primary fw-semibold">{{ emp.role || emp.display_code || 'Thành viên' }}</span></td>
             <td>{{ emp.created_at ? (emp.created_at | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
-            <td>{{ (emp.updated_at ? (emp.updated_at | date:'dd/MM/yyyy HH:mm') : (emp.created_at | date:'dd/MM/yyyy HH:mm')) || '-' }}</td>
             <td class="action-cell" [style.z-index]="activeDropdownId === emp.employee_id ? 10000 : 'auto'">
               <div class="action-menu-container" [style.z-index]="activeDropdownId === emp.employee_id ? 10000 : 'auto'">
                 <button class="btn-action-trigger" (click)="toggleDropdown(emp.employee_id, $event)" title="Thao tác" [class.active]="activeDropdownId === emp.employee_id">
@@ -124,26 +128,48 @@
       <form (submit)="saveEmployee(); $event.preventDefault()">
         <div class="form-group mb-2">
           <label>Mã Nhân viên <span class="text-danger">*</span></label>
-          <input type="text" [(ngModel)]="newEmployee.employee_id" name="empId" class="form-control" disabled style="background-color: #f1f5f9; cursor: not-allowed;">
+          <input type="text" [(ngModel)]="newEmployee.employee_id" name="empId" class="form-control" [disabled]="isEditing" style="background-color: #f1f5f9;">
         </div>
         <div class="form-group mb-2">
           <label>Họ Tên <span class="text-danger">*</span></label>
           <input type="text" [(ngModel)]="newEmployee.full_name" name="fName" class="form-control" placeholder="Nhập họ tên" required>
         </div>
         <div class="form-group mb-2">
-          <label>Email <span class="text-danger">*</span></label>
-          <input type="email" [(ngModel)]="newEmployee.email" name="email" class="form-control" placeholder="Nhập địa chỉ email" required>
+          <label>Tài khoản GitLab (Username) <span class="text-danger">*</span></label>
+          <input type="text" [(ngModel)]="newEmployee.gitlab_user_id" name="gitlabUserId" class="form-control" placeholder="Ví dụ: huyennn23406" required>
+        </div>
+        <div class="form-group mb-2">
+          <label>Email GitLab <span class="text-danger">*</span></label>
+          <input type="email" [(ngModel)]="newEmployee.email" name="email" class="form-control" placeholder="Nhập địa chỉ email GitLab" required>
         </div>
         <div class="form-group mb-2">
           <label>Team <span class="text-danger">*</span></label>
-          <select [(ngModel)]="newEmployee.team_id" name="tId" class="form-control" style="background-color: #fff;" required>
-            <option value="">Chọn Team</option>
-            <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
-          </select>
+          <div class="custom-select-wrapper position-relative w-100" [style.z-index]="isModalTeamDropdownOpen ? 1060 : 'auto'">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isModalTeamDropdownOpen" 
+                    (click)="toggleModalTeamDropdown($event)">
+              <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                <i class="fa-solid fa-users text-primary flex-shrink-0"></i>
+                <span class="text-truncate">{{ getModalTeamLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isModalTeamDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isModalTeamDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1070;">
+              <div class="custom-select-option" *ngFor="let team of teams" 
+                   [class.selected]="newEmployee.team_id === (team.id || team.code)" 
+                   (click)="selectModalTeam(team.id || team.code)">
+                <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                  <i class="fa-solid fa-people-group text-muted flex-shrink-0"></i>
+                  <span class="text-truncate">{{ team.name }}</span>
+                </span>
+                <i class="fa-solid fa-check text-primary ms-2 flex-shrink-0" *ngIf="newEmployee.team_id === (team.id || team.code)"></i>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="form-group mb-3">
-          <label>Role <span class="text-danger">*</span></label>
-          <input type="text" [(ngModel)]="newEmployee.role" name="role" class="form-control" placeholder="Nhập Role" required>
+          <label>Vai trò <span class="text-danger">*</span></label>
+          <input type="text" [(ngModel)]="newEmployee.role" name="role" class="form-control" placeholder="Ví dụ: Tech Lead, FE, BE, Sublead..." required>
         </div>
         <div class="d-flex justify-end gap-2 mt-4">
           <button type="button" class="btn btn-secondary" (click)="closeModal()" [disabled]="isSaving">Hủy</button>

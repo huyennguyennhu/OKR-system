@@ -1,0 +1,165 @@
+<div class="rules-page-container">
+  <!-- Toast Notification -->
+  <div class="toast-floating-container" *ngIf="toastMessage">
+    <div class="toast-card toast-success">
+      <div class="toast-icon-circle">
+        <i class="fa-solid fa-check"></i>
+      </div>
+      <div class="toast-body">
+        <div class="toast-header-text">Thành công</div>
+        <div class="toast-message-text">{{ toastMessage }}</div>
+      </div>
+      <button type="button" class="toast-close-btn" (click)="toastMessage = null" title="Đóng thông báo">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div class="page-top-bar mb-3">
+    <div class="d-flex align-items-center gap-2 mb-1">
+      <h3 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Measurement Rule</h3>
+    </div>
+    <p class="subtitle mb-0" style="font-size: 13px; color: #64748b;">
+      Cấu hình chi tiết các kịch bản đo lường tự động đồng bộ giữa GitLab webhook và chỉ số Key Results.
+    </p>
+  </div>
+
+  <!-- DYNAMIC TABS: Tự động tạo theo từng Objective cấp Team -->
+  <nav class="nav-tabs mb-4" *ngIf="flowTabs.length > 0">
+    <a class="nav-link cursor-pointer" 
+       *ngFor="let tab of flowTabs" 
+       [class.active]="activeTabKey === tab.tabKey" 
+       (click)="selectTab(tab.tabKey)">
+      <i [class]="tab.icon" class="me-2"></i>
+      <span>{{ tab.tabTitle }}</span>
+    </a>
+  </nav>
+
+  <!-- Empty State when no team objectives exist yet -->
+  <div class="card p-5 text-center my-4 border shadow-sm" *ngIf="!loading && flowTabs.length === 0">
+    <div class="empty-icon-circle mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center;">
+      <i class="fa-solid fa-layer-group text-primary" style="font-size: 24px;"></i>
+    </div>
+    <h4 class="fw-bold mb-2">Chưa có Objective cấp Team nào</h4>
+    <p class="text-muted mx-auto mb-4" style="max-width: 520px; font-size: 13.5px;">
+      Trang Measurement Rule sẽ tự động tạo một kịch bản tab con quy tắc đo lường tương ứng khi bạn tạo một Objective cấp Team.
+    </p>
+    <div>
+      <a routerLink="/okr-settings" class="btn btn-primary px-4">
+        <i class="fa-solid fa-plus me-1"></i> Tạo Objective cấp Team
+      </a>
+    </div>
+  </div>
+
+  <!-- TAB CONTENT -->
+  <div class="flow-content-area mb-4" *ngIf="currentFlow">
+    <!-- Action Button phía trên khối Card -->
+    <div class="d-flex justify-content-end mb-3">
+      <button class="btn btn-primary btn-sm px-3 fw-semibold shadow-sm" (click)="applyRules()">
+        <i class="fa-solid fa-check me-1"></i> Áp dụng quy tắc
+      </button>
+    </div>
+
+    <!-- KHỐI 1: THÔNG TIN OBJECTIVE & FLOW -->
+    <div class="card p-4 shadow-sm border mb-4 bg-white" style="border-radius: 10px;">
+      <div class="pb-3 mb-3 border-bottom">
+        <h4 class="mb-0 fw-bold" style="font-size: 15px; color: #1e293b;">Thông tin Objective & Kịch bản Flow</h4>
+        <small class="text-muted" style="font-size: 12px;">Mã và Tên Objective được đồng bộ từ mục tiêu; Tên và Link flow có thể tùy chỉnh</small>
+      </div>
+
+      <form class="flow-info-form" (submit)="$event.preventDefault()">
+        <!-- HÀNG 1: Mã obj, Tên obj, Xem obj -->
+        <div class="flow-info-row-1">
+          <div class="form-group">
+            <label>Mã Objective</label>
+            <input type="text" class="form-control" [value]="currentFlow.objectiveId" readonly title="Mã Objective (không được sửa, chỉ sửa từ Objective)">
+          </div>
+
+          <div class="form-group">
+            <label>Tên Objective</label>
+            <input type="text" class="form-control" [value]="currentFlow.objectiveTitle" readonly title="Tên Objective (không được sửa, chỉ sửa từ Objective)">
+          </div>
+
+          <div class="form-group">
+            <a [routerLink]="['/objectives', currentFlow.objectiveId]" class="btn-view-obj" title="Xem chi tiết Objective trên hệ thống">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Xem Objective
+            </a>
+          </div>
+        </div>
+
+        <!-- HÀNG 2: Tên flow, Đường dẫn flow, Mở -->
+        <div class="flow-info-row-2">
+          <div class="form-group">
+            <label>Tên Flow</label>
+            <input type="text" class="form-control" [(ngModel)]="currentFlow.flowName" name="flowName" placeholder="Nhập tên Flow...">
+          </div>
+
+          <div class="form-group">
+            <label>Đường dẫn Flow</label>
+            <input type="url" class="form-control" [(ngModel)]="currentFlow.flowUrl" name="flowUrl" placeholder="https://cloud.activepieces.com/flows/...">
+          </div>
+
+          <div class="form-group">
+            <a [href]="currentFlow.flowUrl" target="_blank" class="btn-open-flow-action" [class.disabled]="!currentFlow.flowUrl" title="Mở Flow trên Activepieces">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> Mở
+            </a>
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- KHỐI 2: KHỐI RULE ĐO LƯỜNG -->
+    <div class="rules-card-container">
+      <div class="rules-card-header">
+        <h4 class="rules-card-title">
+          Quy tắc đo lường
+        </h4>
+      </div>
+
+      <div class="rules-config-form">
+        <div class="rules-section-title">
+          <i class="fa-solid fa-bolt text-warning"></i>
+          <span>Cấu hình Trigger & Mốc Bắt đầu / Kết thúc</span>
+        </div>
+
+        <!-- Start Event & End Event trên 1 hàng -->
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Sự kiện bắt đầu (Start Event)</label>
+            <input type="text" class="rules-control" [(ngModel)]="currentFlow.startTrigger">
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Sự kiện kết thúc (End Event)</label>
+            <input type="text" class="rules-control" [(ngModel)]="currentFlow.endTrigger">
+          </div>
+        </div>
+
+        <!-- Hạn mức SLA & Tỷ lệ tối thiểu trên 1 hàng -->
+        <div class="rules-sla-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Hạn mức SLA tối đa</label>
+            <div class="rules-input-unit">
+              <input type="number" class="rules-control" [(ngModel)]="currentFlow.slaHours">
+              <span class="rules-unit-addon">giờ làm việc</span>
+            </div>
+          </div>
+          <div class="rules-form-group mb-0" *ngIf="currentFlow.thresholdPercent">
+            <label class="rules-label">Tỷ lệ tối thiểu cần đạt</label>
+            <div class="rules-input-unit">
+              <input type="number" class="rules-control" [(ngModel)]="currentFlow.thresholdPercent">
+              <span class="rules-unit-addon">%</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Điều kiện lọc -->
+        <div class="rules-form-group mb-0">
+          <label class="rules-label">Điều kiện lọc (Filter Conditions)</label>
+          <textarea class="rules-control font-monospace" rows="2" [(ngModel)]="currentFlow.filterCriteria"></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

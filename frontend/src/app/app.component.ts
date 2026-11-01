@@ -14,7 +14,7 @@ import { ConfirmDialogService } from './services/confirm-dialog.service';
     <div class="app-container">
       <!-- Sidebar Navigation -->
       <aside class="sidebar" [class.collapsed]="isSidebarCollapsed">
-        <button class="sidebar-toggle" (click)="toggleSidebar()">
+        <button class="sidebar-toggle" (click)="toggleSidebar()" type="button" aria-label="Toggle Sidebar">
           <i class="fa-solid" [ngClass]="isSidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
         </button>
         <div class="sidebar-header">
@@ -23,43 +23,84 @@ import { ConfirmDialogService } from './services/confirm-dialog.service';
         </div>
 
         <nav class="sidebar-nav">
-          <a routerLink="/okr-board" routerLinkActive="active" class="nav-item">
-            <i class="fa-solid fa-chart-pie fa-fw"></i>
-            <span>OKR Board</span>
-          </a>
-          <a routerLink="/okr-tree" routerLinkActive="active" class="nav-item">
-            <i class="fa-solid fa-sitemap fa-fw"></i>
-            <span>OKR Tree</span>
-          </a>
-          <a routerLink="/okr-settings" routerLinkActive="active" class="nav-item">
-            <i class="fa-solid fa-sliders fa-fw"></i>
-            <span>OKR Settings</span>
-          </a>
-          <a routerLink="/gitlab-data" routerLinkActive="active" class="nav-item">
-            <i class="fa-brands fa-gitlab fa-fw"></i>
-            <span>GitLab Data</span>
-          </a>
-          <a routerLink="/audit-log" routerLinkActive="active" class="nav-item">
-            <i class="fa-solid fa-clipboard-check fa-fw"></i>
-            <span>AuditLog</span>
-          </a>
-          <div class="nav-item-group">
-            <a class="nav-item cursor-pointer" (click)="toggleHR()" [class.active]="showHR">
-              <i class="fa-solid fa-users fa-fw"></i>
-              <span>Nhân sự</span>
-              <i class="fa-solid fa-chevron-right nav-chevron" [class.rotated]="showHR"></i>
-            </a>
-            <div class="sub-nav" *ngIf="showHR">
-              <a routerLink="/teams" routerLinkActive="active" class="sub-item">
-                <span class="sub-dot">•</span>
+          <!-- NHÓM 1: OKR -->
+          <div class="sidebar-group">
+            <div class="sidebar-section-title" [class.active-parent]="isGroupActive('okr')" (click)="toggleGroup('okr')" title="Thu gọn / Mở rộng nhóm OKR">
+              <div class="section-title-content">
+                <i class="fa-solid fa-bullseye fa-fw"></i>
+                <span>OKR</span>
+              </div>
+              <i class="fa-solid fa-chevron-right section-chevron" [class.rotated]="groupOpenState['okr']"></i>
+            </div>
+            <div class="group-items" *ngIf="isSidebarCollapsed || groupOpenState['okr']">
+              <a routerLink="/okr-board" routerLinkActive="active" class="nav-item" title="OKR Board (Dashboard KPI tổng quan)">
+                <i class="fa-solid fa-chart-pie fa-fw"></i>
+                <span>OKR Board</span>
+              </a>
+              <a routerLink="/okr-tree" routerLinkActive="active" class="nav-item" title="OKR Tree (Cây mục tiêu đa tầng & Tiến độ phân cấp)">
+                <i class="fa-solid fa-sitemap fa-fw"></i>
+                <span>OKR Tree</span>
+              </a>
+              <a routerLink="/okr-settings" routerLinkActive="active" class="nav-item" title="OKR Setting (Cấu hình: Không gian | Chu kỳ | Thành viên | Thước đo | Mục tiêu)">
+                <i class="fa-solid fa-sliders fa-fw"></i>
+                <span>OKR Setting</span>
+              </a>
+              <a routerLink="/measurement-rules" routerLinkActive="active" class="nav-item" title="Measurement Rule (Quy tắc đo lường tự động đồng bộ theo từng Objective cấp Team)">
+                <i class="fa-solid fa-ruler-combined fa-fw"></i>
+                <span>Measurement Rule</span>
+              </a>
+              <a routerLink="/audit-log" routerLinkActive="active" class="nav-item" title="Audit Log (Nhật ký giải trình & Truy vết SLA 1 bảng duy nhất)">
+                <i class="fa-solid fa-shield-halved fa-fw"></i>
+                <span>Audit Log</span>
+              </a>
+              <a routerLink="/flow-runs" routerLinkActive="active" class="nav-item" title="Flow Runs (Nhật ký thực thi & Kết quả tự động hóa Activepieces)">
+                <i class="fa-solid fa-play fa-fw"></i>
+                <span>Flow Runs</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- NHÓM 2: CALENDAR -->
+          <div class="sidebar-group">
+            <div class="sidebar-section-title" [class.active-parent]="isGroupActive('calendar')" (click)="toggleGroup('calendar')" title="Thu gọn / Mở rộng nhóm Calendar">
+              <div class="section-title-content">
+                <i class="fa-solid fa-calendar-days fa-fw"></i>
+                <span>CALENDAR</span>
+              </div>
+              <i class="fa-solid fa-chevron-right section-chevron" [class.rotated]="groupOpenState['calendar']"></i>
+            </div>
+            <div class="group-items" *ngIf="isSidebarCollapsed || groupOpenState['calendar']">
+              <a routerLink="/working-time" routerLinkActive="active" class="nav-item" title="Working Time (Khung giờ làm việc chuẩn & Giờ nghỉ trưa)">
+                <i class="fa-regular fa-clock fa-fw"></i>
+                <span>Working Time</span>
+              </a>
+              <a routerLink="/calendar" routerLinkActive="active" class="nav-item" title="Calendar (Lịch Nghỉ Lễ & Tết Việt Nam)">
+                <i class="fa-solid fa-calendar-days fa-fw"></i>
+                <span>Calendar</span>
+              </a>
+            </div>
+          </div>
+
+          <!-- NHÓM 3: NHÂN SỰ -->
+          <div class="sidebar-group">
+            <div class="sidebar-section-title" [class.active-parent]="isGroupActive('hr')" (click)="toggleGroup('hr')" title="Thu gọn / Mở rộng nhóm Nhân sự">
+              <div class="section-title-content">
+                <i class="fa-solid fa-users fa-fw"></i>
+                <span>NHÂN SỰ</span>
+              </div>
+              <i class="fa-solid fa-chevron-right section-chevron" [class.rotated]="groupOpenState['hr']"></i>
+            </div>
+            <div class="group-items" *ngIf="isSidebarCollapsed || groupOpenState['hr']">
+              <a routerLink="/teams" routerLinkActive="active" class="nav-item" title="Team (Quản lý Đội nhóm Kỹ thuật)">
+                <i class="fa-solid fa-people-group fa-fw"></i>
                 <span>Team</span>
               </a>
-              <a routerLink="/roles" routerLinkActive="active" class="sub-item">
-                <span class="sub-dot">•</span>
+              <a routerLink="/roles" routerLinkActive="active" class="nav-item" title="Role (Quản lý Chức danh: Lead, FE, BE, QA)">
+                <i class="fa-solid fa-user-tag fa-fw"></i>
                 <span>Role</span>
               </a>
-              <a routerLink="/account-settings" routerLinkActive="active" class="sub-item">
-                <span class="sub-dot">•</span>
+              <a routerLink="/account-settings" routerLinkActive="active" class="nav-item" title="Nhân viên (5 Lập trình viên & Mapping GitLab User ID)">
+                <i class="fa-solid fa-users fa-fw"></i>
                 <span>Nhân viên</span>
               </a>
             </div>
@@ -86,7 +127,13 @@ import { ConfirmDialogService } from './services/confirm-dialog.service';
 })
 export class AppComponent implements OnInit {
   isSidebarCollapsed = false;
-  showHR = false;
+
+  // Mặc định đóng tất cả các khối trên sidebar khi mới vào
+  groupOpenState: { [key: string]: boolean } = {
+    'okr': false,
+    'calendar': false,
+    'hr': false
+  };
 
   constructor(
     private okrService: OkrService, 
@@ -96,24 +143,58 @@ export class AppComponent implements OnInit {
     this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd)
     ).subscribe((event: NavigationEnd) => {
-      const url = event.urlAfterRedirects || event.url || '';
-      if (url.includes('/teams') || url.includes('/roles') || url.includes('/account-settings')) {
-        this.showHR = true;
-      }
+      this.autoExpandActiveGroup(event.urlAfterRedirects || event.url || '');
     });
   }
 
   ngOnInit(): void {
-    if (typeof window !== 'undefined') {
-      const path = window.location.pathname;
-      if (path.includes('/teams') || path.includes('/roles') || path.includes('/account-settings')) {
-        this.showHR = true;
-      }
-    }
+    const currentUrl = typeof window !== 'undefined' ? window.location.pathname : this.router.url;
+    this.autoExpandActiveGroup(currentUrl || '');
   }
 
-  toggleHR(): void {
-    this.showHR = !this.showHR;
+  toggleGroup(groupKey: string): void {
+    this.groupOpenState[groupKey] = !this.groupOpenState[groupKey];
+  }
+
+  isGroupActive(groupKey: string, urlPath?: string): boolean {
+    const url = urlPath !== undefined ? urlPath : (this.router.url || (typeof window !== 'undefined' ? window.location.pathname : ''));
+    if (groupKey === 'okr') {
+      return url === '' ||
+             url === '/' ||
+             url.includes('/okr-board') || 
+             url.includes('/okr-tree') || 
+             url.includes('/okr-settings') || 
+             url.includes('/measurement-rules') || 
+             url.includes('/audit-log') || 
+             url.includes('/flow-runs') || 
+             url.includes('/gitlab-data') || 
+             url.includes('/objectives');
+    }
+    if (groupKey === 'calendar') {
+      return url.includes('/working-time') || url.includes('/calendar');
+    }
+    if (groupKey === 'hr') {
+      return url.includes('/teams') || 
+             url.includes('/roles') || 
+             url.includes('/account-settings');
+    }
+    return false;
+  }
+
+  autoExpandActiveGroup(url: string): void {
+    // Đóng tất cả các khối
+    this.groupOpenState['okr'] = false;
+    this.groupOpenState['calendar'] = false;
+    this.groupOpenState['hr'] = false;
+
+    // Chỉ mở duy nhất khối nào có tab con đang được chọn
+    if (this.isGroupActive('okr', url)) {
+      this.groupOpenState['okr'] = true;
+    } else if (this.isGroupActive('calendar', url)) {
+      this.groupOpenState['calendar'] = true;
+    } else if (this.isGroupActive('hr', url)) {
+      this.groupOpenState['hr'] = true;
+    }
   }
 
   toggleSidebar(): void {

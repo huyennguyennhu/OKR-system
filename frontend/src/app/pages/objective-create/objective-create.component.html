@@ -1,153 +1,200 @@
-<div class="page-container d-flex justify-content-center">
-  <div class="card create-form-card">
+<div class="page-container d-flex justify-content-center py-4">
+  <div class="card create-form-card" style="max-width: 720px; width: 100%; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); background: #fff;">
     <div class="card-header pb-0 border-0 pt-4 px-4">
       <h3 class="card-title fw-bold" style="color: var(--text-main); font-size: 16px;">Create Objective</h3>
       <hr class="mt-3 mb-0" />
     </div>
     
     <div class="card-body p-4">
-      <div class="row mb-3">
-        <div class="col-md-4 form-group">
-          <label>Level</label>
-          <div class="select-wrapper">
-            <span class="icon-prefix text-primary"><i class="fa-solid fa-building"></i></span>
-            <select class="form-select with-icon" [(ngModel)]="objective.level">
-              <option value="COMPANY">COMPANY</option>
-              <option value="TEAM">TEAM</option>
-              <option value="PERSONAL">PERSONAL</option>
-            </select>
+      <!-- Row 1: Level & Auto-generated Mã Obj -->
+      <div class="timeline-grid-2 mb-3">
+        <!-- Level Dropdown (Custom Format) -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">Level <span class="text-danger">*</span></label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isFormLevelDropdownOpen" 
+                    (click)="isFormLevelDropdownOpen = !isFormLevelDropdownOpen; isFormParentDropdownOpen = false; isFormTeamDropdownOpen = false; isFormAssigneeDropdownOpen = false; isFormTimelineDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i [class]="getFormLevelIcon()"></i>
+                <span class="text-truncate fw-semibold">{{ objective.level }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isFormLevelDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isFormLevelDropdownOpen" style="z-index: 1060;">
+              <div class="custom-select-option" [class.selected]="objective.level === 'COMPANY'" (click)="selectFormLevel('COMPANY')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-building text-primary"></i>
+                  <span>COMPANY</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.level === 'COMPANY'"></i>
+              </div>
+              <div class="custom-select-option" [class.selected]="objective.level === 'TEAM'" (click)="selectFormLevel('TEAM')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-users text-info"></i>
+                  <span>TEAM</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.level === 'TEAM'"></i>
+              </div>
+              <div class="custom-select-option" [class.selected]="objective.level === 'PERSONAL'" (click)="selectFormLevel('PERSONAL')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-user text-success"></i>
+                  <span>PERSONAL</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.level === 'PERSONAL'"></i>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="col-md-4 form-group">
-          <label>Category</label>
-          <select class="form-select" [(ngModel)]="objective.category">
-            <option value="Objective">Objective</option>
-            <option value="KPI">KPI</option>
-          </select>
-        </div>
-        <div class="col-md-4 form-group">
-          <label>Indicator</label>
-          <select class="form-select text-muted" disabled>
-            <option>None</option>
-          </select>
+
+        <!-- Mã Obj (Auto-generated, Readonly, Non-editable) -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">
+            Mã Obj 
+            <span class="badge bg-light text-secondary border ms-1" style="font-size: 10.5px; font-weight: 500;">Tự động tạo</span>
+          </label>
+          <div class="position-relative d-flex align-items-center">
+            <input type="text" 
+                   class="form-control form-control-clean" 
+                   [value]="objective.objective_id" 
+                   readonly 
+                   style="background-color: #f8fafc; font-weight: 700; color: #0284c7; cursor: not-allowed; padding-right: 32px;"
+                   title="Mã này tự động tạo sau khi chọn Level và không thể chỉnh sửa">
+            <i class="fa-solid fa-lock position-absolute text-muted" style="right: 12px; font-size: 12px; pointer-events: none;"></i>
+          </div>
         </div>
       </div>
 
+      <!-- Row 2: Name / Title -->
       <div class="form-group mb-3">
-        <label>Name <span class="text-danger">*</span></label>
-        <input type="text" class="form-control" [(ngModel)]="objective.title" />
+        <label class="form-label-bold">Title <span class="text-danger">*</span></label>
+        <input type="text" class="form-control form-control-clean" [(ngModel)]="objective.title" placeholder="Ví dụ: Tối ưu quy trình Code Review của nhóm..." required />
       </div>
 
-      <div class="form-group mb-4">
-        <label>Description</label>
-        <div class="rich-text-editor">
-          <div class="toolbar">
-            <button><i class="fa-solid fa-bold"></i></button>
-            <button><i class="fa-solid fa-italic"></i></button>
-            <button><i class="fa-solid fa-underline"></i></button>
-            <div class="divider"></div>
-            <button><i class="fa-solid fa-align-left"></i></button>
-            <button><i class="fa-solid fa-align-center"></i></button>
-            <button><i class="fa-solid fa-align-right"></i></button>
-            <div class="divider"></div>
-            <button><i class="fa-regular fa-file"></i></button>
-            <button><i class="fa-regular fa-image"></i></button>
-            <button><i class="fa-solid fa-video"></i></button>
-          </div>
-          <textarea class="form-control text-area" rows="4" placeholder="Insert text here..." [(ngModel)]="objective.description"></textarea>
-          <div class="toolbar-footer text-muted">characters : 0 words : 0</div>
-        </div>
+      <!-- Row 3: Description -->
+      <div class="form-group mb-3">
+        <label class="form-label-bold">Description</label>
+        <textarea class="form-control form-control-clean" rows="3" placeholder="Nhập tóm tắt mô tả, kết quả kỳ vọng..." [(ngModel)]="objective.description"></textarea>
       </div>
 
-      <div class="row mb-3">
-        <div class="col-md-8 form-group">
-          <label>Metric</label>
-          <select class="form-select" [(ngModel)]="objective.metric_id">
-            <option [ngValue]="null">Select Metric</option>
-            <option *ngFor="let m of metrics" [value]="m.id">{{ m.name }} [System Metric]</option>
-          </select>
-        </div>
-        <div class="col-md-4 form-group">
-          <label>Aggregation Type <i class="fa-solid fa-info-circle text-muted"></i></label>
-          <select class="form-select">
-            <option>SUM</option>
-            <option>AVERAGE</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row mb-3">
-        <div class="col-md-4 form-group">
-          <label>Group</label>
-          <select class="form-select text-muted" disabled>
-            <option>Select Group</option>
-          </select>
-        </div>
-        <div class="col-md-4 form-group">
-          <label>Team</label>
-          <select class="form-select text-muted" disabled>
-            <option>Select Team</option>
-          </select>
-        </div>
-        <div class="col-md-4 form-group">
-          <label>Assignee</label>
-          <select class="form-select" [(ngModel)]="objective.assignee_id">
-            <option [ngValue]="null" class="text-muted">Select User</option>
-            <option *ngFor="let emp of employees" [value]="emp.employee_id">{{ emp.full_name }}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="row mb-4">
-        <div class="col-md-8 form-group">
-          <label>Timeline <span class="text-danger">*</span></label>
-          <div class="input-group">
-            <select class="form-select" [(ngModel)]="objective.timeline_id">
-              <option [ngValue]="null">Select Timeline</option>
-              <option *ngFor="let t of timelines" [value]="t.id">{{ t.title }}</option>
-            </select>
+      <!-- Row 4: Hierarchy & Team (for TEAM / PERSONAL) -->
+      <div class="timeline-grid-2 mb-3" *ngIf="objective.level !== 'COMPANY'">
+        <!-- Parent Objective -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">Parent Objective</label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isFormParentDropdownOpen" 
+                    (click)="isFormParentDropdownOpen = !isFormParentDropdownOpen; isFormLevelDropdownOpen = false; isFormTeamDropdownOpen = false; isFormAssigneeDropdownOpen = false; isFormTimelineDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-sitemap text-muted"></i>
+                <span class="text-truncate">{{ getFormParentLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isFormParentDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isFormParentDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" [class.selected]="!objective.parent_id" (click)="selectFormParent(null)">
+                <span class="text-muted">(Không có - Độc lập)</span>
+                <i class="fa-solid fa-check text-primary" *ngIf="!objective.parent_id"></i>
+              </div>
+              <div class="custom-select-option" *ngFor="let p of availableParentObjectives" 
+                   [class.selected]="objective.parent_id === p.objective_id" 
+                   (click)="selectFormParent(p)">
+                <span class="text-truncate"><strong>[{{ p.objective_id }}]</strong> {{ p.title }}</span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.parent_id === p.objective_id"></i>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="col-md-4 form-group">
-          <label>Stakeholder</label>
-          <select class="form-select text-muted" disabled>
-            <option>Select User</option>
-          </select>
+
+        <!-- Team -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">Team</label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isFormTeamDropdownOpen" 
+                    (click)="isFormTeamDropdownOpen = !isFormTeamDropdownOpen; isFormLevelDropdownOpen = false; isFormParentDropdownOpen = false; isFormAssigneeDropdownOpen = false; isFormTimelineDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-people-group text-muted"></i>
+                <span class="text-truncate">{{ selectedFormTeamName || 'Chọn Đội nhóm...' }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isFormTeamDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isFormTeamDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" *ngFor="let tm of teams" 
+                   [class.selected]="selectedFormTeamName === tm.name" 
+                   (click)="selectFormTeam(tm)">
+                <span>{{ tm.name }}</span>
+                <i class="fa-solid fa-check text-primary" *ngIf="selectedFormTeamName === tm.name"></i>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div class="timeline-detail-box mb-4">
-        <table class="table mb-0">
-          <thead>
-            <tr>
-              <th class="bg-light text-muted">Timeline Detail</th>
-              <th class="bg-light text-muted text-end" style="width: 100px;">Start</th>
-              <th class="bg-light text-muted text-end" style="width: 100px;">Expected</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td><i class="fa-solid fa-chevron-down me-2"></i> 2026</td>
-              <td class="text-end">-</td>
-              <td class="text-end">-</td>
-            </tr>
-            <tr>
-              <td class="ps-4"><i class="fa-solid fa-chevron-down me-2"></i> Quarter 3</td>
-              <td class="text-end">-</td>
-              <td class="text-end">-</td>
-            </tr>
-            <tr>
-              <td class="ps-5">Month 8</td>
-              <td class="text-end">-</td>
-              <td class="text-end">-</td>
-            </tr>
-          </tbody>
-        </table>
+      <!-- Row 5: Assignee & Timeline (2 Columns) -->
+      <div class="timeline-grid-2 mb-3">
+        <!-- Assignee Dropdown (Custom Format) -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">Assignee</label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isFormAssigneeDropdownOpen" 
+                    (click)="isFormAssigneeDropdownOpen = !isFormAssigneeDropdownOpen; isFormLevelDropdownOpen = false; isFormParentDropdownOpen = false; isFormTeamDropdownOpen = false; isFormTimelineDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-user-check text-muted"></i>
+                <span class="text-truncate">{{ getFormAssigneeLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isFormAssigneeDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isFormAssigneeDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" *ngFor="let emp of employees" 
+                   [class.selected]="objective.assignee_id === emp.employee_id" 
+                   (click)="selectFormAssignee(emp)">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-id-badge text-muted"></i>
+                  <span><strong>{{ emp.full_name }}</strong> ({{ emp.display_code }})</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.assignee_id === emp.employee_id"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Timeline Dropdown (Custom Format) -->
+        <div class="form-group mb-0">
+          <label class="form-label-bold">Timeline <span class="text-danger">*</span></label>
+          <div class="custom-select-wrapper position-relative w-100">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isFormTimelineDropdownOpen" 
+                    (click)="isFormTimelineDropdownOpen = !isFormTimelineDropdownOpen; isFormLevelDropdownOpen = false; isFormParentDropdownOpen = false; isFormTeamDropdownOpen = false; isFormAssigneeDropdownOpen = false; $event.stopPropagation();">
+              <span class="d-flex align-items-center gap-2 text-truncate">
+                <i class="fa-solid fa-calendar-days text-primary"></i>
+                <span class="text-truncate">{{ getFormTimelineLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isFormTimelineDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isFormTimelineDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1060;">
+              <div class="custom-select-option" *ngFor="let t of timelines" 
+                   [class.selected]="objective.timeline_id === t.id" 
+                   (click)="selectFormTimeline(t)">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-calendar-check text-muted"></i>
+                  <span><strong>{{ t.title }}</strong> ({{ t.level || 'chu kỳ' }})</span>
+                </span>
+                <i class="fa-solid fa-check text-primary" *ngIf="objective.timeline_id === t.id"></i>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="d-flex justify-content-end gap-3 mt-4 pt-2">
-        <button class="btn btn-light bg-transparent border-0" (click)="cancel()">Cancel</button>
-        <button class="btn btn-primary px-4" (click)="saveObjective()" [disabled]="saving">Save</button>
+      <div class="d-flex justify-content-end gap-3 mt-4 pt-3 border-top">
+        <button class="btn btn-white text-secondary px-3" (click)="cancel()">Hủy</button>
+        <button class="btn btn-primary px-4 fw-semibold" (click)="saveObjective()" [disabled]="saving">
+          <i class="fa-solid fa-spinner fa-spin me-1" *ngIf="saving"></i>
+          {{ saving ? 'Đang lưu...' : 'Lưu Mục tiêu' }}
+        </button>
       </div>
 
     </div>

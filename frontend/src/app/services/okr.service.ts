@@ -16,6 +16,9 @@ export interface Role {
   name: string;
   code: string;
   description?: string;
+  team_id?: string;
+  team_name?: string;
+  team_code?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -44,13 +47,16 @@ export interface Objective {
   category?: string;
   start_value?: number;
   expected_value?: number;
+  space_id?: string;
+  assignee_name?: string;
+  team_name?: string;
   key_results?: KeyResult[];
 }
 
 export interface Space { id: string; name: string; space_key: string; manager_id: string; created_at?: string; }
-export interface Timeline { id: string; title: string; start_date: string; end_date: string; workspace_id: string; timeline_category: string; }
+export interface Timeline { id: string; title: string; start_date: string; end_date: string; workspace_id: string; timeline_category: string; parent_id?: string | null; level?: string; children?: Timeline[]; }
 export interface Metric { id: string; name: string; unit: string; metric_key: string; is_percent: boolean | number; description: string; }
-export interface SpaceMember { id: string; space_id: string; user_name: string; email: string; role: string; }
+export interface SpaceMember { id: string; space_id: string; user_name: string; email: string; role: string; team_name?: string; }
 export interface MetricConversion { id: string; source_metric_id: string; target_metric_id: string; conversion_ratio: number; }
 export interface Template { id: string; name: string; formula: string; template_type: string; }
 
@@ -64,6 +70,7 @@ export interface KeyResult {
   current_value: number;
   direction: 'increase' | 'decrease';
   unit: string;
+  assignee_id?: string;
   progress?: number;
   objective_title?: string;
 }
@@ -92,6 +99,44 @@ export interface GitLabEvent {
   payload_hash: string;
   raw_payload: string;
   processing_status: string;
+}
+
+export interface FlowSummary {
+  flow_code: string;
+  flow_name: string;
+  kr_id: string;
+  kr_title: string;
+  trigger_type: string;
+  description: string;
+  status: string;
+  total_runs: number;
+  success_runs: number;
+  success_rate: number;
+  last_run_time: string;
+  last_status: string;
+  last_impact: string;
+}
+
+export interface FlowRun {
+  run_id: string;
+  flow_code: string;
+  flow_name: string;
+  trigger_type: string;
+  start_time: string;
+  end_time: string;
+  duration_ms: number;
+  status: string;
+  input_count: number;
+  output_count: number;
+  data_created: string;
+  payload_json?: string;
+  error_message?: string;
+  created_at?: string;
+}
+
+export interface FlowRunsResponse {
+  flows: FlowSummary[];
+  runs: FlowRun[];
 }
 
 export interface AuditAssignment {
@@ -124,19 +169,30 @@ export interface AuditLogData {
 export class OkrService {
   private get apiUrl(): string {
     if (typeof window !== 'undefined' && window.location && window.location.hostname) {
-      return `http://${window.location.hostname}:3000/api`;
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+        return 'http://localhost:3000/api';
+      }
+      return '/api';
     }
     return 'http://localhost:3000/api';
   }
 
   constructor(private http: HttpClient) {}
 
-  getObjectives(): Observable<Objective[]> {
-    return this.http.get<Objective[]>(`${this.apiUrl}/objectives`);
+  getObjectives(spaceId?: string, timelineId?: string): Observable<Objective[]> {
+    const params = new URLSearchParams();
+    if (spaceId && spaceId !== 'all') params.append('space_id', spaceId);
+    if (timelineId && timelineId !== 'all') params.append('timeline_id', timelineId);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.http.get<Objective[]>(`${this.apiUrl}/objectives${queryString}`);
   }
 
-  getOkrTree(): Observable<any[]> {
-    return this.http.get<any[]>(`${this.apiUrl}/okr-tree`);
+  getOkrTree(spaceId?: string, timelineId?: string): Observable<any[]> {
+    const params = new URLSearchParams();
+    if (spaceId && spaceId !== 'all') params.append('space_id', spaceId);
+    if (timelineId && timelineId !== 'all') params.append('timeline_id', timelineId);
+    const queryString = params.toString() ? `?${params.toString()}` : '';
+    return this.http.get<any[]>(`${this.apiUrl}/okr-tree${queryString}`);
   }
 
   getObjectiveById(id: string): Observable<Objective> {
@@ -260,8 +316,12 @@ export class OkrService {
     return this.http.delete(`${this.apiUrl}/objectives/${id}`);
   }
 
-  cloneObjective(id: string): Observable<any> {
-    return this.http.post(`${this.apiUrl}/objectives/${encodeURIComponent(id)}/clone`, {});
+  cloneObjective(id: string, payload?: { assignee_id?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/objectives/${encodeURIComponent(id)}/clone`, payload || {});
+  }
+
+  assignObjectiveToTree(id: string, payload: { assignee_id?: string; title?: string }): Observable<any> {
+    return this.http.post(`${this.apiUrl}/objectives/${encodeURIComponent(id)}/assign-to-tree`, payload);
   }
 
   createKeyResult(kr: Partial<KeyResult>): Observable<any> {
@@ -284,4 +344,74 @@ export class OkrService {
     return this.http.delete(`${this.apiUrl}/gitlab-events/${encodeURIComponent(key)}`);
   }
 
+  // --- Measurement Rules APIs ---
+  getMeasurementRules(params?: { objective_id?: string; kr_id?: string }): Observable<any[]> {
+    let httpParams: any = {};
+    if (params?.objective_id) httpParams.objective_id = params.objective_id;
+    if (params?.kr_id) httpParams.kr_id = params.kr_id;
+    return this.http.get<any[]>(`${this.apiUrl}/measurement-rules`, { params: httpParams });
+  }
+
+  getMeasurementRule(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/measurement-rules/${encodeURIComponent(id)}`);
+  }
+
+  saveMeasurementRule(rule: any): Observable<any> {
+    const id = rule.rule_id || rule.ruleId || rule.objectiveId || rule.objective_id || 'DEFAULT';
+    return this.http.put(`${this.apiUrl}/measurement-rules/${encodeURIComponent(id)}`, rule);
+  }
+
+  // --- Working Calendar, Working Hours & Holidays APIs ---
+  getWorkingCalendar(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/working-calendar`);
+  }
+
+  getWorkingHours(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/working-hours`);
+  }
+
+  saveWorkingHours(data: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/working-hours`, data);
+  }
+
+  getHolidays(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/holidays`);
+  }
+
+  saveHolidays(holidays: any[]): Observable<any> {
+    return this.http.put(`${this.apiUrl}/holidays`, { holidays });
+  }
+
+  updateHoliday(id: string, holiday: any): Observable<any> {
+    return this.http.put(`${this.apiUrl}/holidays/${encodeURIComponent(id)}`, holiday);
+  }
+
+  // --- KeyResult Current Value Overwrite / Activepieces Sync API ---
+  updateKrCurrentValue(krId: string, payload: {
+    current_value: number;
+    period?: string;
+    event_key?: string;
+    actor_id?: string;
+    reason?: string;
+    source?: string;
+    numerator?: number;
+    denominator?: number;
+  }): Observable<any> {
+    return this.http.patch(`${this.apiUrl}/key-results/${encodeURIComponent(krId)}/current-value`, payload);
+  }
+
+  // --- Flow Runs APIs ---
+  getFlowRuns(flowCode?: string): Observable<FlowRunsResponse> {
+    let params: any = {};
+    if (flowCode) params.flow_code = flowCode;
+    return this.http.get<FlowRunsResponse>(`${this.apiUrl}/flow-runs`, { params });
+  }
+
+  simulateFlowRun(flowCode: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/flow-runs/simulate`, { flow_code: flowCode });
+  }
+
+  deleteFlowRun(runId: string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/flow-runs/${encodeURIComponent(runId)}`);
+  }
 }

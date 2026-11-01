@@ -239,7 +239,7 @@ export class GitLabDataComponent implements OnInit {
     is_bug: false
   };
 
-  loading = false;
+  loading = true;
   isDropup = false;
 
   constructor(private okrService: OkrService, private confirmService: ConfirmDialogService) {}
@@ -312,7 +312,13 @@ export class GitLabDataComponent implements OnInit {
       error: (err) => {
         this.loading = false;
         console.error('Lỗi khi xóa sự kiện:', err);
-        alert('Lỗi khi xóa sự kiện: ' + (err.error?.error || err.message));
+        this.confirmService.confirm({
+          title: 'Lỗi khi xóa Sự kiện',
+          message: err.error?.error || err.message || 'Không thể xóa sự kiện này.',
+          confirmText: 'Đóng',
+          cancelText: '',
+          type: 'danger'
+        });
       }
     });
   }

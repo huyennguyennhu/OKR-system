@@ -1,7 +1,7 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { OkrService, Role } from '../../services/okr.service';
+import { OkrService, Role, Team } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 @Component({
@@ -13,15 +13,18 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 })
 export class RolesComponent implements OnInit {
   roles: Role[] = [];
+  teams: Team[] = [];
   showModal = false;
   isEditing = false;
-  loading = false;
+  loading = true;
   searchQuery = '';
+  isModalTeamDropdownOpen = false;
 
   newRole: Partial<Role> = {
     name: '',
     code: '',
-    description: ''
+    description: '',
+    team_id: ''
   };
 
   get filteredRoles(): Role[] {
@@ -30,7 +33,9 @@ export class RolesComponent implements OnInit {
     return this.roles.filter(r =>
       (r.name && r.name.toLowerCase().includes(q)) ||
       (r.code && r.code.toLowerCase().includes(q)) ||
-      (r.description && r.description.toLowerCase().includes(q))
+      (r.description && r.description.toLowerCase().includes(q)) ||
+      (r.team_name && r.team_name.toLowerCase().includes(q)) ||
+      (r.team_code && r.team_code.toLowerCase().includes(q))
     );
   }
 
@@ -42,11 +47,31 @@ export class RolesComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRoles();
+    this.loadTeams();
   }
 
   @HostListener('document:click')
   onDocumentClick(): void {
     this.activeDropdownId = null;
+    this.isModalTeamDropdownOpen = false;
+  }
+
+  toggleModalTeamDropdown(event: MouseEvent): void {
+    event.stopPropagation();
+    this.isModalTeamDropdownOpen = !this.isModalTeamDropdownOpen;
+  }
+
+  selectModalTeam(teamId: string): void {
+    this.newRole.team_id = teamId;
+    this.isModalTeamDropdownOpen = false;
+  }
+
+  getModalTeamLabel(): string {
+    if (!this.newRole.team_id) {
+      return 'Chọn Team phụ trách...';
+    }
+    const t = this.teams.find(item => item.id === this.newRole.team_id || item.code === this.newRole.team_id);
+    return t ? t.name : this.newRole.team_id;
   }
 
   toggleDropdown(id: string, event: MouseEvent): void {
@@ -67,6 +92,17 @@ export class RolesComponent implements OnInit {
     this.activeDropdownId = null;
   }
 
+  loadTeams(): void {
+    this.okrService.getTeams().subscribe({
+      next: (data) => {
+        this.teams = data || [];
+      },
+      error: (err) => {
+        console.error('Error loading teams:', err);
+      }
+    });
+  }
+
   loadRoles(): void {
     this.loading = true;
     this.okrService.getRoles().subscribe({
@@ -82,14 +118,16 @@ export class RolesComponent implements OnInit {
   }
 
   openCreateModal(): void {
-    this.newRole = { name: '', code: '', description: '' };
+    this.newRole = { name: '', code: '', description: '', team_id: '' };
+    this.isModalTeamDropdownOpen = false;
     this.isEditing = false;
     this.isSaving = false;
     this.showModal = true;
   }
 
   editRole(role: Role): void {
-    this.newRole = { ...role };
+    this.newRole = { ...role, team_id: role.team_id || '' };
+    this.isModalTeamDropdownOpen = false;
     this.isEditing = true;
     this.isSaving = false;
     this.showModal = true;
@@ -111,6 +149,13 @@ export class RolesComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error deleting role:', err);
+        this.confirmService.confirm({
+          title: 'Lỗi khi xóa Role',
+          message: err.error?.error || err.message || 'Không thể xóa vai trò này.',
+          confirmText: 'Đóng',
+          cancelText: '',
+          type: 'danger'
+        });
       }
     });
   }
@@ -132,7 +177,8 @@ export class RolesComponent implements OnInit {
       code: (this.newRole.code && this.newRole.code.trim())
         ? this.newRole.code.trim().toUpperCase()
         : this.newRole.name.trim().toUpperCase().replace(/\s+/g, '_'),
-      description: this.newRole.description ? this.newRole.description.trim() : ''
+      description: this.newRole.description ? this.newRole.description.trim() : '',
+      team_id: (this.newRole.team_id && this.newRole.team_id.trim()) ? this.newRole.team_id.trim() : undefined
     };
 
     this.isSaving = true;

@@ -177,6 +177,20 @@ async function processGitLabEvent(payload) {
   const avgObjProgress = parseFloat((totalKrProgress / objectiveKrs.length).toFixed(1));
   await run('UPDATE Objectives SET progress = ? WHERE objective_id = ?', [avgObjProgress, kr.objective_id]);
 
+  // Update Grandparent Company Objective progress
+  const parentObj = await get('SELECT parent_id FROM Objectives WHERE objective_id = ?', [kr.objective_id]);
+  if (parentObj && parentObj.parent_id) {
+    const siblingObjectives = await all('SELECT progress FROM Objectives WHERE parent_id = ?', [parentObj.parent_id]);
+    if (siblingObjectives.length > 0) {
+      let totalObjP = 0;
+      for (const obj of siblingObjectives) {
+        totalObjP += Math.min(100, Math.max(0, obj.progress || 0));
+      }
+      const avgCompanyProgress = parseFloat((totalObjP / siblingObjectives.length).toFixed(1));
+      await run('UPDATE Objectives SET progress = ? WHERE objective_id = ?', [avgCompanyProgress, parentObj.parent_id]);
+    }
+  }
+
   const endTime = new Date().toISOString();
   await run(`INSERT INTO ProcessingLogs (run_id, start_time, end_time, status, input_count, output_count, error_message) VALUES (?, ?, ?, ?, ?, ?, ?)`,
     [runId, startTime, endTime, 'SUCCESS', 1, 1, null]

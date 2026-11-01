@@ -27,7 +27,7 @@ export class ConfirmDialogService {
           title: options.title || 'Xác nhận xóa',
           message: options.message,
           confirmText: options.confirmText || 'Xác nhận xóa',
-          cancelText: options.cancelText || 'Hủy',
+          cancelText: options.cancelText !== undefined ? options.cancelText : 'Hủy',
           type: options.type || 'danger'
         },
         resolve

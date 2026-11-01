@@ -2,7 +2,7 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { OkrService, Space, Timeline } from '../../services/okr.service';
+import { OkrService, Space, Timeline, Employee, Team } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 interface TreeNode {
@@ -120,9 +120,9 @@ interface TreeNode {
                   <label class="filter-label">Assignee</label>
                   <select class="form-select">
                     <option value="" selected>All Assignees</option>
-                    <option value="binhtt">Trần Thị Bình (binhtt)</option>
-                    <option value="cuonglh">Lê Hoàng Cường (cuonglh)</option>
-                    <option value="anhnv">Nguyễn Văn Anh (anhnv)</option>
+                    <option value="binhtt">Trần Thị Bình</option>
+                    <option value="cuonglh">Lê Hoàng Cường</option>
+                    <option value="anhnv">Nguyễn Văn Anh</option>
                   </select>
                 </div>
 
@@ -162,17 +162,23 @@ interface TreeNode {
             </div>
           </div>
           
-          <!-- Timeline Dropdown -->
+          <!-- Timeline Dropdown (Chỉ chọn Năm) -->
           <div class="d-flex flex-column" style="font-size: 13px; color: #64748b;">
             <span class="mb-1">Timeline</span>
             <div class="position-relative timeline-dropdown-wrapper">
               <button type="button" class="toolbar-dropdown-trigger" style="min-width: 120px;" (click)="toggleTimelineDropdown($event)" [class.active]="isTimelineDropdownOpen" title="Chọn Timeline">
-                <span class="dropdown-label text-truncate">{{ selectedTimeline }}</span>
-                <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isTimelineDropdownOpen"></i>
+                <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                  <i class="fa-solid fa-calendar-days text-primary flex-shrink-0"></i>
+                  <span class="dropdown-label text-truncate fw-semibold">{{ selectedTimeline }}</span>
+                </span>
+                <i class="fa-solid fa-chevron-down ms-1 chevron-icon flex-shrink-0" [class.rotate]="isTimelineDropdownOpen"></i>
               </button>
-              <div class="custom-select-menu timeline-dropdown-menu" *ngIf="isTimelineDropdownOpen">
+              <div class="custom-select-menu timeline-dropdown-menu" *ngIf="isTimelineDropdownOpen" style="min-width: 130px; z-index: 1080;">
                 <div class="custom-select-option" *ngFor="let tl of timelineOptions" [class.selected]="tl === selectedTimeline" (click)="selectTimeline(tl)">
-                  <span style="color: #1e293b; font-weight: 500;">{{ tl }}</span>
+                  <span class="d-flex align-items-center gap-2">
+                    <i class="fa-solid fa-calendar-days text-primary"></i>
+                    <span style="color: #1e293b; font-weight: 500;">{{ tl }}</span>
+                  </span>
                   <i class="fa-solid fa-check check-icon ms-2" *ngIf="tl === selectedTimeline"></i>
                 </div>
               </div>
@@ -187,10 +193,75 @@ interface TreeNode {
                 <span class="dropdown-label text-truncate">{{ selectedTimelineTree }}</span>
                 <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isTimelineTreeDropdownOpen"></i>
               </button>
-              <div class="custom-select-menu timeline-tree-dropdown-menu" *ngIf="isTimelineTreeDropdownOpen">
-                <div class="custom-select-option" *ngFor="let tlt of timelineTreeOptions" [class.selected]="tlt === selectedTimelineTree" (click)="selectTimelineTree(tlt)">
-                  <span style="color: #1e293b; font-weight: 500;">{{ tlt }}</span>
-                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="tlt === selectedTimelineTree"></i>
+              <!-- Collapsible Tree Dropdown Panel -->
+              <div class="custom-select-menu timeline-tree-dropdown-menu p-0" *ngIf="isTimelineTreeDropdownOpen">
+                <div class="timeline-tree-scroll-container">
+                  <ng-container *ngFor="let yearNode of timelineTreeNav">
+                    <!-- Year Node (Root) -->
+                    <div class="custom-option" [class.selected]="isNavNodeSelected(yearNode.title)" (click)="selectTimelineTreeNode(yearNode)">
+                      <div class="d-flex align-items-center" style="margin-left: 0px;">
+                        <span class="toggle-icon material-icons-round btn" (click)="toggleNavNode(yearNode.id, $event)">
+                          {{ isNavNodeCollapsed(yearNode.id) ? 'chevron_right' : 'keyboard_arrow_down' }}
+                        </span>
+                        <!-- Custom Timeline Logo Icon matching User Snippet -->
+                        <span class="d-inline-flex align-items-center justify-content-center me-2 icon-timeline" style="width: 18px; height: 18px; flex-shrink: 0;">
+                          <svg data-name="Group 16352" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 26 26" fit="" preserveAspectRatio="xMidYMid meet" focusable="false">
+                            <rect data-name="Rectangle 7584" width="26" height="26" rx="3" style="fill:#42526e"></rect>
+                            <g data-name="Group 16349">
+                              <path data-name="Rectangle 7599" style="fill:#42526e" d="M0 0h24v24H0z" transform="translate(1 1)"></path>
+                            </g>
+                            <g data-name="Group 16351">
+                              <g data-name="Group 16350" transform="translate(3.05 3.05)">
+                                <path data-name="Path 29904" d="M4.07 13H2.05a10.013 10.013 0 0 0 2.21 5.33l1.43-1.43A7.941 7.941 0 0 1 4.07 13z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29905" d="M5.69 7.1 4.26 5.67A10.013 10.013 0 0 0 2.05 11h2.02a7.941 7.941 0 0 1 1.62-3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29906" d="M11 4.07V2.05a10.013 10.013 0 0 0-5.33 2.21L7.1 5.69A7.941 7.941 0 0 1 11 4.07z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29907" d="M18.33 4.26A10.013 10.013 0 0 0 13 2.05v2.02a7.941 7.941 0 0 1 3.9 1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29908" d="m18.31 16.9 1.43 1.43A9.981 9.981 0 0 0 21.95 13h-2.02a7.941 7.941 0 0 1-1.62 3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29909" d="M19.93 11h2.02a10.013 10.013 0 0 0-2.21-5.33L18.31 7.1a7.941 7.941 0 0 1 1.62 3.9z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29910" d="M13 19.93v2.02a10.013 10.013 0 0 0 5.33-2.21l-1.43-1.43a7.941 7.941 0 0 1-3.9 1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <path data-name="Path 29911" d="M5.67 19.74A9.981 9.981 0 0 0 11 21.95v-2.02a7.941 7.941 0 0 1-3.9-1.62z" transform="translate(-2.05 -2.05)" style="fill:#fff"></path>
+                                <circle data-name="Ellipse 656" cx="5" cy="5" r="5" transform="translate(4.949 4.95)" style="fill:#fff"></circle>
+                              </g>
+                            </g>
+                          </svg>
+                        </span>
+                        <span class="option-label fw-bold text-dark">{{ yearNode.title }}</span>
+                      </div>
+                    </div>
+
+                    <!-- Quarters (Child of Year) -->
+                    <ng-container *ngIf="!isNavNodeCollapsed(yearNode.id)">
+                      <ng-container *ngFor="let qNode of yearNode.children">
+                        <div class="custom-option" [class.selected]="isNavNodeSelected(qNode.title)" (click)="selectTimelineTreeNode(qNode, yearNode.title)">
+                          <div class="d-flex align-items-center" style="margin-left: 15px;">
+                            <span class="toggle-icon material-icons-round btn" (click)="toggleNavNode(qNode.id, $event)">
+                              {{ isNavNodeCollapsed(qNode.id) ? 'chevron_right' : 'keyboard_arrow_down' }}
+                            </span>
+                            <span class="fa material-icons-outlined icon-md text-secondary me-2" style="font-size: 18px;">event</span>
+                            <span class="option-label" [ngClass]="isNavNodeSelected(qNode.title) ? 'fw-bold text-primary' : 'text-dark'">{{ qNode.title }}</span>
+                          </div>
+                        </div>
+
+                        <!-- Months (Child of Quarter) -->
+                        <ng-container *ngIf="!isNavNodeCollapsed(qNode.id)">
+                          <div class="custom-option" *ngFor="let mNode of qNode.children" [class.selected]="isNavNodeSelected(mNode.title)" (click)="selectTimelineTreeNode(mNode, yearNode.title)">
+                            <div class="d-flex align-items-center" style="margin-left: 30px;">
+                              <span class="toggle-icon material-icons-round btn hidden">keyboard_arrow_down</span>
+                              <span class="fa material-icons-outlined icon-md text-secondary me-2" style="font-size: 18px;">date_range</span>
+                              <span class="option-label" [ngClass]="isNavNodeSelected(mNode.title) ? 'fw-bold text-primary' : 'text-dark'">{{ mNode.title }}</span>
+                            </div>
+                          </div>
+                        </ng-container>
+                      </ng-container>
+                    </ng-container>
+                  </ng-container>
+                </div>
+
+                <!-- Footer: Manage Timeline -->
+                <div class="timeline-tree-footer">
+                  <button type="button" class="btn btn-link px-0 text-primary fw-medium text-decoration-none" (click)="navigateToManageTimeline($event)" style="font-size: 13px;">
+                    Manage Timeline
+                  </button>
                 </div>
               </div>
             </div>
@@ -204,12 +275,12 @@ interface TreeNode {
             <!-- Dropdown Space từ Database thay thế cho XC2026 -->
             <div class="position-relative space-dropdown-wrapper">
               <button type="button" class="toolbar-dropdown-trigger" (click)="toggleSpaceDropdown($event)" [class.active]="isSpaceDropdownOpen" title="Chọn không gian làm việc">
-                <span class="space-label">{{ selectedSpace ? (selectedSpace.space_key || selectedSpace.name) : 'Chọn Space' }}</span>
+                <span class="space-label">{{ selectedSpace ? selectedSpace.name : 'Chọn Space' }}</span>
                 <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isSpaceDropdownOpen"></i>
               </button>
               <div class="custom-select-menu space-dropdown-menu" *ngIf="isSpaceDropdownOpen">
                 <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="s.id === selectedSpaceId" (click)="selectSpace(s)">
-                  <span style="color: #1e293b; font-weight: 500;">{{ s.space_key || s.name }}</span>
+                  <span style="color: #1e293b; font-weight: 500;">{{ s.name }}</span>
                   <i class="fa-solid fa-check check-icon ms-2" *ngIf="s.id === selectedSpaceId"></i>
                 </div>
                 <div class="text-muted p-2 text-center" *ngIf="spaces.length === 0" style="font-size: 13px;">
@@ -260,20 +331,20 @@ interface TreeNode {
                   <tr>
                     <!-- KPI Column (Tree) -->
                     <td class="kpi-cell" [style.padding-left.rem]="depth * 1.5 + 0.5">
-                      <div class="d-flex align-items-center">
+                      <div class="d-flex align-items-center gap-2">
                         <!-- Expand/Collapse Chevron -->
                         <div class="chevron-box" [style.visibility]="node.children && node.children.length > 0 ? 'visible' : 'hidden'" (click)="toggleNode(node)">
                           <i class="fa-solid text-muted" [ngClass]="node.expanded ? 'fa-chevron-down' : 'fa-chevron-right'" style="font-size: 10px;"></i>
                         </div>
                         
                         <!-- Icon based on type -->
-                        <div class="icon-box ms-1 me-2" [ngClass]="getIconColorClass(node.type)">
+                        <div class="icon-box" [ngClass]="getIconColorClass(node.type)">
                           <i class="fa-solid" [ngClass]="getIconClass(node.type)"></i>
                         </div>
                         
                         <!-- Title -->
                         <span class="node-title cursor-pointer" (click)="onNodeTitleClick(node, $event)" title="Xem chi tiết Objective">
-                          <span class="node-id">{{ node.id }}</span> {{ node.title }}
+                          <span class="node-id me-1">{{ node.id }}</span> {{ node.title }}
                         </span>
                       </div>
                       <div class="node-subtitle text-muted ms-5" *ngIf="(node.type === 'ind_kr' || node.type === 'team_kr') && node.metricSub">
@@ -286,7 +357,7 @@ interface TreeNode {
                       <div class="d-flex align-items-center" *ngIf="node.assignTo !== 'No Group'">
                         <img *ngIf="node.assignToAvatar" [src]="node.assignToAvatar" class="avatar me-2" alt="avatar">
                         <span class="badge bg-light text-dark border me-2" *ngIf="!node.assignToAvatar"><i class="fa-solid fa-users"></i></span>
-                        <span class="assignee-text">{{ node.assignTo }}</span>
+                        <span class="assignee-text">{{ formatAssignTo(node.assignTo) }}</span>
                       </div>
                       <span class="text-muted fst-italic" style="font-size: 13px;" *ngIf="node.assignTo === 'No Group'">No Group</span>
                     </td>
@@ -411,6 +482,102 @@ interface TreeNode {
               </button>
             </div>
           </form>
+        </div>
+      </div>
+
+      <!-- Modal Xác nhận Nhân bản OKR / Key Result -->
+      <div class="confirm-overlay" *ngIf="showCloneModal" (click)="closeCloneModal()">
+        <div class="confirm-dialog-box" style="width: 480px; max-width: 95%;" (click)="$event.stopPropagation()">
+          <div class="confirm-header">
+            <div class="confirm-header-left">
+              <div class="confirm-icon-box icon-info">
+                <i class="fa-solid fa-circle-info"></i>
+              </div>
+              <h3 class="confirm-title">Xác nhận nhân bản</h3>
+            </div>
+            <button type="button" aria-label="Đóng" class="close-btn" (click)="closeCloneModal()">
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div class="confirm-body" style="padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 1rem;">
+            <!-- Hàng 1: KR / Objective -->
+            <div class="clone-field-row">
+              <label class="clone-field-label fw-bold mb-1" style="font-size: 13px; color: #475569; display: block;">
+                {{ isCloningKr ? 'KR:' : 'Objective:' }}
+              </label>
+              <div class="clone-target-item p-2 rounded border bg-light d-flex align-items-center gap-2" style="font-size: 13px; min-height: 38px;">
+                <i [class]="isCloningKr ? 'fa-solid fa-bullseye text-primary flex-shrink-0' : (cloningNode?.type === 'company_obj' ? 'fa-solid fa-building text-primary flex-shrink-0' : 'fa-solid fa-users text-info flex-shrink-0')"></i>
+                <span class="text-truncate fw-medium text-dark" style="flex: 1;" [title]="cloningNode?.title">{{ cloningNode?.title }}</span>
+                <span class="badge bg-white text-secondary border px-2 py-1 flex-shrink-0" style="font-size: 11px;">{{ cloningNode?.id }}</span>
+              </div>
+            </div>
+
+            <!-- Hàng 2: Assign to -->
+            <div class="clone-field-row clone-dropdown-wrapper position-relative">
+              <label class="clone-field-label fw-bold mb-1" style="font-size: 13px; color: #475569; display: block;">
+                Assign to:
+              </label>
+
+              <!-- Level Company: locked Toàn Công Ty -->
+              <div *ngIf="cloneAssignType === 'company'" class="p-2 rounded border bg-light d-flex align-items-center gap-2 text-muted" style="font-size: 13px; height: 38px;">
+                <i class="fa-solid fa-building text-secondary flex-shrink-0"></i>
+                <span class="fw-medium text-dark">Toàn Công Ty</span>
+                <span class="badge bg-secondary-subtle text-secondary ms-auto" style="font-size: 11px;">Mặc định</span>
+              </div>
+
+              <!-- Level Team: dropdown of teams -->
+              <div *ngIf="cloneAssignType === 'team'" class="custom-select-wrapper position-relative w-100">
+                <button type="button" class="custom-select-trigger w-100" (click)="isCloneDropdownOpen = !isCloneDropdownOpen; $event.stopPropagation()" [class.active]="isCloneDropdownOpen" style="height: 38px;">
+                  <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                    <i class="fa-solid fa-users text-info flex-shrink-0"></i>
+                    <span class="text-truncate text-dark fw-medium">{{ getCloneSelectedTeamLabel() }}</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isCloneDropdownOpen"></i>
+                </button>
+                <div class="custom-select-menu w-100 shadow-sm" *ngIf="isCloneDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1050; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);">
+                  <div class="custom-select-option" *ngFor="let team of teamsList" [class.selected]="selectedCloneAssigneeId === (team.id || team.code)" (click)="selectCloneTeam(team); $event.stopPropagation()" style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="d-flex align-items-center gap-2 text-truncate">
+                      <i class="fa-solid fa-users text-muted flex-shrink-0"></i>
+                      <span class="text-truncate">{{ team.name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary ms-2" *ngIf="selectedCloneAssigneeId === (team.id || team.code)"></i>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Level Personal: dropdown of employees -->
+              <div *ngIf="cloneAssignType === 'personal'" class="custom-select-wrapper position-relative w-100">
+                <button type="button" class="custom-select-trigger w-100" (click)="isCloneDropdownOpen = !isCloneDropdownOpen; $event.stopPropagation()" [class.active]="isCloneDropdownOpen" style="height: 38px;">
+                  <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                    <i class="fa-solid fa-user text-primary flex-shrink-0"></i>
+                    <span class="text-truncate text-dark fw-medium">{{ getCloneSelectedEmployeeLabel() }}</span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isCloneDropdownOpen"></i>
+                </button>
+                <div class="custom-select-menu w-100 shadow-sm" *ngIf="isCloneDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1050; position: absolute; top: 100%; left: 0; margin-top: 4px; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15);">
+                  <div class="custom-select-option" *ngFor="let emp of employeesList" [class.selected]="selectedCloneAssigneeId === emp.employee_id" (click)="selectCloneEmployee(emp); $event.stopPropagation()" style="padding: 8px 12px; cursor: pointer; display: flex; align-items: center; justify-content: space-between;">
+                    <span class="d-flex align-items-center gap-2 text-truncate">
+                      <i class="fa-solid fa-user text-muted flex-shrink-0"></i>
+                      <span class="text-truncate">{{ emp.full_name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary ms-2" *ngIf="selectedCloneAssigneeId === emp.employee_id"></i>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="confirm-footer" style="padding: 1rem 1.5rem; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: flex-end; gap: 0.5rem; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+            <button type="button" class="btn btn-secondary" (click)="closeCloneModal()" [disabled]="isCloning">
+              Hủy
+            </button>
+            <button type="button" class="btn btn-primary" (click)="submitClone()" [disabled]="isCloning" style="background-color: #3157D5 !important; border-color: #3157D5 !important; color: #ffffff !important;">
+              <i class="fa-solid fa-clone me-1" *ngIf="!isCloning"></i>
+              <i class="fa-solid fa-spinner fa-spin me-1" *ngIf="isCloning"></i>
+              {{ isCloning ? 'Đang nhân bản...' : 'Nhân bản' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -757,6 +924,7 @@ interface TreeNode {
       cursor: pointer;
       border-radius: 4px;
       transition: background-color 0.15s ease;
+      flex-shrink: 0;
     }
     .chevron-box:hover {
       background-color: #f1f5f9;
@@ -770,7 +938,14 @@ interface TreeNode {
       color: #334155;
     }
     
-    .icon-box { font-size: 1rem; }
+    .icon-box {
+      font-size: 1rem;
+      width: 20px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
     .color-company { color: #3b82f6; } /* Blue */
     .color-kr { color: #10b981; } /* Green */
     .color-ind { color: #a855f7; } /* Purple */
@@ -907,15 +1082,122 @@ interface TreeNode {
       z-index: 1060;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
     }
+        .timeline-tree-nav-container {
+      padding: 4px 0;
+    }
+    .tree-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      transition: background-color 0.15s;
+    }
+    .tree-nav-item:hover {
+      background-color: #f1f5f9;
+    }
+    .tree-nav-item.selected {
+      background-color: #e0f2fe;
+      color: #0369a1;
+      font-weight: 600;
+    }
+    .tree-nav-item.level-year {
+      padding-left: 12px;
+    }
+    .tree-nav-item.level-quarter {
+      padding-left: 28px;
+    }
+    .tree-nav-item.level-month {
+      padding-left: 48px;
+    }
+    .chevron-box {
+      width: 14px;
+      height: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+    .manage-timeline-footer a:hover {
+      text-decoration: underline !important;
+    }
     .timeline-tree-dropdown-menu {
       position: absolute;
       top: calc(100% + 4px);
       left: 0;
-      min-width: 240px;
-      max-height: 280px;
-      overflow-y: auto;
-      z-index: 1060;
+      min-width: 250px;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
       box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      z-index: 1060;
+      overflow: hidden;
+    }
+    .timeline-tree-scroll-container {
+      max-height: 290px;
+      overflow-y: auto;
+      padding: 6px 0;
+    }
+    .custom-option {
+      padding: 6px 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      transition: background-color 0.15s ease;
+      user-select: none;
+      font-size: 13px;
+      color: #1e293b;
+    }
+    .custom-option:hover {
+      background-color: #f1f5f9;
+    }
+    .custom-option.selected {
+      background-color: #e0f2fe !important;
+    }
+    .custom-option.selected .option-label {
+      color: #0369a1 !important;
+      font-weight: 600 !important;
+    }
+    .custom-option .option-label {
+      font-size: 13px;
+      color: #1e293b;
+    }
+    .custom-option .toggle-icon.btn {
+      width: 20px;
+      height: 20px;
+      padding: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: #64748b;
+      font-size: 18px !important;
+      cursor: pointer;
+      border-radius: 4px;
+      margin-right: 4px;
+      flex-shrink: 0;
+      line-height: 1;
+      transition: all 0.15s ease;
+    }
+    .custom-option .toggle-icon.btn:hover {
+      background-color: #e2e8f0;
+      color: #0f172a;
+    }
+    .custom-option .toggle-icon.btn.hidden {
+      visibility: hidden;
+      cursor: default;
+      pointer-events: none;
+    }
+    .timeline-tree-footer {
+      border-top: 1px solid #e2e8f0;
+      padding: 8px 14px;
+      background: #f8fafc;
+    }
+    .timeline-tree-footer button:hover {
+      text-decoration: underline !important;
     }
     .search-input-box {
       position: relative;
@@ -973,6 +1255,81 @@ interface TreeNode {
       border-color: #94a3b8;
       color: var(--primary, #3157D5);
     }
+
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modalSlideUp {
+      from { opacity: 0; transform: translateY(12px) scale(0.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .confirm-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 99999;
+      animation: modalFadeIn 0.2s ease-out;
+    }
+    .confirm-dialog-box {
+      width: 480px;
+      max-width: 95%;
+      border-radius: 12px;
+      background: #ffffff;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+      display: flex;
+      flex-direction: column;
+      animation: modalSlideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .confirm-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 1.25rem 1.5rem;
+      background-color: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      border-top-left-radius: 12px;
+      border-top-right-radius: 12px;
+    }
+    .confirm-header-left {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    .confirm-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+    .confirm-icon-box.icon-info {
+      background-color: #e0e7ff;
+      color: #4f46e5;
+    }
+    .confirm-title {
+      font-size: 16px !important;
+      font-weight: 600 !important;
+      color: #1e293b !important;
+      margin: 0 !important;
+    }
+    .confirm-footer {
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+    }
+    .clone-target-item {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
   `]
 })
 export class OkrTreeComponent implements OnInit {
@@ -983,18 +1340,146 @@ export class OkrTreeComponent implements OnInit {
   selectedFilterIndicator: string = 'All';
   timelines: Timeline[] = [];
   selectedTimeline = '2026';
-  timelineOptions: string[] = ['2026', 'Quý 4/2026', 'Quý 3/2026', 'Quý 2/2026', 'Quý 1/2026', '2025'];
+  timelineOptions: string[] = ['2026', '2025', '2024'];
   isTimelineDropdownOpen = false;
 
-  selectedTimelineTree = 'Month 8, 2026';
+  selectedTimelineTree = 'Month 10, 2026';
+  selectedTimelineId = 'TL-M10-2026';
+  selectedTimelineNodeTitle = 'Month 8';
+  collapsedNavNodes: { [key: string]: boolean } = {
+    'TL-Q1-2026': true,
+    'TL-Q2-2026': true,
+    'TL-Q4-2026': true
+  };
+
+  extractTimelineNumber(str: string): number {
+    if (!str) return 0;
+    const qMatch = str.match(/q(?:uarter)?\s*(\d+)/i);
+    if (qMatch) return parseInt(qMatch[1], 10);
+    const mMatch = str.match(/(?:m|month|tháng)\s*(\d+)/i);
+    if (mMatch) return parseInt(mMatch[1], 10);
+    const wMatch = str.match(/(?:w|week|tuần)\s*(\d+)/i);
+    if (wMatch) return parseInt(wMatch[1], 10);
+    const generic = str.match(/(\d+)/);
+    return generic ? parseInt(generic[1], 10) : 0;
+  }
+
+  sortTimelineItems(items: any[]): any[] {
+    if (!items || !items.length) return [];
+    return [...items].sort((a, b) => {
+      const dateA = a.start_date ? new Date(a.start_date).getTime() : NaN;
+      const dateB = b.start_date ? new Date(b.start_date).getTime() : NaN;
+      if (!isNaN(dateA) && !isNaN(dateB) && dateA !== dateB) {
+        return dateA - dateB;
+      }
+      const numA = this.extractTimelineNumber(a.title || a.id || '');
+      const numB = this.extractTimelineNumber(b.title || b.id || '');
+      if (numA !== numB) {
+        return numA - numB;
+      }
+      return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true });
+    });
+  }
+
+  get timelineTreeNav(): any[] {
+    const list = this.timelines.filter(t => t.workspace_id === this.selectedSpaceId || !t.workspace_id || this.timelines.length > 0);
+    
+    // Group into Year -> Quarters -> Months with chronological sorting
+    const yearRoots = list.filter(t => !t.parent_id || t.level === 'year');
+    if (yearRoots.length > 0) {
+      const sortedYears = this.sortTimelineItems(yearRoots);
+      return sortedYears.map(y => {
+        const quarters = list.filter(t => t.parent_id === y.id || (t.level === 'quarter' && (t.title.includes(y.title) || t.id.includes(y.title))));
+        const sortedQuarters = this.sortTimelineItems(quarters);
+        return {
+          ...y,
+          children: sortedQuarters.map(q => {
+            const months = list.filter(t => t.parent_id === q.id);
+            const sortedMonths = this.sortTimelineItems(months);
+            return {
+              ...q,
+              children: sortedMonths
+            };
+          })
+        };
+      });
+    }
+
+    // Fallback default structure matching image
+    return [
+      {
+        id: 'TL-YEAR-2026',
+        title: '2026',
+        level: 'year',
+        children: [
+          { id: 'TL-Q1-2026', title: 'Quarter 1', level: 'quarter', children: [
+            { id: 'TL-M1-2026', title: 'Month 1' },
+            { id: 'TL-M2-2026', title: 'Month 2' },
+            { id: 'TL-M3-2026', title: 'Month 3' }
+          ]},
+          { id: 'TL-Q2-2026', title: 'Quarter 2', level: 'quarter', children: [
+            { id: 'TL-M4-2026', title: 'Month 4' },
+            { id: 'TL-M5-2026', title: 'Month 5' },
+            { id: 'TL-M6-2026', title: 'Month 6' }
+          ]},
+          { id: 'TL-Q3-2026', title: 'Quarter 3', level: 'quarter', children: [
+            { id: 'TL-M7-2026', title: 'Month 7' },
+            { id: 'TL-M8-2026', title: 'Month 8' },
+            { id: 'TL-M9-2026', title: 'Month 9' }
+          ]},
+          { id: 'TL-Q4-2026', title: 'Quarter 4', level: 'quarter', children: [
+            { id: 'TL-M10-2026', title: 'Month 10' },
+            { id: 'TL-M11-2026', title: 'Month 11' },
+            { id: 'TL-M12-2026', title: 'Month 12' }
+          ]}
+        ]
+      }
+    ];
+  }
+
+  toggleNavNode(id: string, event: MouseEvent): void {
+    event.stopPropagation();
+    this.collapsedNavNodes[id] = !this.collapsedNavNodes[id];
+  }
+
+  isNavNodeCollapsed(id: string): boolean {
+    return !!this.collapsedNavNodes[id];
+  }
+
+  isNavNodeSelected(title: string): boolean {
+    if (!title) return false;
+    if (this.selectedTimelineNodeTitle) {
+      return this.selectedTimelineNodeTitle === title;
+    }
+    return !!(this.selectedTimelineTree && this.selectedTimelineTree.includes(title));
+  }
+
+  selectTimelineTreeNode(node: any, parentTitle?: string): void {
+    this.selectedTimelineId = node.id;
+    this.selectedTimelineNodeTitle = node.title;
+    if (parentTitle) {
+      this.selectedTimelineTree = `${node.title}, ${parentTitle}`;
+    } else {
+      this.selectedTimelineTree = node.title;
+    }
+    this.isTimelineTreeDropdownOpen = false;
+    this.loadTreeData();
+  }
+
+  navigateToManageTimeline(event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.isTimelineTreeDropdownOpen = false;
+    this.router.navigate(['/okr-settings'], { queryParams: { tab: 'Chu kỳ' } });
+  }
+
+
   timelineTreeOptions: string[] = [
-    'Month 8, 2026',
-    'Month 9, 2026',
     'Month 10, 2026',
-    'Tuần 36 (31/08 - 06/09/2026)',
-    'Tuần 37 (07/09 - 13/09/2026)',
-    'Tuần 38 (14/09 - 20/09/2026)',
-    'Tuần 39 (21/09 - 27/09/2026)'
+    'Month 11, 2026',
+    'Month 12, 2026',
+    'Quarter 4, 2026',
+    'Month 8, 2026',
+    'Month 9, 2026'
   ];
   isTimelineTreeDropdownOpen = false;
 
@@ -1002,7 +1487,7 @@ export class OkrTreeComponent implements OnInit {
   selectedSpaceId: string = '';
   selectedSpace: Space | null = null;
   isSpaceDropdownOpen = false;
-  loading = false;
+  loading = true;
   treeData: TreeNode[] = [];
   rawTreeData: TreeNode[] = [];
   searchQuery = '';
@@ -1013,6 +1498,16 @@ export class OkrTreeComponent implements OnInit {
   isSavingKr = false;
   isDropup = false;
 
+  showCloneModal = false;
+  cloningNode: TreeNode | null = null;
+  isCloningKr = false;
+  cloneAssignType: 'company' | 'team' | 'personal' = 'personal';
+  selectedCloneAssigneeId = '';
+  isCloneDropdownOpen = false;
+  isCloning = false;
+  employeesList: Employee[] = [];
+  teamsList: Team[] = [];
+
   constructor(
     private okrService: OkrService, 
     private router: Router,
@@ -1020,14 +1515,31 @@ export class OkrTreeComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    this.loading = true;
     this.loadTimelines();
     this.loadSpaces();
-    this.loadTreeData();
+    this.loadEmployeesAndTeams();
+  }
+
+  loadEmployeesAndTeams(): void {
+    this.okrService.getEmployees().subscribe({
+      next: (data) => this.employeesList = data || [],
+      error: (err) => console.error('Error loading employees for clone:', err)
+    });
+    this.okrService.getTeams().subscribe({
+      next: (data) => this.teamsList = data || [],
+      error: (err) => console.error('Error loading teams for clone:', err)
+    });
+  }
+
+  formatAssignTo(assignTo: string): string {
+    if (!assignTo) return '';
+    return assignTo.replace(/\s*\([^)]*\)/g, '').trim();
   }
 
   loadTreeData(): void {
     this.loading = true;
-    this.okrService.getOkrTree().subscribe({
+    this.okrService.getOkrTree(this.selectedSpaceId, this.selectedTimelineId).subscribe({
       next: (data) => {
         this.rawTreeData = data || [];
         this.onSearch();
@@ -1073,15 +1585,42 @@ export class OkrTreeComponent implements OnInit {
       next: (data) => {
         this.timelines = data || [];
         if (this.timelines.length > 0) {
-          const titles = this.timelines.map(t => t.title).filter(Boolean);
-          this.timelineOptions = Array.from(new Set([...titles, ...this.timelineOptions]));
-          if (this.timelines[0].title) {
-            this.selectedTimeline = this.timelines[0].title;
+          // Chỉ lấy các mốc thời gian cấp Năm (level === 'year' hoặc 4 chữ số năm)
+          const yearNodes = this.timelines.filter(t => t.level === 'year' || (/^\d{4}$/).test(t.title?.trim()));
+          const yearTitles = yearNodes.map(t => t.title.trim()).filter(Boolean);
+          
+          if (yearTitles.length > 0) {
+            const uniqueYears = Array.from(new Set(yearTitles)).sort((a, b) => b.localeCompare(a));
+            this.timelineOptions = uniqueYears;
+            if (uniqueYears.includes('2026')) {
+              this.selectedTimeline = '2026';
+            } else {
+              this.selectedTimeline = uniqueYears[0];
+            }
+          } else {
+            this.timelineOptions = ['2026', '2025', '2024'];
+            this.selectedTimeline = '2026';
           }
+
+          // Khởi tạo khớp với Month 10, 2026 nếu có trong DB
+          const defaultTl = this.timelines.find(t => t.id === 'TL-M10-2026' || (t.title && t.title.toLowerCase().includes('month 10')))
+                         || this.timelines.find(t => t.id === 'TL-M11-2026')
+                         || this.timelines.find(t => t.id === 'TL-M12-2026')
+                         || this.timelines[0];
+          if (defaultTl) {
+            this.selectedTimelineId = defaultTl.id;
+            this.selectedTimelineTree = `${defaultTl.title}, 2026`;
+            this.selectedTimelineNodeTitle = defaultTl.title;
+          }
+        } else {
+          this.timelineOptions = ['2026', '2025', '2024'];
+          this.selectedTimeline = '2026';
         }
       },
       error: (err) => {
         console.error('Error loading timelines:', err);
+        this.timelineOptions = ['2026', '2025', '2024'];
+        this.selectedTimeline = '2026';
       }
     });
   }
@@ -1098,6 +1637,13 @@ export class OkrTreeComponent implements OnInit {
   selectTimeline(tl: string): void {
     this.selectedTimeline = tl;
     this.isTimelineDropdownOpen = false;
+    // Khi chọn Năm, lọc theo timeline cấp Năm tương ứng
+    const yearTl = this.timelines.find(t => t.title === tl || t.id === `TL-YEAR-${tl}`);
+    if (yearTl) {
+      this.selectedTimelineId = yearTl.id;
+      this.selectedTimelineTree = yearTl.title;
+      this.selectedTimelineNodeTitle = yearTl.title;
+    }
     this.loadTreeData();
   }
 
@@ -1112,6 +1658,13 @@ export class OkrTreeComponent implements OnInit {
 
   selectTimelineTree(tlt: string): void {
     this.selectedTimelineTree = tlt;
+    const parts = tlt.split(',').map(p => p.trim());
+    const primaryPart = parts[0];
+    const found = this.timelines.find(t => t.title === primaryPart || t.title === tlt) || this.timelines.find(t => tlt.includes(t.title));
+    if (found) {
+      this.selectedTimelineId = found.id;
+      this.selectedTimelineNodeTitle = found.title;
+    }
     this.isTimelineTreeDropdownOpen = false;
     this.loadTreeData();
   }
@@ -1121,12 +1674,16 @@ export class OkrTreeComponent implements OnInit {
       next: (data) => {
         this.spaces = data || [];
         if (this.spaces.length > 0) {
-          this.selectedSpace = this.spaces[0];
-          this.selectedSpaceId = this.spaces[0].id;
+          if (!this.selectedSpaceId || !this.spaces.some(s => s.id === this.selectedSpaceId)) {
+            this.selectedSpace = this.spaces[0];
+            this.selectedSpaceId = this.spaces[0].id;
+          }
         }
+        this.loadTreeData();
       },
       error: (err) => {
         console.error('Error loading spaces:', err);
+        this.loadTreeData();
       }
     });
   }
@@ -1256,11 +1813,15 @@ export class OkrTreeComponent implements OnInit {
       if (!target.closest('.timeline-tree-dropdown-wrapper')) {
         this.isTimelineTreeDropdownOpen = false;
       }
+      if (!target.closest('.clone-dropdown-wrapper')) {
+        this.isCloneDropdownOpen = false;
+      }
     } else {
       this.showFilter = false;
       this.isSpaceDropdownOpen = false;
       this.isTimelineDropdownOpen = false;
       this.isTimelineTreeDropdownOpen = false;
+      this.isCloneDropdownOpen = false;
     }
     this.activeDropdownId = null;
   }
@@ -1320,22 +1881,79 @@ export class OkrTreeComponent implements OnInit {
     });
   }
 
-  async cloneNode(node: TreeNode): Promise<void> {
-    const ok = await this.confirmService.confirm({
-      title: 'Xác nhận nhân bản',
-      message: `Bạn có muốn nhân bản "${node.title}" (${node.id}) không?`,
-      confirmText: 'Nhân bản',
-      type: 'info'
-    });
-    if (!ok) return;
+  cloneNode(node: TreeNode): void {
+    this.cloningNode = node;
+    this.isCloningKr = node.type === 'team_kr' || node.type === 'ind_kr' || node.id.startsWith('KR-');
 
-    this.loading = true;
-    this.okrService.cloneObjective(node.id).subscribe({
+    if (node.type === 'company_obj') {
+      this.cloneAssignType = 'company';
+      this.selectedCloneAssigneeId = '';
+    } else if (node.type === 'team_obj' || node.type === 'team_kr') {
+      this.cloneAssignType = 'team';
+      const currentName = this.formatAssignTo(node.assignTo || '').toLowerCase();
+      const foundTeam = this.teamsList.find(t => 
+        (t.name && t.name.toLowerCase().includes(currentName)) || 
+        (t.code && currentName.includes(t.code.toLowerCase())) ||
+        (t.id && currentName.includes(t.id.toLowerCase()))
+      );
+      this.selectedCloneAssigneeId = foundTeam ? (foundTeam.id || foundTeam.code) : (this.teamsList.length > 0 ? (this.teamsList[0].id || this.teamsList[0].code) : '');
+    } else {
+      this.cloneAssignType = 'personal';
+      const currentName = this.formatAssignTo(node.assignTo || '').toLowerCase();
+      const foundEmp = this.employeesList.find(e => 
+        (e.full_name && e.full_name.toLowerCase().includes(currentName)) ||
+        (e.full_name && currentName.includes(e.full_name.toLowerCase()))
+      );
+      this.selectedCloneAssigneeId = foundEmp ? foundEmp.employee_id : (this.employeesList.length > 0 ? this.employeesList[0].employee_id : '');
+    }
+
+    this.isCloneDropdownOpen = false;
+    this.showCloneModal = true;
+  }
+
+  closeCloneModal(): void {
+    if (this.isCloning) return;
+    this.showCloneModal = false;
+    this.cloningNode = null;
+    this.isCloneDropdownOpen = false;
+  }
+
+  selectCloneTeam(team: Team): void {
+    this.selectedCloneAssigneeId = team.id || team.code;
+    this.isCloneDropdownOpen = false;
+  }
+
+  selectCloneEmployee(emp: Employee): void {
+    this.selectedCloneAssigneeId = emp.employee_id;
+    this.isCloneDropdownOpen = false;
+  }
+
+  getCloneSelectedTeamLabel(): string {
+    const found = this.teamsList.find(t => (t.id || t.code) === this.selectedCloneAssigneeId);
+    return found ? found.name : 'Chọn phòng ban / nhóm';
+  }
+
+  getCloneSelectedEmployeeLabel(): string {
+    const found = this.employeesList.find(e => e.employee_id === this.selectedCloneAssigneeId);
+    return found ? found.full_name : 'Chọn người phụ trách';
+  }
+
+  submitClone(): void {
+    if (!this.cloningNode) return;
+    this.isCloning = true;
+    const payload = this.cloneAssignType === 'company' 
+      ? { assignee_id: '' }
+      : { assignee_id: this.selectedCloneAssigneeId };
+
+    this.okrService.cloneObjective(this.cloningNode.id, payload).subscribe({
       next: () => {
+        this.isCloning = false;
+        this.showCloneModal = false;
+        this.cloningNode = null;
         this.loadTreeData();
       },
       error: (err) => {
-        this.loading = false;
+        this.isCloning = false;
         console.error('Lỗi khi nhân bản:', err);
         this.confirmService.confirm({
           title: 'Lỗi khi nhân bản',
@@ -1353,7 +1971,7 @@ export class OkrTreeComponent implements OnInit {
     const typeLabel = isKr ? 'Key Result' : 'Mục tiêu';
     const ok = await this.confirmService.confirm({
       title: `Xác nhận xóa ${typeLabel}`,
-      message: `Bạn có chắc chắn muốn xóa ${typeLabel} "${node.title}" (${node.id}) khỏi cơ sở dữ liệu không? Thao tác này sẽ xóa vĩnh viễn và không thể khôi phục.`,
+      message: `Bạn có chắc chắn muốn xóa ${typeLabel} <strong>"${node.title}"</strong> (${node.id}) khỏi cơ sở dữ liệu không? Thao tác này sẽ xóa vĩnh viễn và không thể khôi phục.`,
       confirmText: 'Xác nhận xóa',
       type: 'danger'
     });
@@ -1372,7 +1990,13 @@ export class OkrTreeComponent implements OnInit {
       error: (err) => {
         this.loading = false;
         console.error(`Lỗi khi xóa ${typeLabel}:`, err);
-        alert(`Lỗi khi xóa ${typeLabel}: ` + (err.error?.error || err.message));
+        this.confirmService.confirm({
+          title: `Lỗi khi xóa ${typeLabel}`,
+          message: err.error?.error || err.message || `Không thể xóa ${typeLabel} này.`,
+          confirmText: 'Đóng',
+          cancelText: '',
+          type: 'danger'
+        });
       }
     });
   }

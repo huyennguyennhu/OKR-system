@@ -22,25 +22,13 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
         </p>
       </div>
 
-      <!-- Nav Tabs: Gộp hiển thị 1 form bảng duy nhất qua tab chuyển đổi -->
-      <nav class="nav-tabs mb-4">
-        <a class="nav-link" [class.active]="activeTab === 'events'" (click)="switchTab('events')" href="javascript:void(0)">
-          <i class="fa-solid fa-timeline"></i>
-          <span>Nhật ký Phân bổ & Đánh giá SLA Sự kiện</span>
-        </a>
-        <a class="nav-link" [class.active]="activeTab === 'pipeline'" (click)="switchTab('pipeline')" href="javascript:void(0)">
-          <i class="fa-solid fa-list-check"></i>
-          <span>Nhật ký Hoạt động Workflow Pipeline</span>
-        </a>
-      </nav>
-
-      <!-- TAB 1: BẢNG SỰ KIỆN SLA -->
-      <div *ngIf="activeTab === 'events'">
+      <!-- BẢNG SỰ KIỆN SLA DUY NHẤT -->
+      <div>
         <!-- Thanh lọc: Tìm kiếm + Dropdown Trạng thái -->
         <div class="filter-bar mb-3">
           <div class="filter-search-wrapper">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" class="form-control filter-input" placeholder="Tìm theo event_key, kr_id, nhân viên, lý do..." [(ngModel)]="searchQuery">
+            <input type="text" class="form-control filter-input" placeholder="Tìm theo mã sự kiện, KR, nhân viên, lý do..." [(ngModel)]="searchQuery">
             <button type="button" class="clear-search-btn" *ngIf="searchQuery" (click)="searchQuery=''" title="Xóa tìm kiếm">
               <i class="fa-solid fa-circle-xmark"></i>
             </button>
@@ -65,21 +53,21 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
               <div class="custom-select-option" [class.selected]="selectedStatus === 'on_time'" (click)="selectStatus('on_time')">
                 <span class="d-flex align-items-center gap-2">
                   <i class="fa-solid fa-circle-check text-emerald" style="width: 16px; text-align: center;"></i>
-                  <span>Đạt SLA (On Time)</span>
+                  <span>Đạt SLA</span>
                 </span>
                 <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'on_time'"></i>
               </div>
               <div class="custom-select-option" [class.selected]="selectedStatus === 'late'" (click)="selectStatus('late')">
                 <span class="d-flex align-items-center gap-2">
                   <i class="fa-solid fa-triangle-exclamation text-warning" style="width: 16px; text-align: center;"></i>
-                  <span>Trễ SLA (Over SLA)</span>
+                  <span>Trễ SLA</span>
                 </span>
                 <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'late'"></i>
               </div>
               <div class="custom-select-option" [class.selected]="selectedStatus === 'excluded'" (click)="selectStatus('excluded')">
                 <span class="d-flex align-items-center gap-2">
                   <i class="fa-solid fa-ban text-danger" style="width: 16px; text-align: center;"></i>
-                  <span>Bị loại trừ (Excluded)</span>
+                  <span>Bị loại trừ</span>
                 </span>
                 <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'excluded'"></i>
               </div>
@@ -92,13 +80,13 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
           <table class="table table-hover">
             <thead>
               <tr>
-                <th>Khóa Sự kiện (event_key)</th>
+                <th>Mã sự kiện</th>
                 <th>Áp dụng cho KR</th>
-                <th>Nhân viên (actor_id)</th>
-                <th class="text-center">Tính vào mẫu số?</th>
+                <th>Nhân viên</th>
+                <th class="text-center">Tính vào mẫu số</th>
                 <th class="text-center">Thời gian xử lý</th>
-                <th class="text-center">Đạt SLA?</th>
-                <th>Lý do ghi nhận / Loại trừ (Reason Audit)</th>
+                <th class="text-center">Đạt SLA</th>
+                <th>Lý do ghi nhận / Loại trừ</th>
                 <th>Thời điểm xử lý</th>
               </tr>
             </thead>
@@ -118,7 +106,7 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
                   <td><strong>{{ item.employee_name || item.gitlab_user_id }}</strong></td>
                   <td class="text-center">
                     <span class="badge" [ngClass]="item.included ? 'badge-success' : 'badge-danger'">
-                      {{ item.included ? 'Có (Included)' : 'Bỏ qua (Excluded)' }}
+                      {{ item.included ? 'Hợp lệ' : 'Bị loại trừ' }}
                     </span>
                   </td>
                   <td class="text-center"><strong>{{ item.duration_minutes }} phút</strong></td>
@@ -141,113 +129,7 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
         </div>
       </div>
 
-      <!-- TAB 2: BẢNG PIPELINE ENGINE -->
-      <div *ngIf="activeTab === 'pipeline'">
-        <!-- Thanh lọc: Tìm kiếm + Dropdown Trạng thái Pipeline -->
-        <div class="filter-bar mb-3">
-          <div class="filter-search-wrapper">
-            <i class="fa-solid fa-magnifying-glass search-icon"></i>
-            <input type="text" class="form-control filter-input" placeholder="Tìm theo mã lần chạy (run_id), lỗi..." [(ngModel)]="pipelineSearchQuery">
-            <button type="button" class="clear-search-btn" *ngIf="pipelineSearchQuery" (click)="pipelineSearchQuery=''" title="Xóa tìm kiếm">
-              <i class="fa-solid fa-circle-xmark"></i>
-            </button>
-          </div>
-
-          <div class="custom-select-wrapper">
-            <button type="button" class="custom-select-trigger" (click)="togglePipelineStatusDropdown($event)" [class.active]="isPipelineStatusDropdownOpen">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-filter text-emerald" style="width: 16px; text-align: center;"></i>
-                <span>{{ getSelectedPipelineStatusLabel() }}</span>
-              </span>
-              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isPipelineStatusDropdownOpen"></i>
-            </button>
-            <div class="custom-select-menu" *ngIf="isPipelineStatusDropdownOpen">
-              <div class="custom-select-option" [class.selected]="selectedPipelineStatus === 'all'" (click)="selectPipelineStatus('all')">
-                <span class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-layer-group text-muted" style="width: 16px; text-align: center;"></i>
-                  <span>Tất cả trạng thái</span>
-                </span>
-                <i class="fa-solid fa-check check-icon" *ngIf="selectedPipelineStatus === 'all'"></i>
-              </div>
-              <div class="custom-select-option" [class.selected]="selectedPipelineStatus === 'SUCCESS'" (click)="selectPipelineStatus('SUCCESS')">
-                <span class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-circle-check text-emerald" style="width: 16px; text-align: center;"></i>
-                  <span>SUCCESS (Thành công)</span>
-                </span>
-                <i class="fa-solid fa-check check-icon" *ngIf="selectedPipelineStatus === 'SUCCESS'"></i>
-              </div>
-              <div class="custom-select-option" [class.selected]="selectedPipelineStatus === 'DUPLICATE'" (click)="selectPipelineStatus('DUPLICATE')">
-                <span class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-copy text-warning" style="width: 16px; text-align: center;"></i>
-                  <span>DUPLICATE (Trùng lặp)</span>
-                </span>
-                <i class="fa-solid fa-check check-icon" *ngIf="selectedPipelineStatus === 'DUPLICATE'"></i>
-              </div>
-              <div class="custom-select-option" [class.selected]="selectedPipelineStatus === 'EXCLUDED'" (click)="selectPipelineStatus('EXCLUDED')">
-                <span class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-ban text-muted" style="width: 16px; text-align: center;"></i>
-                  <span>EXCLUDED (Loại trừ)</span>
-                </span>
-                <i class="fa-solid fa-check check-icon" *ngIf="selectedPipelineStatus === 'EXCLUDED'"></i>
-              </div>
-              <div class="custom-select-option" [class.selected]="selectedPipelineStatus === 'FAILED'" (click)="selectPipelineStatus('FAILED')">
-                <span class="d-flex align-items-center gap-2">
-                  <i class="fa-solid fa-circle-xmark text-danger" style="width: 16px; text-align: center;"></i>
-                  <span>FAILED (Thất bại)</span>
-                </span>
-                <i class="fa-solid fa-check check-icon" *ngIf="selectedPipelineStatus === 'FAILED'"></i>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Bảng dữ liệu: Processing Runs Log -->
-        <div class="table-container">
-          <table class="table table-hover">
-            <thead>
-              <tr>
-                <th>Mã Lần Chạy (run_id)</th>
-                <th>Thời điểm Bắt đầu</th>
-                <th>Thời điểm Kết thúc</th>
-                <th class="text-center">Trạng thái</th>
-                <th class="text-center">Số Input</th>
-                <th class="text-center">Số Output</th>
-                <th>Chi tiết / Thông báo lỗi</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr *ngIf="loading">
-                <td colspan="7" class="table-loading-cell">
-                  <div class="table-loading-content">
-                    <div class="loading-spinner-circle"></div>
-                    <span>Đang tải nhật ký pipeline...</span>
-                  </div>
-                </td>
-              </tr>
-              <ng-container *ngIf="!loading">
-                <tr *ngFor="let log of filteredProcessingLogs">
-                  <td><code>{{ log.run_id }}</code></td>
-                  <td>{{ formatDate(log.start_time) }}</td>
-                  <td>{{ formatDate(log.end_time) }}</td>
-                  <td class="text-center">
-                    <span class="badge" [ngClass]="log.status === 'SUCCESS' ? 'badge-success' : 'badge-warning'">
-                      {{ log.status }}
-                    </span>
-                  </td>
-                  <td class="text-center">{{ log.input_count }}</td>
-                  <td class="text-center">{{ log.output_count }}</td>
-                  <td><span class="error-msg">{{ log.error_message || 'Xử lý thành công không lỗi' }}</span></td>
-                </tr>
-                <tr *ngIf="filteredProcessingLogs.length === 0">
-                  <td colspan="7" class="text-center text-muted py-4">
-                    {{ pipelineSearchQuery || selectedPipelineStatus !== 'all' ? 'Không tìm thấy nhật ký pipeline nào phù hợp bộ lọc.' : 'Chưa có nhật ký pipeline nào.' }}
-                  </td>
-                </tr>
-              </ng-container>
-            </tbody>
-          </table>
-        </div>
-      </div>
+      
 
       <!-- Detail Modal -->
       <div class="modal-overlay" *ngIf="selectedAssignment">
@@ -257,12 +139,12 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
             <button class="close-btn" (click)="selectedAssignment = null" type="button" aria-label="Đóng"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <div class="detail-grid">
-            <div class="detail-item"><strong>Event Key:</strong> <code>{{ selectedAssignment.event_key }}</code></div>
-            <div class="detail-item"><strong>Key Result:</strong> {{ selectedAssignment.kr_id }} - {{ selectedAssignment.kr_title }}</div>
+            <div class="detail-item"><strong>Mã sự kiện:</strong> <code>{{ selectedAssignment.event_key }}</code></div>
+            <div class="detail-item"><strong>Kết quả then chốt (KR):</strong> {{ selectedAssignment.kr_id }} - {{ selectedAssignment.kr_title }}</div>
             <div class="detail-item"><strong>Nhân viên:</strong> {{ selectedAssignment.employee_name }} ({{ selectedAssignment.gitlab_user_id }})</div>
-            <div class="detail-item"><strong>Dự án:</strong> {{ selectedAssignment.project_code }} (Kind: {{ selectedAssignment.object_kind }})</div>
+            <div class="detail-item"><strong>Dự án:</strong> {{ selectedAssignment.project_code }} (Loại sự kiện: {{ selectedAssignment.object_kind }})</div>
             <div class="detail-item"><strong>Thời gian xử lý:</strong> {{ selectedAssignment.duration_minutes }} phút</div>
-            <div class="detail-item"><strong>Lý do giải trình:</strong> <p class="reason-quote">{{ selectedAssignment.reason }}</p></div>
+            <div class="detail-item"><strong>Lý do ghi nhận / loại trừ:</strong> <p class="reason-quote">{{ selectedAssignment.reason }}</p></div>
           </div>
           <div class="d-flex justify-end mt-4">
             <button class="btn btn-secondary" (click)="selectedAssignment = null">Đóng</button>
@@ -304,7 +186,7 @@ export class AuditLogComponent implements OnInit {
   assignments: AuditAssignment[] = [];
   processingLogs: any[] = [];
   selectedAssignment: AuditAssignment | null = null;
-  loading = false;
+  loading = true;
 
   // Filter cho Tab Sự kiện SLA
   searchQuery = '';
@@ -383,9 +265,9 @@ export class AuditLogComponent implements OnInit {
 
   getSelectedStatusLabel(): string {
     switch (this.selectedStatus) {
-      case 'on_time': return 'Đạt SLA (On Time)';
-      case 'late': return 'Trễ SLA (Over SLA)';
-      case 'excluded': return 'Bị loại trừ (Excluded)';
+      case 'on_time': return 'Đạt SLA';
+      case 'late': return 'Trễ SLA';
+      case 'excluded': return 'Bị loại trừ';
       default: return 'Tất cả trạng thái';
     }
   }

@@ -35,15 +35,15 @@ app.get('/api/employees', async (req, res) => {
 
 app.post('/api/employees', async (req, res) => {
   try {
-    const { employee_id, display_code, full_name, team_id, gitlab_user_id } = req.body;
-    if (!employee_id || !display_code || !full_name || !team_id || !gitlab_user_id) {
+    const { employee_id, display_code, full_name, team_id, gitlab_user_id, email, role } = req.body;
+    if (!employee_id || !full_name || !team_id || !gitlab_user_id) {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     await run(
-      'INSERT INTO Employees (employee_id, display_code, full_name, team_id, gitlab_user_id, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
-      [employee_id, display_code, full_name, team_id, gitlab_user_id, 'active']
+      'INSERT INTO Employees (employee_id, display_code, full_name, team_id, gitlab_user_id, email, role, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)',
+      [employee_id, display_code || role || 'DEV', full_name, team_id, gitlab_user_id, email || '', role || '', 'active']
     );
-    res.status(201).json({ message: 'Employee created successfully' });
+    res.status(201).json({ success: true, message: 'Employee created successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -58,6 +58,45 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
       return res.status(400).json({ error: 'Payload empty or invalid JSON' });
     }
 
+    // Direct KR update by kr_id
+    if (payload.kr_id && payload.current_value !== undefined) {
+      const updated = await recalculateOkrProgress(payload.kr_id, payload.current_value, payload);
+      return res.status(200).json({
+        success: true,
+        message: `Updated KR ${payload.kr_id} to ${payload.current_value}`,
+        updated
+      });
+    }
+
+    // Individual KR update from Activepieces Loop Piece
+    if (payload.event_type === 'individual_kr_update' && payload.employee_id) {
+      let targetKr = null;
+      if (payload.kr_title) {
+        targetKr = await get(
+          'SELECT * FROM KeyResults WHERE assignee_id = ? AND title LIKE ? LIMIT 1',
+          [payload.employee_id, `%${payload.kr_title}%`]
+        );
+      }
+      if (!targetKr) {
+        targetKr = await get(
+          'SELECT * FROM KeyResults WHERE assignee_id = ? AND parent_kr_id IS NOT NULL LIMIT 1',
+          [payload.employee_id]
+        );
+      }
+      if (targetKr) {
+        const updated = await recalculateOkrProgress(targetKr.kr_id, payload.current_value, {
+          numerator: payload.numerator,
+          denominator: payload.denominator,
+          actor_id: payload.employee_id
+        });
+        return res.status(200).json({
+          success: true,
+          message: `Updated KR ${targetKr.kr_id} for employee ${payload.employee_id}`,
+          updated
+        });
+      }
+    }
+
     const result = await processGitLabEvent(payload);
     return res.status(200).json({
       success: true,
@@ -70,11 +109,80 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
   }
 });
 
-// 2. Objectives Endpoint (with progress calculation)
+// Helper to resolve timeline IDs and its children for hierarchical filtering
+async function getTimelineFilterIds(targetTlId) {
+  if (!targetTlId || targetTlId === 'all') return null;
+
+  let effectiveId = String(targetTlId).trim();
+  // Find timeline by id or title
+  const found = await get('SELECT id, parent_id, level FROM Timelines WHERE id = ? OR id = ? OR title = ?', [effectiveId, `TL-${effectiveId}`, effectiveId]);
+  if (found) {
+    effectiveId = found.id;
+  }
+
+  const descendants = [effectiveId];
+  // Check direct children
+  const children = await all('SELECT id FROM Timelines WHERE parent_id = ?', [effectiveId]);
+  if (children && children.length > 0) {
+    const childIds = children.map(c => c.id);
+    descendants.push(...childIds);
+    // Check grandchildren (e.g. Year -> Quarter -> Month)
+    for (const cid of childIds) {
+      const grandChildren = await all('SELECT id FROM Timelines WHERE parent_id = ?', [cid]);
+      if (grandChildren && grandChildren.length > 0) {
+        descendants.push(...grandChildren.map(g => g.id));
+      }
+    }
+  }
+
+  // Also include versions without 'TL-' prefix to handle legacy/shorthand formats (e.g. 'M8-2026' vs 'TL-M8-2026')
+  const finalSet = new Set();
+  descendants.forEach(id => {
+    finalSet.add(id);
+    if (id.startsWith('TL-')) {
+      finalSet.add(id.replace(/^TL-/, ''));
+    } else {
+      finalSet.add(`TL-${id}`);
+    }
+  });
+
+  return Array.from(finalSet);
+}
+
+// 2. Objectives Endpoint (with progress calculation & space + timeline filtering)
 app.get('/api/objectives', async (req, res) => {
   try {
-    const objectives = await all('SELECT * FROM Objectives');
-    const keyResults = await all('SELECT * FROM KeyResults');
+    const { space_id, workspace_id, timeline_id } = req.query;
+    const targetSpace = space_id || workspace_id;
+
+    let objectives;
+    const baseQuery = `
+      SELECT o.*, e.full_name as assignee_name, e.display_code as assignee_code, t.name as team_name 
+      FROM Objectives o 
+      LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
+      LEFT JOIN Teams t ON e.team_id = t.id
+    `;
+    const whereClauses = [];
+    const queryParams = [];
+
+    if (targetSpace && targetSpace !== 'all') {
+      whereClauses.push('o.space_id = ?');
+      queryParams.push(targetSpace);
+    }
+
+    const tlIds = await getTimelineFilterIds(timeline_id);
+    if (tlIds && tlIds.length > 0) {
+      const placeholders = tlIds.map(() => '?').join(', ');
+      whereClauses.push(`o.timeline_id IN (${placeholders})`);
+      queryParams.push(...tlIds);
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    objectives = await all(`${baseQuery} ${whereSql} ORDER BY o.objective_id ASC`, queryParams);
+
+    const allKeyResults = await all('SELECT * FROM KeyResults');
+    const objIds = new Set(objectives.map(o => o.objective_id));
+    const keyResults = allKeyResults.filter(kr => objIds.has(kr.objective_id));
     
     // Attach KeyResults to Objectives
     const tree = objectives.map(obj => {
@@ -91,49 +199,88 @@ app.get('/api/objectives', async (req, res) => {
   }
 });
 
-// Endpoint: OKR Tree Structure for TreeTable
+// Endpoint: OKR Tree Structure for TreeTable (Filtered by space_id and timeline_id)
 app.get('/api/okr-tree', async (req, res) => {
   try {
-    const objectives = await all('SELECT * FROM Objectives');
-    const keyResults = await all('SELECT * FROM KeyResults');
+    const { space_id, workspace_id, timeline_id } = req.query;
+    const targetSpace = space_id || workspace_id;
+
+    let objectives;
+    const baseQuery = `
+      SELECT o.*, e.full_name as assignee_name, e.display_code as assignee_code, t.name as team_name 
+      FROM Objectives o 
+      LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
+      LEFT JOIN Teams t ON e.team_id = t.id
+    `;
+    const whereClauses = [];
+    const queryParams = [];
+
+    if (targetSpace && targetSpace !== 'all') {
+      whereClauses.push('o.space_id = ?');
+      queryParams.push(targetSpace);
+    }
+
+    const tlIds = await getTimelineFilterIds(timeline_id);
+    if (tlIds && tlIds.length > 0) {
+      const placeholders = tlIds.map(() => '?').join(', ');
+      whereClauses.push(`o.timeline_id IN (${placeholders})`);
+      queryParams.push(...tlIds);
+    }
+
+    const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    objectives = await all(`${baseQuery} ${whereSql} ORDER BY o.objective_id ASC`, queryParams);
+
+    const allKeyResults = await all('SELECT * FROM KeyResults');
+    const objIds = new Set(objectives.map(o => o.objective_id));
+    const keyResults = allKeyResults.filter(kr => objIds.has(kr.objective_id));
+
     const employees = await all('SELECT * FROM Employees');
+    const allTeams = await all('SELECT * FROM Teams');
     const rules = await all('SELECT * FROM MeasurementRules');
 
     // Transform KeyResult to TreeNode
-    const mapKrToNode = (kr, parentLevel) => {
+    const mapKrToNode = (kr, parentLevel, parentTl) => {
       let progress = 0;
       if (kr.direction === 'increase') {
-        progress = ((kr.current_value - kr.start_value) / (kr.expected_value - kr.start_value)) * 100;
+        const span = kr.expected_value - kr.start_value;
+        progress = span !== 0 ? ((kr.current_value - kr.start_value) / span) * 100 : 100;
       } else {
-        progress = ((kr.start_value - kr.current_value) / (kr.start_value - kr.expected_value)) * 100;
+        const span = kr.start_value - kr.expected_value;
+        progress = span !== 0 ? ((kr.start_value - kr.current_value) / span) * 100 : 100;
       }
       progress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
 
       const rule = rules.find(r => r.kr_id === kr.kr_id);
-      const isInd = parentLevel === 'individual' || parentLevel === 'PERSONAL';
+      const isInd = parentLevel === 'individual' || parentLevel === 'PERSONAL' || !!kr.parent_kr_id || !!kr.assignee_id;
       const type = isInd ? 'ind_kr' : 'team_kr';
 
       let assignTo = 'Nhóm Kỹ Thuật';
       let assignToAvatar = undefined;
-      if (kr.kr_id === 'KR-MR-SLA') {
-        assignTo = 'Trần Thị Bình (sarah.reviewer)';
-        assignToAvatar = 'https://ui-avatars.com/api/?name=Tran+Thi+Binh&background=3157D5&color=fff';
-      } else if (kr.kr_id === 'KR-ISSUE-SLA') {
-        assignTo = 'Lê Hoàng Cường (john.coder)';
-        assignToAvatar = 'https://ui-avatars.com/api/?name=Le+Hoang+Cuong&background=10b981&color=fff';
-      } else if (kr.kr_id === 'KR-BUG-SLA') {
-        assignTo = 'Nguyễn Văn Anh (alex.dev)';
-        assignToAvatar = 'https://ui-avatars.com/api/?name=Nguyen+Van+Anh&background=f59e0b&color=fff';
+      if (kr.assignee_id) {
+        const emp = employees.find(e => e.employee_id === kr.assignee_id || e.full_name === kr.assignee_id);
+        const tm = allTeams.find(t => t.id === kr.assignee_id || t.code === kr.assignee_id || t.name === kr.assignee_id);
+        if (emp) {
+          assignTo = emp.full_name;
+          assignToAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
+        } else if (tm) {
+          assignTo = tm.name;
+        } else {
+          assignTo = kr.assignee_id;
+        }
       }
 
       const risk = progress < 50 ? 'danger' : (progress < 75 ? 'warning' : 'none');
+
+      // Recursively map child KRs
+      const childKrs = keyResults.filter(k => k.parent_kr_id === kr.kr_id);
+      const childKrNodes = childKrs.map(cKr => mapKrToNode(cKr, 'individual', parentTl));
 
       return {
         id: kr.kr_id,
         title: kr.title,
         type,
         progress,
-        expanded: false,
+        expanded: true,
         assignTo,
         assignToAvatar,
         metricName: kr.metric_id || 'GitLab SLA',
@@ -143,8 +290,8 @@ app.get('/api/okr-tree', async (req, res) => {
         resultC: String(kr.current_value),
         resultE: String(kr.expected_value),
         risk,
-        tl: 'Q3-2026',
-        children: []
+        tl: parentTl || 'TL-M10-2026',
+        children: childKrNodes
       };
     };
 
@@ -157,17 +304,22 @@ app.get('/api/okr-tree', async (req, res) => {
       const progress = parseFloat((obj.progress || 0).toFixed(1));
       const risk = progress < 50 ? 'danger' : (progress < 75 ? 'warning' : 'none');
 
-      // Direct child KRs
-      const myKrs = keyResults.filter(kr => kr.objective_id === obj.objective_id);
-      const krNodes = myKrs.map(kr => mapKrToNode(kr, obj.level));
+      // Direct child KRs (only top-level KRs of this objective, NOT nested individual KRs)
+      const myKrs = keyResults.filter(kr => kr.objective_id === obj.objective_id && !kr.parent_kr_id);
+      const krNodes = myKrs.map(kr => mapKrToNode(kr, obj.level, obj.timeline_id));
 
       // Direct child Objectives
       const childObjs = objectives.filter(o => o.parent_id === obj.objective_id);
       const childObjNodes = childObjs.map(mapObjToNode);
 
       let assignTo = 'Toàn Công Ty';
-      if (isTeam) assignTo = 'BE-Team';
-      else if (!isCompany) assignTo = 'Cá nhân';
+      if (isTeam) {
+        const tm = allTeams.find(t => t.id === obj.assignee_id || t.code === obj.assignee_id);
+        assignTo = tm ? (tm.name || tm.code) : (obj.assignee_id || 'Nhóm Kỹ Thuật');
+      } else if (!isCompany) {
+        const emp = employees.find(e => e.employee_id === obj.assignee_id);
+        assignTo = emp ? emp.full_name : 'Cá nhân';
+      }
 
       return {
         id: obj.objective_id,
@@ -207,24 +359,44 @@ app.get('/api/objectives/:id', async (req, res) => {
       return res.status(404).json({ error: 'Objective not found' });
     }
 
-    // Parent Objective
-    if (objective.parent_id) {
+    // Parent Objective & Ancestor Chain (from root down to direct parent)
+    const ancestors = [];
+    let currParentId = objective.parent_id;
+    const visited = new Set();
+    while (currParentId && !visited.has(currParentId)) {
+      visited.add(currParentId);
       const parentObj = await get(`
-        SELECT o.*, e.full_name as assignee_name 
+        SELECT o.*, 
+          CASE 
+            WHEN UPPER(o.level) = 'COMPANY' THEN 'Toàn Công Ty'
+            WHEN UPPER(o.level) = 'TEAM' THEN COALESCE(t.name, t.code, o.assignee_id, 'Toàn nhóm')
+            ELSE COALESCE(e.full_name, o.assignee_id, 'Chưa phân công')
+          END as assignee_name 
         FROM Objectives o 
         LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
+        LEFT JOIN Teams t ON (o.assignee_id = t.id OR o.assignee_id = t.code)
         WHERE o.objective_id = $1
-      `, [objective.parent_id]);
-      objective.parent = parentObj || null;
-    } else {
-      objective.parent = null;
+      `, [currParentId]);
+      if (!parentObj) break;
+      ancestors.unshift(parentObj);
+      currParentId = parentObj.parent_id;
     }
+    objective.ancestors = ancestors;
+    objective.parent = ancestors.length > 0 ? ancestors[ancestors.length - 1] : null;
 
     // Child Objectives
     const childObjectives = await all(`
-      SELECT o.*, e.full_name as assignee_name 
+      SELECT o.*, 
+        CASE 
+          WHEN UPPER(o.level) = 'COMPANY' THEN 'Toàn Công Ty'
+          WHEN UPPER(o.level) = 'TEAM' THEN COALESCE(t.name, t.code, o.assignee_id, 'Toàn nhóm')
+          ELSE COALESCE(e.full_name, o.assignee_id, 'Chưa phân công')
+        END as assignee_name,
+        t.name as team_name,
+        t.code as team_code
       FROM Objectives o 
       LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
+      LEFT JOIN Teams t ON (o.assignee_id = t.id OR o.assignee_id = t.code)
       WHERE o.parent_id = $1
       ORDER BY o.objective_id ASC
     `, [id]);
@@ -241,7 +413,15 @@ app.get('/api/objectives/:id', async (req, res) => {
     objective.key_results = keyResults || [];
 
     // Assignee details
-    if (objective.assignee_id) {
+    if (objective.level && objective.level.toUpperCase() === 'COMPANY') {
+      objective.assignee_id = null;
+      objective.assignee_name = null;
+      objective.assignee_code = null;
+    } else if (objective.level && objective.level.toUpperCase() === 'TEAM') {
+      const tm = await get('SELECT name, code FROM Teams WHERE id = $1 OR code = $1', [objective.assignee_id]);
+      objective.assignee_name = tm ? (tm.name || tm.code) : (objective.assignee_id || 'Toàn nhóm');
+      objective.assignee_code = tm ? tm.code : objective.assignee_id;
+    } else if (objective.assignee_id) {
       const emp = await get('SELECT full_name, display_code, gitlab_user_id FROM Employees WHERE employee_id = $1', [objective.assignee_id]);
       if (emp) {
         objective.assignee_name = emp.full_name;
@@ -266,11 +446,42 @@ app.get('/api/objectives/:id', async (req, res) => {
 
 app.post('/api/objectives', async (req, res) => {
   try {
-    const { objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value } = req.body;
+    const { 
+      objective_id, 
+      parent_id, 
+      level, 
+      title, 
+      timeline_id, 
+      progress, 
+      description, 
+      assignee_id, 
+      metric_id, 
+      category, 
+      start_value, 
+      expected_value,
+      space_id 
+    } = req.body;
+
+    let assignedSpaceId = space_id;
+    if (!assignedSpaceId) {
+      if (parent_id) {
+        const parent = await get('SELECT space_id FROM Objectives WHERE objective_id = ?', [parent_id]);
+        if (parent && parent.space_id) assignedSpaceId = parent.space_id;
+      }
+      if (!assignedSpaceId && timeline_id) {
+        const tl = await get('SELECT workspace_id FROM Timelines WHERE id = ?', [timeline_id]);
+        if (tl && tl.workspace_id) assignedSpaceId = tl.workspace_id;
+      }
+      if (!assignedSpaceId) {
+        const firstSpace = await get('SELECT id FROM Spaces ORDER BY created_at ASC LIMIT 1');
+        if (firstSpace) assignedSpaceId = firstSpace.id;
+      }
+    }
+
     await run(
       `INSERT INTO Objectives 
-       (objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+       (objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value, space_id) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
       [
         objective_id || `OBJ-${Math.floor(Math.random()*10000)}`, 
         parent_id || null, 
@@ -283,10 +494,11 @@ app.post('/api/objectives', async (req, res) => {
         metric_id || null, 
         category || 'Objective', 
         start_value || 0, 
-        expected_value || 100
+        expected_value || 100,
+        assignedSpaceId || null
       ]
     );
-    res.status(201).json({ success: true, message: 'Created successfully' });
+    res.status(201).json({ success: true, message: 'Created successfully', space_id: assignedSpaceId });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -296,15 +508,17 @@ app.post('/api/objectives', async (req, res) => {
 app.post('/api/objectives/:id/clone', async (req, res) => {
   try {
     const { id } = req.params;
+    const { assignee_id } = req.body || {};
 
     // Check if it's an Objective
     const objective = await get('SELECT * FROM Objectives WHERE objective_id = ?', [id]);
     if (objective) {
       const newObjId = `OBJ-${Date.now().toString().slice(-6)}`;
       const newTitle = `${objective.title} (Bản sao)`;
+      const finalAssigneeId = assignee_id !== undefined ? assignee_id : objective.assignee_id;
       await run(
-        `INSERT INTO Objectives (objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO Objectives (objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value, space_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           newObjId,
           objective.parent_id,
@@ -313,11 +527,12 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
           objective.timeline_id,
           0,
           objective.description,
-          objective.assignee_id,
+          finalAssigneeId,
           objective.metric_id,
           objective.category,
           objective.start_value,
-          objective.expected_value
+          objective.expected_value,
+          objective.space_id
         ]
       );
 
@@ -327,8 +542,8 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
         const kr = krs[i];
         const newKrId = `KR-${Date.now().toString().slice(-5)}-${i + 1}`;
         await run(
-          `INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
             newKrId,
             newObjId,
@@ -338,7 +553,9 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
             kr.expected_value,
             kr.start_value,
             kr.direction,
-            kr.unit
+            kr.unit,
+            objective.space_id,
+            kr.assignee_id || null
           ]
         );
       }
@@ -349,11 +566,13 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
     // Check if it's a KeyResult
     const kr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [id]);
     if (kr) {
+      const parentObj = await get('SELECT space_id FROM Objectives WHERE objective_id = ?', [kr.objective_id]);
       const newKrId = `KR-${Date.now().toString().slice(-6)}`;
       const newTitle = `${kr.title} (Bản sao)`;
+      const finalAssigneeId = assignee_id !== undefined ? assignee_id : (kr.assignee_id || null);
       await run(
-        `INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           newKrId,
           kr.objective_id,
@@ -363,7 +582,9 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
           kr.expected_value,
           kr.start_value,
           kr.direction,
-          kr.unit
+          kr.unit,
+          parentObj ? parentObj.space_id : null,
+          finalAssigneeId
         ]
       );
       return res.json({ success: true, new_id: newKrId, message: 'Nhân bản Key Result thành công!' });
@@ -375,24 +596,106 @@ app.post('/api/objectives/:id/clone', async (req, res) => {
   }
 });
 
+// Assign Objective template to OKR Tree with a specific assignee
+app.post('/api/objectives/:id/assign-to-tree', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { assignee_id, title } = req.body || {};
+
+    const template = await get('SELECT * FROM Objectives WHERE objective_id = ?', [id]);
+    if (!template) {
+      return res.status(404).json({ error: 'Không tìm thấy Objective gốc' });
+    }
+
+    const newObjId = `OBJ-${Date.now().toString().slice(-6)}`;
+    const finalTitle = title && title.trim() ? title.trim() : template.title;
+
+    await run(
+      `INSERT INTO Objectives (objective_id, parent_id, level, title, timeline_id, progress, description, assignee_id, metric_id, category, start_value, expected_value, space_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        newObjId,
+        template.parent_id,
+        template.level,
+        finalTitle,
+        template.timeline_id,
+        0,
+        template.description,
+        assignee_id || null,
+        template.metric_id,
+        template.category,
+        template.start_value,
+        template.expected_value,
+        template.space_id
+      ]
+    );
+
+    // Copy child Key Results associated with this Objective
+    const krs = await all('SELECT * FROM KeyResults WHERE objective_id = ?', [id]);
+    for (let i = 0; i < krs.length; i++) {
+      const kr = krs[i];
+      const newKrId = `KR-${Date.now().toString().slice(-5)}-${i + 1}`;
+      const krAssignee = (template.level === 'PERSONAL' || template.level === 'INDIVIDUAL')
+        ? (assignee_id || kr.assignee_id || null)
+        : (kr.assignee_id || null);
+
+      await run(
+        `INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          newKrId,
+          newObjId,
+          kr.metric_id,
+          kr.title,
+          kr.start_value,
+          kr.expected_value,
+          kr.start_value,
+          kr.direction,
+          kr.unit,
+          template.space_id,
+          krAssignee
+        ]
+      );
+    }
+
+    return res.json({
+      success: true,
+      new_id: newObjId,
+      message: 'Đã thêm Mục tiêu vào OKR Tree thành công!'
+    });
+  } catch (error) {
+    console.error('Error assigning objective to tree:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.put('/api/objectives/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, level, timeline_id, assignee_id, metric_id, category, start_value, expected_value, progress } = req.body;
+    const { title, description, level, timeline_id, assignee_id, metric_id, category, start_value, expected_value, progress, space_id } = req.body;
+    
+    // Check existing objective level
+    const existing = await get('SELECT level FROM Objectives WHERE objective_id = $1', [id]);
+    const isCompany = (level && level.toUpperCase() === 'COMPANY') || (existing && existing.level && existing.level.toUpperCase() === 'COMPANY');
+    
+    const finalLevel = (existing && existing.level && existing.level.toUpperCase() === 'COMPANY') ? existing.level : (level || existing?.level);
+    const finalAssigneeId = isCompany ? null : (assignee_id !== undefined ? assignee_id : null);
+
     await run(
       `UPDATE Objectives SET 
         title = COALESCE($1, title),
         description = COALESCE($2, description),
         level = COALESCE($3, level),
         timeline_id = COALESCE($4, timeline_id),
-        assignee_id = COALESCE($5, assignee_id),
+        assignee_id = $5,
         metric_id = COALESCE($6, metric_id),
         category = COALESCE($7, category),
         start_value = COALESCE($8, start_value),
         expected_value = COALESCE($9, expected_value),
-        progress = COALESCE($10, progress)
-       WHERE objective_id = $11`,
-      [title, description, level, timeline_id, assignee_id, metric_id, category, start_value, expected_value, progress, id]
+        progress = COALESCE($10, progress),
+        space_id = COALESCE($11, space_id)
+       WHERE objective_id = $12`,
+      [title, description, finalLevel, timeline_id, finalAssigneeId, metric_id, category, start_value, expected_value, progress, space_id, id]
     );
     res.json({ success: true, message: 'Updated successfully' });
   } catch (error) {
@@ -430,51 +733,589 @@ app.get('/api/key-results', async (req, res) => {
   }
 });
 
-// 4. Measurement Rules Endpoint
-app.get('/api/rules', async (req, res) => {
+// ==========================================
+// 4. MEASUREMENT RULES, WORKING CALENDAR & ACTIVEPIECES SYNC
+// ==========================================
+
+// Helper: Recalculate OKR progress from KR up to Company Objective
+async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
+  const kr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [krId]);
+  if (!kr) throw new Error(`KeyResult with id ${krId} not found`);
+
+  const val = parseFloat(newCurrentValue);
+  let progress = 0;
+  if (kr.direction === 'increase') {
+    progress = ((val - kr.start_value) / (kr.expected_value - kr.start_value)) * 100;
+  } else {
+    progress = ((kr.start_value - val) / (kr.start_value - kr.expected_value)) * 100;
+  }
+  const clampedProgress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
+
+  // Update KeyResult
+  await run('UPDATE KeyResults SET current_value = ? WHERE kr_id = ?', [val, krId]);
+
+  // If this KR has a parent_kr_id, recalculate parent KR
+  if (kr.parent_kr_id) {
+    const siblingChildKrs = await all('SELECT * FROM KeyResults WHERE parent_kr_id = ?', [kr.parent_kr_id]);
+    if (siblingChildKrs.length > 0) {
+      let sumCurrent = 0;
+      for (const k of siblingChildKrs) {
+        const cur = (k.kr_id === krId) ? val : k.current_value;
+        sumCurrent += cur;
+      }
+      const avgCurrent = parseFloat((sumCurrent / siblingChildKrs.length).toFixed(1));
+      await run('UPDATE KeyResults SET current_value = ? WHERE kr_id = ?', [avgCurrent, kr.parent_kr_id]);
+    }
+  }
+
+  // Recalculate Parent Objective
+  let avgObjProgress = clampedProgress;
+  const parentObj = await get('SELECT * FROM Objectives WHERE objective_id = ?', [kr.objective_id]);
+  if (parentObj) {
+    const rootKrs = await all('SELECT * FROM KeyResults WHERE objective_id = ? AND parent_kr_id IS NULL', [kr.objective_id]);
+    const evalKrs = rootKrs.length > 0 ? rootKrs : await all('SELECT * FROM KeyResults WHERE objective_id = ?', [kr.objective_id]);
+    if (evalKrs.length > 0) {
+      let totalP = 0;
+      for (const k of evalKrs) {
+        const cur = (k.kr_id === krId) ? val : k.current_value;
+        let p = 0;
+        if (k.direction === 'increase') {
+          const span = k.expected_value - k.start_value;
+          p = span !== 0 ? ((cur - k.start_value) / span) * 100 : 100;
+        } else {
+          const span = k.start_value - k.expected_value;
+          p = span !== 0 ? ((k.start_value - cur) / span) * 100 : 100;
+        }
+        totalP += Math.min(100, Math.max(0, p));
+      }
+      avgObjProgress = parseFloat((totalP / evalKrs.length).toFixed(1));
+    }
+    await run(
+      'UPDATE Objectives SET progress = ? WHERE objective_id = ?',
+      [avgObjProgress, kr.objective_id]
+    );
+  }
+
+  // Recalculate Grandparent Objective (Company Objective)
+  let avgCompanyProgress = null;
+  let companyObjId = null;
+  if (parentObj && parentObj.parent_id) {
+    companyObjId = parentObj.parent_id;
+    const siblingObjectives = await all('SELECT * FROM Objectives WHERE parent_id = ?', [companyObjId]);
+    if (siblingObjectives.length > 0) {
+      let totalObjP = 0;
+      for (const obj of siblingObjectives) {
+        const p = (obj.objective_id === kr.objective_id) ? avgObjProgress : (obj.progress || 0);
+        totalObjP += Math.min(100, Math.max(0, p));
+      }
+      avgCompanyProgress = parseFloat((totalObjP / siblingObjectives.length).toFixed(1));
+      await run(
+        'UPDATE Objectives SET progress = ? WHERE objective_id = ?',
+        [avgCompanyProgress, companyObjId]
+      );
+    }
+  }
+
+  // Record MetricResults history
+  const period = options.period || 'Q3-2026';
+  const numerator = options.numerator !== undefined ? options.numerator : Math.round(val);
+  const denominator = options.denominator !== undefined ? options.denominator : 100;
+  await run(
+    `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, calculated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'activepieces_synced', CURRENT_TIMESTAMP)`,
+    [krId, period, numerator, denominator, val, clampedProgress]
+  );
+
+  // Traceability: Log event assignment if event_key is provided
+  if (options.event_key) {
+    const rawActor = options.actor_id || 'activepieces.bot';
+    let employeeId = rawActor;
+    const emp = await get('SELECT employee_id FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR gitlab_user_id LIKE ?', [rawActor, rawActor, `%${rawActor}%`]);
+    if (emp) {
+      employeeId = emp.employee_id;
+    }
+
+    const reason = options.reason || `Giá trị đo lường cập nhật tự động từ Activepieces Flow: ${val}${kr.unit || '%'}`;
+    const duration = options.duration_minutes || 60;
+    const onTime = options.on_time !== undefined ? (options.on_time ? 1 : 0) : 1;
+
+    const evt = await get('SELECT * FROM GitLabEvents WHERE event_key = ?', [options.event_key]);
+    if (!evt) {
+      await run(`
+        INSERT INTO GitLabEvents (event_key, project_code, object_kind, object_id, action, actor_id, event_time, payload_hash, raw_payload, processing_status)
+        VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
+      `, [
+        options.event_key,
+        options.project_code || 'gitlab/core-engine',
+        'merge_request',
+        Math.floor(Math.random() * 900000) + 100000,
+        'approved',
+        rawActor,
+        'ap_sync_hash',
+        JSON.stringify(options),
+        'success'
+      ]);
+    }
+
+    await run(`
+      INSERT INTO EventAssignments (event_key, kr_id, employee_id, included, reason, duration_minutes, on_time)
+      VALUES (?, ?, ?, 1, ?, ?, ?)
+    `, [options.event_key, krId, employeeId, reason, duration, onTime]);
+  }
+
+  return {
+    key_result: {
+      kr_id: krId,
+      title: kr.title,
+      previous_value: kr.current_value,
+      new_current_value: val,
+      unit: kr.unit,
+      progress: clampedProgress
+    },
+    parent_objective: {
+      objective_id: kr.objective_id,
+      title: parentObj ? parentObj.title : null,
+      progress: avgObjProgress
+    },
+    company_objective: companyObjId ? {
+      objective_id: companyObjId,
+      progress: avgCompanyProgress
+    } : null
+  };
+}
+
+// 4.1. Measurement Rules Endpoints
+app.get(['/api/measurement-rules', '/api/rules'], async (req, res) => {
   try {
-    const rules = await all(`
-      SELECT r.*, kr.title as kr_title 
-      FROM MeasurementRules r 
-      JOIN KeyResults kr ON r.kr_id = kr.kr_id
-    `);
-    res.json(rules);
+    const { objective_id, kr_id } = req.query;
+    let query = `
+      SELECT r.*, 
+             kr.title as kr_title, kr.start_value, kr.expected_value, kr.current_value as kr_current_value, kr.unit as kr_unit, kr.direction as kr_direction,
+             o.title as objective_title, o.level as objective_level, o.progress as objective_progress, o.space_id as objective_space_id
+      FROM MeasurementRules r
+      LEFT JOIN KeyResults kr ON r.kr_id = kr.kr_id
+      LEFT JOIN Objectives o ON (r.objective_id = o.objective_id OR kr.objective_id = o.objective_id)
+      WHERE 1=1
+    `;
+    const params = [];
+    if (objective_id) {
+      query += ` AND (r.objective_id = ? OR kr.objective_id = ?)`;
+      params.push(objective_id, objective_id);
+    }
+    if (kr_id) {
+      query += ` AND r.kr_id = ?`;
+      params.push(kr_id);
+    }
+    query += ` ORDER BY r.rule_id ASC`;
+
+    const rules = await all(query, params);
+    const mapped = rules.map(r => ({
+      rule_id: r.rule_id,
+      kr_id: r.kr_id,
+      krId: r.kr_id,
+      objective_id: r.objective_id,
+      objectiveId: r.objective_id,
+      flow_code: r.flow_code || `FLOW-${r.objective_id || r.kr_id}`,
+      flowCode: r.flow_code || `FLOW-${r.objective_id || r.kr_id}`,
+      flow_name: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
+      flowName: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
+      flow_url: r.flow_url || `https://cloud.activepieces.com/flows/${(r.flow_code || r.objective_id || '').toLowerCase()}`,
+      flowUrl: r.flow_url || `https://cloud.activepieces.com/flows/${(r.flow_code || r.objective_id || '').toLowerCase()}`,
+      event_type: r.event_type,
+      start_event: r.start_event,
+      startTrigger: r.start_event,
+      end_event: r.end_event,
+      endTrigger: r.end_event,
+      sla_value: r.sla_value,
+      slaHours: r.sla_value,
+      threshold_percent: r.threshold_percent || 90,
+      thresholdPercent: r.threshold_percent || 90,
+      formula: r.formula,
+      businessLogicNote: r.formula,
+      filters: r.filters,
+      filterCriteria: r.filters,
+      overtime_handling: r.overtime_handling,
+      overtimeHandling: r.overtime_handling,
+      lunch_break_rule: r.lunch_break_rule,
+      lunchBreakRule: r.lunch_break_rule,
+      weekend_holiday_rule: r.weekend_holiday_rule,
+      weekendHolidayRule: r.weekend_holiday_rule,
+      version: r.version,
+      updated_at: r.updated_at,
+      kr_title: r.kr_title,
+      objective_title: r.objective_title,
+      objective_progress: r.objective_progress,
+      kr_current_value: r.kr_current_value,
+      kr_unit: r.kr_unit
+    }));
+    res.json(mapped);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
 
-app.post('/api/rules', async (req, res) => {
+app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
   try {
-    const { rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version } = req.body;
+    const id = req.params.id;
+    const rule = await get(`
+      SELECT r.*, 
+             kr.title as kr_title, kr.start_value, kr.expected_value, kr.current_value as kr_current_value, kr.unit as kr_unit, kr.direction as kr_direction,
+             o.title as objective_title, o.level as objective_level, o.progress as objective_progress
+      FROM MeasurementRules r
+      LEFT JOIN KeyResults kr ON r.kr_id = kr.kr_id
+      LEFT JOIN Objectives o ON (r.objective_id = o.objective_id OR kr.objective_id = o.objective_id)
+      WHERE r.rule_id = ? OR r.objective_id = ? OR r.kr_id = ?
+      LIMIT 1
+    `, [id, id, id]);
+
+    if (!rule) {
+      return res.status(404).json({ error: `Measurement rule not found for id ${id}` });
+    }
+
+    res.json({
+      rule_id: rule.rule_id,
+      kr_id: rule.kr_id,
+      krId: rule.kr_id,
+      objective_id: rule.objective_id,
+      objectiveId: rule.objective_id,
+      flow_code: rule.flow_code,
+      flowCode: rule.flow_code,
+      flow_name: rule.flow_name,
+      flowName: rule.flow_name,
+      flow_url: rule.flow_url,
+      flowUrl: rule.flow_url,
+      event_type: rule.event_type,
+      start_event: rule.start_event,
+      startTrigger: rule.start_event,
+      end_event: rule.end_event,
+      endTrigger: rule.end_event,
+      sla_value: rule.sla_value,
+      slaHours: rule.sla_value,
+      threshold_percent: rule.threshold_percent || 90,
+      thresholdPercent: rule.threshold_percent || 90,
+      formula: rule.formula,
+      businessLogicNote: rule.formula,
+      filters: rule.filters,
+      filterCriteria: rule.filters,
+      overtime_handling: rule.overtime_handling,
+      overtimeHandling: rule.overtime_handling,
+      lunch_break_rule: rule.lunch_break_rule,
+      lunchBreakRule: rule.lunch_break_rule,
+      weekend_holiday_rule: rule.weekend_holiday_rule,
+      weekendHolidayRule: rule.weekend_holiday_rule,
+      version: rule.version,
+      updated_at: rule.updated_at,
+      kr_title: rule.kr_title,
+      objective_title: rule.objective_title,
+      objective_progress: rule.objective_progress,
+      kr_current_value: rule.kr_current_value,
+      kr_unit: rule.kr_unit
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+const saveMeasurementRuleHandler = async (req, res) => {
+  try {
+    const body = req.body;
+    const rule_id = body.rule_id || body.ruleId || (body.objectiveId ? `RULE-${body.objectiveId}` : (body.objective_id ? `RULE-${body.objective_id}` : `RULE-${Date.now()}`));
+    const kr_id = body.kr_id || body.krId || 'KR-MR-SLA';
+    const objective_id = body.objective_id || body.objectiveId || null;
+    const flow_code = body.flow_code || body.flowCode || `FLOW-${objective_id || rule_id}`;
+    const flow_name = body.flow_name || body.flowName || `GitLab SLA Webhook Flow - ${flow_code}`;
+    const flow_url = body.flow_url || body.flowUrl || `https://cloud.activepieces.com/flows/${flow_code.toLowerCase()}`;
+    const event_type = body.event_type || body.type || 'merge_request';
+    const filters = typeof body.filters === 'string' ? body.filters : (body.filterCriteria ? body.filterCriteria : JSON.stringify(body.filters || {}));
+    const start_event = body.start_event || body.startTrigger || 'reviewer_assigned';
+    const end_event = body.end_event || body.endTrigger || 'approved';
+    const sla_value = parseFloat(body.sla_value !== undefined ? body.sla_value : (body.slaHours !== undefined ? body.slaHours : 4.0));
+    const formula = body.formula || body.businessLogicNote || 'Số MR approved <= SLA / Tổng MR * 100%';
+    const threshold_percent = parseFloat(body.threshold_percent !== undefined ? body.threshold_percent : (body.thresholdPercent !== undefined ? body.thresholdPercent : 90));
+    const overtime_handling = body.overtime_handling || body.overtimeHandling || '';
+    const lunch_break_rule = body.lunch_break_rule || body.lunchBreakRule || '';
+    const weekend_holiday_rule = body.weekend_holiday_rule || body.weekendHolidayRule || '';
+    const version = body.version || 'v1.0';
+
     await run(`
-      INSERT INTO MeasurementRules 
-        (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO MeasurementRules (
+        rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version,
+        objective_id, flow_code, flow_name, flow_url, threshold_percent,
+        overtime_handling, lunch_break_rule, weekend_holiday_rule, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       ON CONFLICT (rule_id) DO UPDATE SET
         kr_id = EXCLUDED.kr_id,
+        objective_id = EXCLUDED.objective_id,
+        flow_code = EXCLUDED.flow_code,
+        flow_name = EXCLUDED.flow_name,
+        flow_url = EXCLUDED.flow_url,
         event_type = EXCLUDED.event_type,
         filters = EXCLUDED.filters,
         start_event = EXCLUDED.start_event,
         end_event = EXCLUDED.end_event,
         sla_value = EXCLUDED.sla_value,
+        threshold_percent = EXCLUDED.threshold_percent,
         formula = EXCLUDED.formula,
-        version = EXCLUDED.version
-    `,
-      [rule_id, kr_id, event_type, typeof filters === 'string' ? filters : JSON.stringify(filters || {}), start_event, end_event, sla_value, formula, version || 'v1.0']
-    );
-    res.json({ success: true, message: 'Quy tắc đo lường đã được lưu.' });
+        overtime_handling = EXCLUDED.overtime_handling,
+        lunch_break_rule = EXCLUDED.lunch_break_rule,
+        weekend_holiday_rule = EXCLUDED.weekend_holiday_rule,
+        version = EXCLUDED.version,
+        updated_at = CURRENT_TIMESTAMP
+    `, [
+      rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version,
+      objective_id, flow_code, flow_name, flow_url, threshold_percent,
+      overtime_handling, lunch_break_rule, weekend_holiday_rule
+    ]);
+
+    res.json({
+      success: true,
+      message: `Quy tắc đo lường cho [${flow_code}] đã được lưu thành công vào cơ sở dữ liệu.`,
+      rule_id: rule_id
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
-});
+};
 
-app.delete('/api/rules/:id', async (req, res) => {
+app.post(['/api/measurement-rules', '/api/rules'], saveMeasurementRuleHandler);
+app.put(['/api/measurement-rules/:id', '/api/rules/:id'], saveMeasurementRuleHandler);
+
+app.delete(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
   try {
     await run('DELETE FROM MeasurementRules WHERE rule_id = ?', [req.params.id]);
     res.json({ success: true, message: 'Measurement rule deleted successfully' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+// 4.2. Working Calendar, Working Hours & Holidays Endpoints
+app.get('/api/working-calendar', async (req, res) => {
+  try {
+    const wh = await get('SELECT * FROM WorkingHours WHERE id = ?', ['DEFAULT']) || {};
+    const holidays = await all('SELECT * FROM Holidays ORDER BY start_date ASC');
+    
+    let weekDays = [];
+    if (wh.week_days_json) {
+      try { weekDays = JSON.parse(wh.week_days_json); } catch (e) {}
+    }
+    if (!weekDays || weekDays.length === 0) {
+      weekDays = [
+        { key: 'mon', code: 'T2', name: 'Thứ 2', label: 'Thứ 2', isWork: true },
+        { key: 'tue', code: 'T3', name: 'Thứ 3', label: 'Thứ 3', isWork: true },
+        { key: 'wed', code: 'T4', name: 'Thứ 4', label: 'Thứ 4', isWork: true },
+        { key: 'thu', code: 'T5', name: 'Thứ 5', label: 'Thứ 5', isWork: true },
+        { key: 'fri', code: 'T6', name: 'Thứ 6', label: 'Thứ 6', isWork: true },
+        { key: 'sat', code: 'T7', name: 'Thứ 7', label: 'Thứ 7', isWork: false },
+        { key: 'sun', code: 'CN', name: 'Chủ Nhật', label: 'Chủ Nhật', isWork: false }
+      ];
+    }
+
+    const formattedHolidays = holidays.map(h => ({
+      id: h.id,
+      name: h.name,
+      startDate: h.start_date,
+      endDate: h.end_date,
+      start_date: h.start_date,
+      end_date: h.end_date,
+      daysCount: h.days_count,
+      days_count: h.days_count,
+      isActive: !!h.is_active,
+      is_active: !!h.is_active,
+      note: h.note
+    }));
+
+    res.json({
+      workCalendar: {
+        zone: 'Asia/Ho_Chi_Minh',
+        morningStart: wh.morning_start || '08:00',
+        morningEnd: wh.morning_end || '12:00',
+        afternoonStart: wh.afternoon_start || '13:30',
+        afternoonEnd: wh.afternoon_end || '17:30',
+        working_days: wh.working_days ? JSON.parse(wh.working_days) : ['T2', 'T3', 'T4', 'T5', 'T6']
+      },
+      weekDays: weekDays,
+      holidays: formattedHolidays
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get(['/api/working-time', '/api/working-hours'], async (req, res) => {
+  try {
+    const wh = await get('SELECT * FROM WorkingHours WHERE id = ?', ['DEFAULT']) || {};
+    let weekDays = [];
+    if (wh.week_days_json) {
+      try { weekDays = JSON.parse(wh.week_days_json); } catch (e) {}
+    }
+    if (!weekDays || weekDays.length === 0) {
+      weekDays = [
+        { key: 'mon', code: 'T2', name: 'Thứ 2', label: 'Thứ 2', isWork: true },
+        { key: 'tue', code: 'T3', name: 'Thứ 3', label: 'Thứ 3', isWork: true },
+        { key: 'wed', code: 'T4', name: 'Thứ 4', label: 'Thứ 4', isWork: true },
+        { key: 'thu', code: 'T5', name: 'Thứ 5', label: 'Thứ 5', isWork: true },
+        { key: 'fri', code: 'T6', name: 'Thứ 6', label: 'Thứ 6', isWork: true },
+        { key: 'sat', code: 'T7', name: 'Thứ 7', label: 'Thứ 7', isWork: false },
+        { key: 'sun', code: 'CN', name: 'Chủ Nhật', label: 'Chủ Nhật', isWork: false }
+      ];
+    }
+    res.json({
+      workCalendar: {
+        zone: 'Asia/Ho_Chi_Minh',
+        morningStart: wh.morning_start || '08:00',
+        morningEnd: wh.morning_end || '12:00',
+        afternoonStart: wh.afternoon_start || '13:30',
+        afternoonEnd: wh.afternoon_end || '17:30'
+      },
+      weekDays: weekDays
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put(['/api/working-time', '/api/working-hours'], async (req, res) => {
+  try {
+    const { workCalendar, weekDays, morningStart, morningEnd, afternoonStart, afternoonEnd } = req.body;
+    const mStart = (workCalendar && workCalendar.morningStart) || morningStart || '08:00';
+    const mEnd = (workCalendar && workCalendar.morningEnd) || morningEnd || '12:00';
+    const aStart = (workCalendar && workCalendar.afternoonStart) || afternoonStart || '13:30';
+    const aEnd = (workCalendar && workCalendar.afternoonEnd) || afternoonEnd || '17:30';
+    const wDays = weekDays || [];
+    const activeDayCodes = wDays.filter(d => d.isWork).map(d => d.key || d.code || d.label);
+
+    await run(`
+      INSERT INTO WorkingHours (id, space_id, morning_start, morning_end, afternoon_start, afternoon_end, working_days, week_days_json, updated_at)
+      VALUES ('DEFAULT', 'SPC-1793153879989', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT (id) DO UPDATE SET
+        morning_start = EXCLUDED.morning_start,
+        morning_end = EXCLUDED.morning_end,
+        afternoon_start = EXCLUDED.afternoon_start,
+        afternoon_end = EXCLUDED.afternoon_end,
+        working_days = EXCLUDED.working_days,
+        week_days_json = EXCLUDED.week_days_json,
+        updated_at = CURRENT_TIMESTAMP
+    `, [mStart, mEnd, aStart, aEnd, JSON.stringify(activeDayCodes), JSON.stringify(wDays)]);
+
+    res.json({ success: true, message: 'Cấu hình thời gian làm việc đã được lưu vào cơ sở dữ liệu.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/holidays', async (req, res) => {
+  try {
+    const holidays = await all('SELECT * FROM Holidays ORDER BY start_date ASC');
+    res.json(holidays.map(h => ({
+      id: h.id,
+      name: h.name,
+      startDate: h.start_date,
+      endDate: h.end_date,
+      start_date: h.start_date,
+      end_date: h.end_date,
+      daysCount: h.days_count,
+      days_count: h.days_count,
+      isActive: !!h.is_active,
+      is_active: !!h.is_active,
+      note: h.note
+    })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/holidays', async (req, res) => {
+  try {
+    const { holidays } = req.body;
+    if (Array.isArray(holidays)) {
+      for (const h of holidays) {
+        const id = h.id || `HL-${Date.now()}`;
+        const startDate = h.startDate || h.start_date;
+        const endDate = h.endDate || h.end_date;
+        const daysCount = h.daysCount || h.days_count || 1;
+        const isActive = h.isActive !== undefined ? (h.isActive ? true : false) : (h.is_active ? true : false);
+        await run(`
+          INSERT INTO Holidays (id, space_id, name, start_date, end_date, days_count, is_active, note, updated_at)
+          VALUES (?, 'SPC-1793153879989', ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT (id) DO UPDATE SET
+            name = EXCLUDED.name,
+            start_date = EXCLUDED.start_date,
+            end_date = EXCLUDED.end_date,
+            days_count = EXCLUDED.days_count,
+            is_active = EXCLUDED.is_active,
+            note = EXCLUDED.note,
+            updated_at = CURRENT_TIMESTAMP
+        `, [id, h.name, startDate, endDate, daysCount, isActive, h.note || '']);
+      }
+    }
+    res.json({ success: true, message: 'Danh sách ngày nghỉ lễ đã được cập nhật vào cơ sở dữ liệu.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/holidays/:id', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { name, startDate, endDate, start_date, end_date, daysCount, days_count, isActive, is_active, note } = req.body;
+    const sDate = startDate || start_date;
+    const eDate = endDate || end_date;
+    const dCount = daysCount !== undefined ? daysCount : days_count;
+    const active = isActive !== undefined ? (isActive ? true : false) : (is_active !== undefined ? (is_active ? true : false) : null);
+
+    await run(`
+      UPDATE Holidays SET
+        name = COALESCE(?, name),
+        start_date = COALESCE(?, start_date),
+        end_date = COALESCE(?, end_date),
+        days_count = COALESCE(?, days_count),
+        is_active = COALESCE(?, is_active),
+        note = COALESCE(?, note),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `, [name, sDate, eDate, dCount, active, note, id]);
+
+    res.json({ success: true, message: `Ngày nghỉ lễ [${id}] đã được cập nhật.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 4.3. Activepieces Key Result Metric Update / Overwrite Endpoint
+const handleKrMetricUpdate = async (req, res) => {
+  try {
+    const krId = req.params.id;
+    const { current_value, currentValue, period, event_key, actor_id, reason, source, numerator, denominator, on_time, duration_minutes } = req.body;
+    
+    const targetValue = current_value !== undefined ? current_value : currentValue;
+    if (targetValue === undefined || targetValue === null || isNaN(parseFloat(targetValue))) {
+      return res.status(400).json({ error: 'Missing or invalid numeric field current_value' });
+    }
+
+    const result = await recalculateOkrProgress(krId, parseFloat(targetValue), {
+      period,
+      event_key,
+      actor_id,
+      reason,
+      source,
+      numerator,
+      denominator,
+      on_time,
+      duration_minutes
+    });
+
+    res.json({
+      success: true,
+      message: `Đã cập nhật giá trị current_value = ${targetValue} cho KeyResult [${krId}] và đồng bộ tiến độ toàn bộ cây OKR.`,
+      data: result
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+app.patch('/api/key-results/:id/current-value', handleKrMetricUpdate);
+app.put('/api/key-results/:id/current-value', handleKrMetricUpdate);
+app.post('/api/key-results/:id/metric-update', handleKrMetricUpdate);
 
 // 5. Employees Endpoint
 app.get('/api/employees', async (req, res) => {
@@ -530,6 +1371,183 @@ app.get('/api/audit-logs', async (req, res) => {
       assignments: logs,
       processing_logs: processingLogs
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Get Flow Runs & Flow Summaries
+app.get('/api/flow-runs', async (req, res) => {
+  try {
+    const { flow_code } = req.query;
+    
+    // 1. Defined Flow Specs
+    const flowSpecs = [
+      {
+        flow_code: 'FLOW-KR-A1',
+        flow_name: 'Activepieces SLA Issue Tracker (KR-A1)',
+        kr_id: 'KR-A1',
+        kr_title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%',
+        trigger_type: 'Schedule (09:00 hàng ngày T2-T6)',
+        description: 'Tự động quét Issue từ GitLab API, đối chiếu Due Date theo lịch làm việc Việt Nam và tính toán tỷ lệ IC_i cho từng thành viên.'
+      },
+      {
+        flow_code: 'FLOW-KR-B1',
+        flow_name: 'Activepieces MR Review SLA Tracker (KR-B1)',
+        kr_id: 'KR-B1',
+        kr_title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%',
+        trigger_type: 'GitLab Webhook (MR Assigned/Approved)',
+        description: 'Lắng nghe sự kiện reviewer_assigned, tính thời gian phản hồi thực tế (trừ giờ nghỉ trưa & cuối tuần) theo cam kết SLA 4h.'
+      },
+      {
+        flow_code: 'FLOW-KR-C1',
+        flow_name: 'Activepieces MTTR Bug Resolution Tracker (KR-C1)',
+        kr_id: 'KR-C1',
+        kr_title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc',
+        trigger_type: 'GitLab Webhook (Issue Bug Closed)',
+        description: 'Theo dõi sự cố Bug từ mở đến đóng, tính toán thời gian giải quyết trung bình (MTTR) đạt dưới 8.0 giờ làm việc.'
+      }
+    ];
+
+    // 2. Fetch all runs
+    const allRuns = await all('SELECT * FROM FlowRuns ORDER BY start_time DESC');
+    
+    // 3. Compute summaries per flow
+    const flows = flowSpecs.map(spec => {
+      const specRuns = allRuns.filter(r => r.flow_code === spec.flow_code || r.flow_code.startsWith(spec.flow_code));
+      const totalRuns = specRuns.length;
+      const successRuns = specRuns.filter(r => r.status === 'SUCCESS').length;
+      const successRate = totalRuns > 0 ? parseFloat(((successRuns / totalRuns) * 100).toFixed(1)) : 100;
+      const lastRun = specRuns.length > 0 ? specRuns[0] : null;
+
+      return {
+        ...spec,
+        status: 'active',
+        total_runs: totalRuns,
+        success_runs: successRuns,
+        success_rate: successRate,
+        last_run_time: lastRun ? lastRun.start_time : 'Chưa có',
+        last_status: lastRun ? lastRun.status : 'NONE',
+        last_impact: lastRun ? lastRun.data_created : 'Chưa chạy lần nào'
+      };
+    });
+
+    // Filter runs if flow_code specified
+    let filteredRuns = allRuns;
+    if (flow_code && flow_code !== 'all') {
+      filteredRuns = allRuns.filter(r => r.flow_code === flow_code || r.flow_code.startsWith(flow_code));
+    }
+
+    res.json({
+      flows,
+      runs: filteredRuns
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Simulate Trigger a Flow Run
+app.post('/api/flow-runs/simulate', async (req, res) => {
+  try {
+    const { flow_code } = req.body;
+    const now = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const timeStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+    const runId = `RUN-${timeStr}`;
+
+    const startTime = now.toISOString().replace('T', ' ').substring(0, 19);
+    const endTime = new Date(now.getTime() + 1850).toISOString().replace('T', ' ').substring(0, 19);
+
+    let flowName = 'Activepieces Automation Flow';
+    let triggerType = 'Schedule';
+    let inputCount = 10;
+    let outputCount = 5;
+    let dataCreated = '';
+    let payload = {};
+
+    if (flow_code === 'FLOW-KR-A1') {
+      flowName = 'Activepieces SLA Issue Tracker (KR-A1)';
+      triggerType = 'Schedule';
+      inputCount = 15;
+      outputCount = 5;
+      
+      const krA1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-A1'");
+      let newVal = krA1 ? Math.min(98, parseFloat((krA1.current_value + (Math.random() > 0.5 ? 0.3 : -0.2)).toFixed(1))) : 92.0;
+      await recalculateOkrProgress('KR-A1', newVal);
+
+      dataCreated = `Quét 15 issues GitLab, tính tỷ lệ hoàn thành đúng hạn của 5 thành viên (Ni/Di). Cập nhật KR-A1 đạt ${newVal}%.`;
+      payload = {
+        run_id: runId,
+        source: 'GitLab Issues API',
+        issues_scanned: 15,
+        target_kr: 'KR-A1',
+        new_value: newVal,
+        timestamp: startTime
+      };
+    } else if (flow_code === 'FLOW-KR-B1') {
+      flowName = 'Activepieces MR Review SLA Tracker (KR-B1)';
+      triggerType = 'Webhook';
+      inputCount = 1;
+      outputCount = 1;
+
+      const krB1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-B1'");
+      let newVal = krB1 ? Math.min(99, parseFloat((krB1.current_value + (Math.random() > 0.5 ? 0.2 : -0.1)).toFixed(1))) : 94.5;
+      await recalculateOkrProgress('KR-B1', newVal);
+
+      const mrNum = Math.floor(Math.random() * 40) + 50;
+      dataCreated = `Xử lý MR !${mrNum} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Ghi nhận EventAssignment. Cập nhật KR-B1 đạt ${newVal}%.`;
+      payload = {
+        run_id: runId,
+        trigger: 'reviewer_assigned',
+        mr_iid: `!${mrNum}`,
+        response_time_hours: 2.2,
+        sla_hours: 4.0,
+        on_time: true,
+        new_value: newVal
+      };
+    } else {
+      flowName = 'Activepieces MTTR Bug Resolution Tracker (KR-C1)';
+      triggerType = 'Webhook';
+      inputCount = 1;
+      outputCount = 1;
+
+      const krC1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-C1'");
+      let newVal = krC1 ? Math.max(4.0, parseFloat((krC1.current_value + (Math.random() > 0.5 ? -0.1 : 0.1)).toFixed(1))) : 6.2;
+      await recalculateOkrProgress('KR-C1', newVal);
+
+      const bugNum = Math.floor(Math.random() * 50) + 100;
+      dataCreated = `Khắc phục Bug P2 #${bugNum} trong 5.5h làm việc (Đạt SLA 8.0h). Cập nhật MTTR KR-C1 đạt ${newVal} giờ.`;
+      payload = {
+        run_id: runId,
+        trigger: 'issue_closed',
+        issue_iid: `#${bugNum}`,
+        severity: 'P2',
+        resolve_time_hours: 5.5,
+        sla_hours: 8.0,
+        on_time: true,
+        new_value: newVal
+      };
+    }
+
+    await run(`
+      INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
+      VALUES (?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?, ?, ?)
+    `, [runId, flow_code || 'FLOW-KR-A1', flowName, triggerType, startTime, endTime, 1850, inputCount, outputCount, dataCreated, JSON.stringify(payload, null, 2)]);
+
+    const createdRun = await get('SELECT * FROM FlowRuns WHERE run_id = ?', [runId]);
+    res.json({ success: true, run: createdRun });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Delete a Flow Run
+app.delete('/api/flow-runs/:runId', async (req, res) => {
+  try {
+    const { runId } = req.params;
+    await run('DELETE FROM FlowRuns WHERE run_id = ?', [runId]);
+    res.json({ success: true, message: `Đã xóa lần chạy ${runId}` });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -605,21 +1623,71 @@ app.post('/api/settings/spaces', async (req, res) => {
 // Timelines
 app.get('/api/settings/timelines', async (req, res) => {
   try {
-    const data = await all('SELECT * FROM Timelines');
+    const data = await all('SELECT * FROM Timelines ORDER BY start_date ASC, id ASC');
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/settings/timelines', async (req, res) => {
   try {
-    const { id, title, start_date, end_date, workspace_id, timeline_category } = req.body;
+    if (req.body.items && Array.isArray(req.body.items)) {
+      for (const item of req.body.items) {
+        const { id, title, start_date, end_date, workspace_id, timeline_category, parent_id, level } = item;
+        const newId = id || 'TL-' + Date.now();
+        const existing = await get('SELECT id FROM Timelines WHERE id = ?', [newId]);
+        if (existing) {
+          await run('UPDATE Timelines SET title = ?, start_date = ?, end_date = ?, workspace_id = ?, timeline_category = ?, parent_id = ?, level = ? WHERE id = ?',
+            [title, start_date, end_date, workspace_id, timeline_category || 'tree', parent_id || null, level || null, newId]);
+        } else {
+          await run('INSERT INTO Timelines (id, title, start_date, end_date, workspace_id, timeline_category, parent_id, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [newId, title, start_date, end_date, workspace_id, timeline_category || 'tree', parent_id || null, level || null]);
+        }
+      }
+      return res.json({ success: true, count: req.body.items.length });
+    }
+
+    const { id, title, start_date, end_date, workspace_id, timeline_category, parent_id, level } = req.body;
     const newId = id || 'TL-' + Date.now();
-    await run('INSERT INTO Timelines (id, title, start_date, end_date, workspace_id, timeline_category) VALUES (?, ?, ?, ?, ?, ?)', 
-      [newId, title, start_date, end_date, workspace_id, timeline_category]);
+    await run('INSERT INTO Timelines (id, title, start_date, end_date, workspace_id, timeline_category, parent_id, level) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', 
+      [newId, title, start_date, end_date, workspace_id, timeline_category || 'tree', parent_id || null, level || null]);
     res.json({ success: true, id: newId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // Metrics
+app.get('/api/metrics', async (req, res) => {
+  try {
+    const data = await all('SELECT * FROM Metrics ORDER BY id ASC');
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/timelines', async (req, res) => {
+  try {
+    const data = await all('SELECT * FROM Timelines');
+    const extractNum = (str) => {
+      if (!str) return 0;
+      const q = str.match(/q(?:uarter)?\s*(\d+)/i);
+      if (q) return parseInt(q[1], 10);
+      const m = str.match(/(?:m|month|tháng)\s*(\d+)/i);
+      if (m) return parseInt(m[1], 10);
+      const w = str.match(/(?:w|week|tuần)\s*(\d+)/i);
+      if (w) return parseInt(w[1], 10);
+      const gen = str.match(/(\d+)/);
+      return gen ? parseInt(gen[1], 10) : 0;
+    };
+    data.sort((a, b) => {
+      const timeA = a.start_date ? new Date(a.start_date).getTime() : NaN;
+      const timeB = b.start_date ? new Date(b.start_date).getTime() : NaN;
+      if (!isNaN(timeA) && !isNaN(timeB) && timeA !== timeB) return timeA - timeB;
+      const numA = extractNum(a.title || a.id);
+      const numB = extractNum(b.title || b.id);
+      if (numA !== numB) return numA - numB;
+      return (a.title || '').localeCompare(b.title || '', undefined, { numeric: true });
+    });
+    res.json(data);
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.get('/api/settings/metrics', async (req, res) => {
   try {
     const data = await all('SELECT * FROM Metrics');
@@ -645,10 +1713,9 @@ app.get('/api/settings/space-members', async (req, res) => {
 });
 app.post('/api/settings/space-members', async (req, res) => {
   try {
-    const { id, space_id, user_name, email, role } = req.body;
+    const { id, space_id, user_name, email, role, team_name } = req.body;
     const newId = id || 'SM-' + Date.now();
-    await run('INSERT INTO SpaceMembers (id, space_id, user_name, email, role) VALUES (?, ?, ?, ?, ?)', 
-      [newId, space_id, user_name, email || null, role]);
+    await run('INSERT INTO SpaceMembers (id, space_id, user_name, email, role, team_name) VALUES (?, ?, ?, ?, ?, ?)', [newId, space_id, user_name, email || null, role, team_name || null]);
     res.json({ success: true, id: newId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -699,22 +1766,31 @@ app.put('/api/settings/spaces/:id', async (req, res) => {
 });
 app.delete('/api/settings/spaces/:id', async (req, res) => {
   try {
-    await run('DELETE FROM Spaces WHERE id = ?', [req.params.id]);
+    const spaceId = req.params.id;
+    await run('DELETE FROM SpaceMembers WHERE space_id = ?', [spaceId]);
+    await run('DELETE FROM Timelines WHERE workspace_id = ?', [spaceId]);
+    await run('DELETE FROM KeyResults WHERE space_id = ?', [spaceId]);
+    await run('DELETE FROM Objectives WHERE space_id = ?', [spaceId]);
+    await run('DELETE FROM Spaces WHERE id = ?', [spaceId]);
     res.json({ success: true });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('Error deleting space:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Timeline Edit & Delete
 app.put('/api/settings/timelines/:id', async (req, res) => {
   try {
-    const { title, start_date, end_date, workspace_id, timeline_category } = req.body;
-    await run('UPDATE Timelines SET title = ?, start_date = ?, end_date = ?, workspace_id = ?, timeline_category = ? WHERE id = ?',
-      [title, start_date, end_date, workspace_id, timeline_category, req.params.id]);
+    const { title, start_date, end_date, workspace_id, timeline_category, parent_id, level } = req.body;
+    await run('UPDATE Timelines SET title = ?, start_date = ?, end_date = ?, workspace_id = ?, timeline_category = ?, parent_id = ?, level = ? WHERE id = ?',
+      [title, start_date, end_date, workspace_id, timeline_category, parent_id || null, level || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.delete('/api/settings/timelines/:id', async (req, res) => {
   try {
+    await run('DELETE FROM Timelines WHERE parent_id = ?', [req.params.id]);
     await run('DELETE FROM Timelines WHERE id = ?', [req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -802,26 +1878,31 @@ app.delete('/api/teams/:id', async (req, res) => {
 // Roles CRUD
 app.get('/api/roles', async (req, res) => {
   try {
-    const data = await all('SELECT * FROM Roles ORDER BY created_at ASC');
+    const data = await all(`
+      SELECT r.*, t.name as team_name, t.code as team_code 
+      FROM Roles r 
+      LEFT JOIN Teams t ON r.team_id = t.id OR r.team_id = t.code 
+      ORDER BY r.created_at ASC
+    `);
     res.json(data);
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.post('/api/roles', async (req, res) => {
   try {
-    const { id, name, code, description } = req.body;
+    const { id, name, code, description, team_id } = req.body;
     const newId = id || 'ROLE-' + Date.now();
     const roleCode = (code || name.toUpperCase().replace(/\s+/g, '_')).trim();
-    await run('INSERT INTO Roles (id, name, code, description, created_at, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', 
-      [newId, name, roleCode, description || '']);
+    await run('INSERT INTO Roles (id, name, code, description, team_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)', 
+      [newId, name, roleCode, description || '', team_id || null]);
     res.json({ success: true, id: newId });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 app.put('/api/roles/:id', async (req, res) => {
   try {
-    const { name, code, description } = req.body;
+    const { name, code, description, team_id } = req.body;
     const roleCode = (code || req.params.id).trim();
-    await run('UPDATE Roles SET name = ?, code = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
-      [name, roleCode, description || '', req.params.id]);
+    await run('UPDATE Roles SET name = ?, code = ?, description = ?, team_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', 
+      [name, roleCode, description || '', team_id || null, req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -835,9 +1916,9 @@ app.delete('/api/roles/:id', async (req, res) => {
 // Employee Edit & Delete
 app.put('/api/employees/:id', async (req, res) => {
   try {
-    const { full_name, team_id, gitlab_user_id, display_code, status } = req.body;
-    await run('UPDATE Employees SET full_name = ?, team_id = ?, gitlab_user_id = ?, display_code = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE employee_id = ?',
-      [full_name, team_id, gitlab_user_id, display_code, status || 'active', req.params.id]);
+    const { full_name, team_id, gitlab_user_id, display_code, status, email, role } = req.body;
+    await run('UPDATE Employees SET full_name = ?, team_id = ?, gitlab_user_id = ?, display_code = ?, email = ?, role = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE employee_id = ?',
+      [full_name, team_id, gitlab_user_id, display_code || role, email, role, status || 'active', req.params.id]);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -877,6 +1958,11 @@ app.put('/api/key-results/:id', async (req, res) => {
        WHERE kr_id = ?`,
       [title, start_value, expected_value, current_value, direction, unit, metric_id, req.params.id]
     );
+
+    if (current_value !== undefined && current_value !== null && !isNaN(parseFloat(current_value))) {
+      await recalculateOkrProgress(req.params.id, parseFloat(current_value));
+    }
+
     res.json({ success: true, message: 'Key Result updated successfully' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
@@ -919,7 +2005,11 @@ app.delete('/api/gitlab-events/:key', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.listen(PORT, () => {
-  console.log(`Backend Server listening at http://localhost:${PORT}`);
-  console.log(`Activepieces Webhook URL: http://localhost:${PORT}/api/webhooks/activepieces`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Backend Server listening at http://localhost:${PORT}`);
+    console.log(`Activepieces Webhook URL: http://localhost:${PORT}/api/webhooks/activepieces`);
+  });
+}
+
+module.exports = app;

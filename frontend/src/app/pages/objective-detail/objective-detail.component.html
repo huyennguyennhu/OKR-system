@@ -19,10 +19,10 @@
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary btn-sm" (click)="cancel()" [disabled]="loading || saving">
-        Hủy bỏ
+        {{ isFromSettings ? 'Quay lại Cài đặt' : 'Hủy bỏ' }}
       </button>
       <button class="btn btn-primary btn-sm" (click)="saveObjective()" [disabled]="loading || saving">
-        <i class="fa-solid fa-save"></i> {{ saving ? 'Đang lưu...' : 'Lưu Objective' }}
+        <i class="fa-solid fa-save"></i> {{ saving ? 'Đang lưu...' : (isFromSettings ? 'Lưu vào OKR Tree' : 'Lưu Objective') }}
       </button>
     </div>
   </div>
@@ -37,33 +37,31 @@
   <div class="split-layout" *ngIf="!loading">
     <!-- Cột Trái -->
     <div class="left-pane">
-      <!-- Breadcrumbs Phân Cấp -->
+      <!-- Breadcrumbs Phân Cấp (Company > Level > Personal) -->
       <div class="breadcrumbs mb-3">
-        <span class="breadcrumb-item"><i class="fa-solid fa-building me-1"></i> {{ objective.level || 'COMPANY' }}</span>
-        <ng-container *ngIf="objective.parent">
-          <span class="breadcrumb-sep mx-1">/</span>
-          <span class="breadcrumb-item">
-            <a href="javascript:void(0)" (click)="viewParentObjective(objective.parent.objective_id)" class="parent-link">
-              <i class="fa-solid fa-folder me-1"></i> {{ objective.parent.title || objective.parent.objective_id }}
+        <ng-container *ngFor="let item of breadcrumbItems; let last = last; let i = index">
+          <span *ngIf="i > 0" class="breadcrumb-sep mx-1">/</span>
+          <span class="breadcrumb-item" [class.active]="last" [class.fw-bold]="last" [class.text-primary]="last">
+            <a *ngIf="item.clickable && item.id" href="javascript:void(0)" (click)="viewParentObjective(item.id)" class="parent-link" [title]="item.tooltip || item.label">
+              <i [class]="item.icon + ' me-1'"></i> {{ item.label }}
             </a>
+            <span *ngIf="!item.clickable" [title]="item.tooltip || item.label">
+              <i [class]="item.icon + ' me-1'"></i> {{ item.label }}
+            </span>
           </span>
         </ng-container>
-        <span class="breadcrumb-sep mx-1">/</span>
-        <span class="breadcrumb-item active fw-bold text-primary">
-          <i class="fa-solid fa-bullseye me-1"></i> {{ objective.objective_id || 'Mới' }}
-        </span>
       </div>
 
       <!-- Tên Objective -->
       <div class="form-group mb-3">
-        <label class="form-label-small">Tên Mục tiêu (Objective Title) <span class="text-danger">*</span></label>
-        <input type="text" class="form-control title-input" [(ngModel)]="objective.title" placeholder="Nhập tên Mục tiêu..." />
+        <label class="form-label-small">Title <span class="text-danger">*</span></label>
+        <input type="text" class="form-control title-input" [(ngModel)]="objective.title" placeholder="Enter objective title..." />
       </div>
 
       <!-- Mô tả -->
       <div class="form-group mb-4">
-        <label class="form-label-small">Mô tả chi tiết (Description)</label>
-        <textarea class="form-control desc-input" rows="3" [(ngModel)]="objective.description" placeholder="Nhập mô tả bối cảnh, kỳ vọng của mục tiêu này..."></textarea>
+        <label class="form-label-small">Description</label>
+        <textarea class="form-control desc-input" rows="3" [(ngModel)]="objective.description" placeholder="Enter objective description, expectations..."></textarea>
       </div>
 
       <!-- Mục tiêu cha (Parent Objective) -->
@@ -71,10 +69,10 @@
         <div class="card-header d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-sitemap text-indigo"></i>
-            <span class="fw-bold">Mục tiêu cha (Parent Objective)</span>
+            <span class="fw-bold">Parent Objective</span>
           </div>
           <span class="badge" [ngClass]="objective.parent ? 'badge-primary' : 'badge-light'">
-            {{ objective.parent ? objective.parent.level : 'Cấp cao nhất' }}
+            {{ objective.parent ? objective.parent.level : 'Root Level' }}
           </span>
         </div>
         <div class="card-body p-0">
@@ -83,7 +81,7 @@
               <tr>
                 <th style="width: 20%;">Mã Mục Tiêu</th>
                 <th style="width: 45%;">Tên Mục Tiêu Cha</th>
-                <th style="width: 20%;">Người phụ trách</th>
+                <th style="width: 20%;">Phụ trách</th>
                 <th style="width: 15%;" class="text-center">Tiến độ</th>
               </tr>
             </thead>
@@ -95,7 +93,17 @@
                     {{ objective.parent.title }}
                   </span>
                 </td>
-                <td>{{ objective.parent.assignee_name || 'Toàn nhóm' }}</td>
+                <td>
+                  <span *ngIf="objective.parent.level === 'TEAM'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-users text-info me-1"></i> {{ objective.parent.assignee_name || 'Toàn nhóm' }}
+                  </span>
+                  <span *ngIf="objective.parent.level === 'COMPANY'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-building text-primary me-1"></i> Toàn Công Ty
+                  </span>
+                  <span *ngIf="objective.parent.level !== 'TEAM' && objective.parent.level !== 'COMPANY'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-user text-primary me-1"></i> {{ objective.parent.assignee_name || 'Chưa phân công' }}
+                  </span>
+                </td>
                 <td class="text-center">
                   <span class="badge badge-success">{{ objective.parent.progress }}%</span>
                 </td>
@@ -109,26 +117,26 @@
       </div>
 
       <!-- Kết quả then chốt đo lường (Key Results - KR) -->
+      <!-- Key Results -->
       <div class="card detail-section-card mb-4">
         <div class="card-header d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-bullseye text-emerald"></i>
-            <span class="fw-bold">Kết quả then chốt đo lường (Key Results - KR)</span>
+            <span class="fw-bold">Key Results</span>
             <span class="badge badge-secondary ms-1">{{ objective.key_results?.length || 0 }}</span>
           </div>
-          <button class="btn btn-sm btn-outline-primary" (click)="openAddKrModal()" *ngIf="!isNew">
-            <i class="fa-solid fa-plus"></i> Thêm KR
+          <button type="button" class="btn btn-outline-primary btn-sm py-1 px-2" (click)="openAddKrModal()" style="font-size: 12px;">
+            <i class="fa-solid fa-plus me-1"></i> Thêm KR
           </button>
         </div>
         <div class="card-body p-0">
           <table class="table table-hover mb-0" *ngIf="objective.key_results && objective.key_results.length > 0">
             <thead>
               <tr>
-                <th style="width: 18%;">Mã KR</th>
-                <th style="width: 38%;">Kết quả then chốt</th>
-                <th style="width: 20%;">Quy tắc SLA / Đo lường</th>
-                <th style="width: 14%; text-align: center;" class="text-center">S / C / E</th>
-                <th style="width: 10%; text-align: center;" class="text-center">Tiến độ</th>
+                <th style="width: 20%;">Mã KR</th>
+                <th style="width: 50%;">Kết quả then chốt</th>
+                <th style="width: 18%; text-align: center;" class="text-center">S / C / E</th>
+                <th style="width: 12%; text-align: center;" class="text-center">Tiến độ</th>
               </tr>
             </thead>
             <tbody>
@@ -136,12 +144,6 @@
                 <td><code class="kr-code">{{ kr.kr_id }}</code></td>
                 <td>
                   <span class="fw-semibold">{{ kr.title }}</span>
-                </td>
-                <td>
-                  <span class="sla-badge" *ngIf="kr.sla_value">
-                    <i class="fa-solid fa-stopwatch me-1"></i> SLA &le; {{ kr.sla_value }}h ({{ kr.event_type }})
-                  </span>
-                  <span class="text-muted" *ngIf="!kr.sla_value">-</span>
                 </td>
                 <td class="text-center">
                   <span class="val-pill" title="Start / Current / Expected">
@@ -157,17 +159,17 @@
             </tbody>
           </table>
           <div class="text-center py-4 text-muted" *ngIf="!objective.key_results || objective.key_results.length === 0">
-            Chưa có Kết quả then chốt nào được gán cho Mục tiêu này.
+            Chưa có kết quả then chốt nào. Hãy tạo mới!
           </div>
         </div>
       </div>
 
-      <!-- Mục tiêu cấp dưới liên kết (Child Objectives) -->
+      <!-- Child Objectives -->
       <div class="card detail-section-card mb-4" *ngIf="objective.child_objectives && objective.child_objectives.length > 0">
         <div class="card-header d-flex align-items-center justify-content-between">
           <div class="d-flex align-items-center gap-2">
             <i class="fa-solid fa-diagram-project text-primary"></i>
-            <span class="fw-bold">Mục tiêu cấp dưới liên kết (Child Objectives)</span>
+            <span class="fw-bold">Child Objectives</span>
             <span class="badge badge-secondary ms-1">{{ objective.child_objectives.length }}</span>
           </div>
         </div>
@@ -177,7 +179,7 @@
               <tr>
                 <th style="width: 20%;">Mã Mục Tiêu</th>
                 <th style="width: 45%;">Tên Mục Tiêu Con</th>
-                <th style="width: 20%;">Người phụ trách</th>
+                <th style="width: 20%;">Phụ trách</th>
                 <th style="width: 15%; text-align: center;" class="text-center">Tiến độ</th>
               </tr>
             </thead>
@@ -189,7 +191,17 @@
                     {{ child.title }}
                   </span>
                 </td>
-                <td>{{ child.assignee_name || 'Chưa phân công' }}</td>
+                <td>
+                  <span *ngIf="child.level === 'TEAM'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-users text-info me-1"></i> {{ child.assignee_name || child.team_name || 'Toàn nhóm' }}
+                  </span>
+                  <span *ngIf="child.level === 'COMPANY'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-building text-primary me-1"></i> Toàn Công Ty
+                  </span>
+                  <span *ngIf="child.level !== 'TEAM' && child.level !== 'COMPANY'" class="d-flex align-items-center gap-1">
+                    <i class="fa-solid fa-user text-primary me-1"></i> {{ child.assignee_name || 'Chưa phân công' }}
+                  </span>
+                </td>
                 <td class="text-center">
                   <span class="badge badge-success">{{ child.progress }}%</span>
                 </td>
@@ -199,18 +211,18 @@
         </div>
       </div>
 
-      <!-- Tabs Area (Bình luận & Truy vết) -->
-      <div class="card detail-section-card mb-4">
+      <!-- Tabs Area (Bình luận & Truy vết - Chỉ hiển thị khi xem từ OKR Tree, không hiển thị trong template từ OKR Settings) -->
+      <div class="card detail-section-card mb-4" *ngIf="!isFromSettings">
         <div class="card-header pb-0 border-bottom-0">
           <ul class="nav nav-tabs">
             <li class="nav-item">
               <a class="nav-link" [class.active]="activeTab === 'comments'" (click)="activeTab = 'comments'">
-                <i class="fa-regular fa-comments me-1"></i> Bình luận & Thảo luận
+                <i class="fa-regular fa-comments me-1"></i> Bình luận
               </a>
             </li>
             <li class="nav-item">
               <a class="nav-link" [class.active]="activeTab === 'traceability'" (click)="activeTab = 'traceability'">
-                <i class="fa-solid fa-timeline me-1"></i> Truy vết GitLab (Audit)
+                <i class="fa-solid fa-timeline me-1"></i> Truy vết GitLab
               </a>
             </li>
           </ul>
@@ -231,7 +243,7 @@
                 <div class="comment-body">
                   <div class="comment-header">
                     <strong>{{ c.author }}</strong>
-                    <small class="text-muted ms-2">{{ c.time }}</small>
+                    <small class="text-muted ms-2" style="font-size: 12px;">{{ c.time }}</small>
                   </div>
                   <div class="comment-content">{{ c.content }}</div>
                 </div>
@@ -241,7 +253,7 @@
           <div *ngIf="activeTab === 'traceability'" class="p-4 bg-light rounded text-center">
             <p class="mb-3 text-muted">Mục tiêu này được đo lường tự động từ các sự kiện GitLab Webhook theo thời gian thực.</p>
             <button class="btn btn-outline-primary btn-sm" (click)="goToAuditLog()">
-              <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Xem Nhật ký Phân bổ SLA chi tiết (Audit Log)
+              <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Xem Nhật ký Phân bổ SLA chi tiết
             </button>
           </div>
         </div>
@@ -253,16 +265,18 @@
       <!-- Vòng tròn Tiến độ -->
       <div class="card prop-card mb-4">
         <div class="card-header">
-          <span class="fw-bold">Tiến độ Hoàn thành</span>
+          <span class="fw-bold">Progress</span>
         </div>
         <div class="card-body text-center py-4">
           <div class="progress-ring-box">
-            <div class="progress-circle" [style.borderColor]="getProgressColor(objective.progress || 0)">
-              <span class="progress-number">{{ objective.progress || 0 }}%</span>
-              <small class="progress-label">Tiến độ</small>
+            <div class="progress-circle" [style.background]="getProgressRingStyle(objective.progress || 0)">
+              <div class="progress-circle-inner">
+                <span class="progress-number">{{ objective.progress || 0 }}%</span>
+                <small class="progress-label">Progress</small>
+              </div>
             </div>
           </div>
-          <div class="mt-3">
+          <div class="status-badge-wrapper mt-3 d-flex justify-content-center align-items-center">
             <span class="badge" [ngClass]="getStatusBadgeClass(objective.progress || 0)">
               {{ getStatusLabel(objective.progress || 0) }}
             </span>
@@ -273,74 +287,73 @@
       <!-- Thuộc tính Mục tiêu -->
       <div class="card prop-card mb-4">
         <div class="card-header">
-          <span class="fw-bold">Thuộc tính Mục tiêu</span>
+          <span class="fw-bold">Objective Properties</span>
         </div>
         <div class="card-body p-3">
+          <!-- Field 1: Level -->
           <div class="prop-group mb-3">
-            <label class="prop-label">Cấp độ (Level)</label>
-            <select class="form-select" [(ngModel)]="objective.level">
-              <option value="COMPANY">COMPANY (Cấp Công ty)</option>
-              <option value="TEAM">TEAM (Cấp Đội nhóm)</option>
-              <option value="PERSONAL">PERSONAL (Cấp Cá nhân)</option>
-            </select>
-          </div>
-
-          <div class="prop-group mb-3">
-            <label class="prop-label">Danh mục (Category)</label>
-            <select class="form-select" [(ngModel)]="objective.category">
-              <option value="Objective">Objective (Mục tiêu định tính)</option>
-              <option value="KPI">KPI (Chỉ số hiệu suất)</option>
-            </select>
-          </div>
-
-          <div class="prop-group mb-3">
-            <label class="prop-label">Người phụ trách (Assignee)</label>
-            <select class="form-select" [(ngModel)]="objective.assignee_id">
-              <option [ngValue]="null">Toàn nhóm / Chưa gán</option>
-              <option *ngFor="let emp of employees" [value]="emp.employee_id">
-                {{ emp.full_name }} ({{ emp.display_code }})
-              </option>
-            </select>
-          </div>
-
-          <div class="prop-group mb-3">
-            <label class="prop-label">Chu kỳ thời gian (Timeline)</label>
-            <select class="form-select" [(ngModel)]="objective.timeline_id">
-              <option [ngValue]="null">Không chọn</option>
-              <option *ngFor="let t of timelines" [value]="t.id">{{ t.title }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Thước đo & Giá trị -->
-      <div class="card prop-card mb-4">
-        <div class="card-header">
-          <span class="fw-bold">Thước đo & Giá trị Đo Lường</span>
-        </div>
-        <div class="card-body p-3">
-          <div class="prop-group mb-3">
-            <label class="prop-label">Thước đo (Metric)</label>
-            <select class="form-select" [(ngModel)]="objective.metric_id">
-              <option [ngValue]="null">Chọn thước đo...</option>
-              <option *ngFor="let m of metrics" [value]="m.id">
-                {{ m.name }} ({{ m.unit || '%' }})
-              </option>
-            </select>
-          </div>
-
-          <div class="metric-values-grid">
-            <div class="metric-val-item">
-              <label>Bắt đầu (Start)</label>
-              <input type="number" class="form-control text-center" [(ngModel)]="objective.start_value" />
+            <label class="prop-label">Level</label>
+            <div class="prop-readonly-box d-flex align-items-center gap-2">
+              <i [class]="getLevelIcon()" class="flex-shrink-0"></i>
+              <span class="text-truncate fw-semibold text-dark">{{ getLevelLabel() }}</span>
             </div>
-            <div class="metric-val-item active-metric">
-              <label>Hiện tại (Current)</label>
-              <input type="number" class="form-control text-center fw-bold" [value]="objective.current_value || 0" disabled />
+          </div>
+
+          <!-- Field 2: Assign to (Dropdown khi mở từ OKR Settings) -->
+          <div class="prop-group mb-3" *ngIf="!isCompanyLevel && isFromSettings">
+            <label class="prop-label">Assign to</label>
+            <div class="custom-select-wrapper position-relative w-100" [style.z-index]="isAssignToDropdownOpen ? 1060 : 'auto'">
+              <button type="button" class="custom-select-trigger w-100" (click)="toggleAssignToDropdown($event)" [class.active]="isAssignToDropdownOpen">
+                <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                  <i [class]="isTeamLevel ? 'fa-solid fa-users text-info flex-shrink-0' : 'fa-solid fa-user text-primary flex-shrink-0'"></i>
+                  <span class="text-truncate" [class.text-muted]="!selectedAssignToId" [class.fw-semibold]="!!selectedAssignToId" [class.text-dark]="!!selectedAssignToId">
+                    {{ getSelectedAssignToLabel() }}
+                  </span>
+                </span>
+                <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isAssignToDropdownOpen"></i>
+              </button>
+
+              <div class="custom-select-menu w-100 shadow-sm" *ngIf="isAssignToDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1070;">
+                <!-- Tùy chọn cho cấp Team: danh sách Teams -->
+                <ng-container *ngIf="isTeamLevel">
+                  <div class="custom-select-option" *ngFor="let t of teams" [class.selected]="selectedAssignToId === (t.id || t.code)" (click)="selectAssignTo(t.id || t.code)">
+                    <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                      <i class="fa-solid fa-users text-muted flex-shrink-0"></i>
+                      <span class="text-truncate">{{ t.name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary ms-2 flex-shrink-0" *ngIf="selectedAssignToId === (t.id || t.code)"></i>
+                  </div>
+                </ng-container>
+
+                <!-- Tùy chọn cho cấp Cá nhân: danh sách Nhân viên -->
+                <ng-container *ngIf="!isTeamLevel">
+                  <div class="custom-select-option" *ngFor="let emp of employees" [class.selected]="selectedAssignToId === emp.employee_id" (click)="selectAssignTo(emp.employee_id)">
+                    <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                      <i class="fa-solid fa-user text-muted flex-shrink-0"></i>
+                      <span class="text-truncate">{{ emp.full_name }}</span>
+                    </span>
+                    <i class="fa-solid fa-check text-primary ms-2 flex-shrink-0" *ngIf="selectedAssignToId === emp.employee_id"></i>
+                  </div>
+                </ng-container>
+              </div>
             </div>
-            <div class="metric-val-item">
-              <label>Kỳ vọng (Target)</label>
-              <input type="number" class="form-control text-center" [(ngModel)]="objective.expected_value" />
+          </div>
+
+          <!-- Field 2: Assignee (Readonly khi mở từ OKR Tree) -->
+          <div class="prop-group mb-3" *ngIf="!isCompanyLevel && !isFromSettings">
+            <label class="prop-label">{{ isTeamLevel ? 'Team phụ trách' : 'Assignee' }}</label>
+            <div class="prop-readonly-box d-flex align-items-center gap-2">
+              <i [class]="isTeamLevel ? 'fa-solid fa-users text-info' : 'fa-solid fa-user text-primary'" class="flex-shrink-0"></i>
+              <span class="text-truncate fw-semibold text-dark">{{ getAssigneeLabel() }}</span>
+            </div>
+          </div>
+
+          <!-- Field 3: Timeline -->
+          <div class="prop-group mb-0">
+            <label class="prop-label">Timeline</label>
+            <div class="prop-readonly-box d-flex align-items-center gap-2">
+              <i class="fa-solid fa-calendar text-primary flex-shrink-0"></i>
+              <span class="text-truncate fw-semibold text-dark">{{ getTimelineLabel() }}</span>
             </div>
           </div>
         </div>
@@ -352,27 +365,46 @@
   <div class="modal-overlay" *ngIf="showAddKrModal">
     <div class="modal-content" style="max-width: 500px;">
       <div class="modal-header d-flex justify-content-between align-items-center mb-3">
-        <h4 class="modal-title fw-bold" style="font-size: 16px; margin: 0;">Thêm Kết quả then chốt (Key Result)</h4>
+        <h4 class="modal-title fw-bold" style="font-size: 16px; margin: 0;">Add Key Result</h4>
         <button type="button" class="close-btn" (click)="showAddKrModal = false"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form (ngSubmit)="saveNewKr()">
         <div class="form-group mb-3">
-          <label class="form-label-small">Tên Key Result <span class="text-danger">*</span></label>
+          <label class="form-label-small">Key Result Title <span class="text-danger">*</span></label>
           <input type="text" class="form-control" [(ngModel)]="newKr.title" name="krTitle" required placeholder="Ví dụ: Tỷ lệ Issue hoàn thành đúng hạn SLA 24h..." />
         </div>
         <div class="form-group mb-3">
-          <label class="form-label-small">Thước đo (Metric)</label>
-          <select class="form-select" [(ngModel)]="newKr.metric_id" name="krMetric">
-            <option *ngFor="let m of metrics" [value]="m.id">{{ m.name }} ({{ m.unit }})</option>
-          </select>
+          <label class="form-label-small">Metric</label>
+          <div class="custom-select-wrapper position-relative w-100" [style.z-index]="isKrMetricDropdownOpen ? 1060 : 'auto'">
+            <button type="button" class="custom-select-trigger w-100" 
+                    [class.active]="isKrMetricDropdownOpen" 
+                    (click)="toggleKrMetricDropdown($event)">
+              <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                <i class="fa-solid fa-ruler-combined text-primary flex-shrink-0"></i>
+                <span class="text-truncate">{{ getKrMetricLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon flex-shrink-0" [class.rotate]="isKrMetricDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu w-100" *ngIf="isKrMetricDropdownOpen" style="max-height: 200px; overflow-y: auto; z-index: 1070;">
+              <div class="custom-select-option" *ngFor="let m of metrics" 
+                   [class.selected]="newKr.metric_id === m.id" 
+                   (click)="selectKrMetric(m.id)">
+                <span class="d-flex align-items-center gap-2 text-truncate" style="min-width: 0; flex: 1;">
+                  <i class="fa-solid fa-ruler text-muted flex-shrink-0"></i>
+                  <span class="text-truncate">{{ m.name }} ({{ m.unit || '%' }})</span>
+                </span>
+                <i class="fa-solid fa-check text-primary ms-2 flex-shrink-0" *ngIf="newKr.metric_id === m.id"></i>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="row mb-4">
           <div class="col-6">
-            <label class="form-label-small">Bắt đầu (Start)</label>
+            <label class="form-label-small">Start</label>
             <input type="number" class="form-control" [(ngModel)]="newKr.start_value" name="krStart" />
           </div>
           <div class="col-6">
-            <label class="form-label-small">Kỳ vọng (Expected)</label>
+            <label class="form-label-small">Expected</label>
             <input type="number" class="form-control" [(ngModel)]="newKr.expected_value" name="krExpected" required />
           </div>
         </div>

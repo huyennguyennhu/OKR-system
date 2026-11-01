@@ -35,6 +35,7 @@
         <tr>
           <th>Mã Role</th>
           <th>Tên Role</th>
+          <th>Team</th>
           <th>Mô tả chức năng</th>
           <th>Ngày tạo</th>
           <th style="width: 48px; text-align: center;"></th>
@@ -42,7 +43,7 @@
       </thead>
       <tbody>
         <tr *ngIf="loading">
-          <td colspan="5" class="table-loading-cell">
+          <td colspan="6" class="table-loading-cell">
             <div class="table-loading-content">
               <div class="loading-spinner-circle"></div>
               <span>Đang tải dữ liệu...</span>
@@ -53,6 +54,11 @@
           <tr *ngFor="let role of filteredRoles">
             <td><span class="badge badge-info">{{ role.code }}</span></td>
             <td><strong>{{ role.name }}</strong></td>
+            <td>
+              <span class="badge" [ngClass]="role.team_name ? 'badge-primary' : 'badge-secondary'">
+                {{ role.team_name || 'Chung' }}
+              </span>
+            </td>
             <td class="text-muted" style="max-width: 320px;">{{ role.description || '—' }}</td>
             <td>{{ role.created_at ? (role.created_at | date:'dd/MM/yyyy HH:mm') : '-' }}</td>
             <td class="action-cell" [style.z-index]="activeDropdownId === (role.id || role.code) ? 10000 : 'auto'">
@@ -72,7 +78,7 @@
             </td>
           </tr>
           <tr *ngIf="filteredRoles.length === 0">
-            <td colspan="5" class="text-center text-muted py-4">
+            <td colspan="6" class="text-center text-muted py-4">
               {{ searchQuery ? 'Không tìm thấy role nào phù hợp từ khóa.' : 'Chưa có role nào. Hãy tạo mới!' }}
             </td>
           </tr>
@@ -99,6 +105,34 @@
         <input type="text" class="form-control" [(ngModel)]="newRole.code" name="code" placeholder="Để trống sẽ tự sinh từ tên (Ví dụ: BACKEND_DEV)">
       </div>
       <div class="form-group mb-3">
+        <label>Team</label>
+        <div class="custom-select-wrapper w-100 position-relative">
+          <button type="button" class="custom-select-trigger w-100" [class.active]="isModalTeamDropdownOpen" (click)="toggleModalTeamDropdown($event)">
+            <span class="d-flex align-items-center">
+              <i class="fa-solid fa-users text-primary me-2"></i>
+              <span class="text-truncate">{{ getModalTeamLabel() }}</span>
+            </span>
+            <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isModalTeamDropdownOpen"></i>
+          </button>
+          <div class="custom-select-menu w-100" *ngIf="isModalTeamDropdownOpen" style="max-height: 220px; overflow-y: auto; z-index: 1050;">
+            <div class="custom-select-option" [class.selected]="!newRole.team_id" (click)="selectModalTeam('')">
+              <span class="d-flex align-items-center">
+                <i class="fa-solid fa-layer-group me-2 text-muted"></i>
+                <span>Chung (Không gắn team cụ thể)</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="!newRole.team_id"></i>
+            </div>
+            <div class="custom-select-option" *ngFor="let team of teams" [class.selected]="newRole.team_id === team.id || newRole.team_id === team.code" (click)="selectModalTeam(team.id || team.code)">
+              <span class="d-flex align-items-center">
+                <i class="fa-solid fa-users me-2 text-primary"></i>
+                <span>{{ team.name }}</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="newRole.team_id === team.id || newRole.team_id === team.code"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="form-group mb-3">
         <label>Mô tả chức năng</label>
         <textarea class="form-control" rows="3" [(ngModel)]="newRole.description" name="description" placeholder="Mô tả phạm vi trách nhiệm và vai trò trong nhóm..."></textarea>
       </div>
@@ -112,4 +146,3 @@
     </form>
   </div>
 </div>
-
