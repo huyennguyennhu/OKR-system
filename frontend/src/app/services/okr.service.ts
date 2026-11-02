@@ -172,9 +172,10 @@ export class OkrService {
       if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         return 'http://localhost:3000/api';
       }
-      return '/api';
+      // Production trên Vercel: kết nối trực tiếp Backend Render
+      return 'https://okr-system.onrender.com/api';
     }
-    return 'http://localhost:3000/api';
+    return 'https://okr-system.onrender.com/api';
   }
 
   constructor(private http: HttpClient) {}

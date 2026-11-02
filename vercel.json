@@ -7,16 +7,12 @@
       "config": {
         "distDir": "dist/okr-gitlab-frontend/browser"
       }
-    },
-    {
-      "src": "backend/server.js",
-      "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "backend/server.js"
+      "dest": "https://okr-system.onrender.com/api/$1"
     },
     {
       "src": "/(.*)",

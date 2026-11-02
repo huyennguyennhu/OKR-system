@@ -21,6 +21,31 @@ initDatabase().then(() => {
   console.error('Database initialization error:', err);
 });
 
+// Root & Health Check Endpoints (For Render / Vercel Monitoring)
+app.get('/', (req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'OKR GitLab Measurement Backend',
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get('/api/health', async (req, res) => {
+  try {
+    const dbTest = await get('SELECT 1 as connected');
+    res.json({
+      status: 'healthy',
+      database: dbTest ? 'connected' : 'disconnected',
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    res.status(500).json({
+      status: 'unhealthy',
+      database_error: err.message
+    });
+  }
+});
+
 // API Routes
 
 // Employees Endpoint
