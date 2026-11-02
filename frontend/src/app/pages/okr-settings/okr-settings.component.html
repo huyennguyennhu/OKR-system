@@ -101,6 +101,13 @@
             <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isSpaceFilterDropdownOpen"></i>
           </button>
           <div class="custom-select-menu" *ngIf="isSpaceFilterDropdownOpen" style="min-width: 240px; z-index: 1050; max-height: 280px; overflow-y: auto;">
+            <div class="custom-select-option" [class.selected]="selectedMemberSpaceId === 'all'" (click)="selectMemberSpace('all')">
+              <span class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-shapes text-muted" style="width: 16px; text-align: center;"></i>
+                <span>Tất cả Không gian</span>
+              </span>
+              <i class="fa-solid fa-check check-icon" *ngIf="selectedMemberSpaceId === 'all'"></i>
+            </div>
             <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="selectedMemberSpaceId === s.id" (click)="selectMemberSpace(s.id)">
               <span class="d-flex align-items-center gap-2">
                 <i class="fa-solid fa-folder text-primary" style="width: 16px; text-align: center;"></i>

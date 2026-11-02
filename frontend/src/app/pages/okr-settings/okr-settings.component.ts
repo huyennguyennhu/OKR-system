@@ -188,8 +188,8 @@ export class OkrSettingsComponent implements OnInit {
         if ((!this.selectedTimelineSpaceId || this.selectedTimelineSpaceId === 'all' || !this.spaces.some(s => s.id === this.selectedTimelineSpaceId)) && this.spaces.length > 0) {
           this.selectedTimelineSpaceId = this.spaces[0].id;
         }
-        if ((!this.selectedMemberSpaceId || this.selectedMemberSpaceId === 'all') && this.spaces.length > 0) {
-          this.selectedMemberSpaceId = this.spaces[0].id;
+        if (!this.selectedMemberSpaceId) {
+          this.selectedMemberSpaceId = 'all';
         }
         this.timelines = res.timelines || [];
         this.metrics = res.metrics || [];
@@ -227,11 +227,8 @@ export class OkrSettingsComponent implements OnInit {
   }
 
   getSelectedSpaceFilterLabel(): string {
-    if (!this.selectedMemberSpaceId || this.selectedMemberSpaceId === "all") {
-      if (this.spaces && this.spaces.length > 0) {
-        return this.spaces[0].name;
-      }
-      return "Chọn Không gian";
+    if (!this.selectedMemberSpaceId || this.selectedMemberSpaceId === 'all') {
+      return 'Tất cả Không gian';
     }
     const found = this.spaces.find(s => s.id === this.selectedMemberSpaceId);
     return found ? found.name : this.selectedMemberSpaceId;
