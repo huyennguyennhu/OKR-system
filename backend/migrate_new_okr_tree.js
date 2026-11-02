@@ -119,7 +119,7 @@ async function migrate() {
       const krA1Current = parseFloat((91.5 * m.progressMultiplier).toFixed(1));
       await run(`
         INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%', 0, 90, ?, 'increase', '%', ?, NULL, NULL)
+        VALUES (?, ?, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%', 0, 90, ?, 'increase', '%', ?, 'Team dev', NULL)
       `, [krA1Id, teamObj1Id, krA1Current, defaultSpaceId]);
 
       // 5 KRs con của KR-A1
@@ -185,7 +185,7 @@ async function migrate() {
       const krB1Current = parseFloat((94.2 * m.progressMultiplier).toFixed(1));
       await run(`
         INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%', 0, 90, ?, 'increase', '%', ?, NULL, NULL)
+        VALUES (?, ?, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%', 0, 90, ?, 'increase', '%', ?, 'Team dev', NULL)
       `, [krB1Id, teamObj1Id, krB1Current, defaultSpaceId]);
 
       // 5 KRs con của KR-B1
@@ -251,7 +251,7 @@ async function migrate() {
       const krC1Current = parseFloat((6.2 / m.progressMultiplier).toFixed(1)); // Giờ thấp hơn là tốt hơn
       await run(`
         INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc', 12.0, 8.0, ?, 'decrease', 'giờ', ?, NULL, NULL)
+        VALUES (?, ?, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc', 12.0, 8.0, ?, 'decrease', 'giờ', ?, 'Team dev', NULL)
       `, [krC1Id, teamObj2Id, krC1Current, defaultSpaceId]);
 
       // 5 KRs con của KR-C1

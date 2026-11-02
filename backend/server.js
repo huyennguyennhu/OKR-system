@@ -302,10 +302,10 @@ app.get('/api/okr-tree', async (req, res) => {
       progress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
 
       const rule = rules.find(r => r.kr_id === kr.kr_id);
-      const isInd = parentLevel === 'individual' || parentLevel === 'PERSONAL' || !!kr.parent_kr_id || !!kr.assignee_id;
+      const isInd = parentLevel === 'individual' || parentLevel === 'PERSONAL' || !!kr.parent_kr_id || (!!kr.assignee_id && employees.some(e => e.employee_id === kr.assignee_id || e.full_name === kr.assignee_id));
       const type = isInd ? 'ind_kr' : 'team_kr';
 
-      let assignTo = 'Nhóm Kỹ Thuật';
+      let assignTo = 'Team dev';
       let assignToAvatar = undefined;
       if (kr.assignee_id) {
         const emp = employees.find(e => e.employee_id === kr.assignee_id || e.full_name === kr.assignee_id);

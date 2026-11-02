@@ -1565,7 +1565,7 @@ export class OkrBoardComponent implements OnInit {
       if (tm) return tm.name;
       return kr.assignee_id;
     }
-    return 'Nhóm kỹ thuật';
+    return 'Team dev';
   }
 
   // --- Timeline Tree Navigation Grouping ---

@@ -463,7 +463,7 @@ async function seedInitialData() {
       // KR-A1
       const krA1Id = `KR-${m.krPre}A1`;
       await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%', 0, 90, ?, 'increase', '%', ?, NULL, NULL)`,
+        VALUES (?, ?, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%', 0, 90, ?, 'increase', '%', ?, 'Team dev', NULL)`,
         [krA1Id, t1Id, parseFloat((91.5 * m.mult).toFixed(1)), defaultSpaceId]);
 
       const a1Children = [
@@ -480,7 +480,7 @@ async function seedInitialData() {
       // KR-B1
       const krB1Id = `KR-${m.krPre}B1`;
       await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%', 0, 90, ?, 'increase', '%', ?, NULL, NULL)`,
+        VALUES (?, ?, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%', 0, 90, ?, 'increase', '%', ?, 'Team dev', NULL)`,
         [krB1Id, t1Id, parseFloat((94.2 * m.mult).toFixed(1)), defaultSpaceId]);
 
       const b1Children = [
@@ -497,7 +497,7 @@ async function seedInitialData() {
       // KR-C1
       const krC1Id = `KR-${m.krPre}C1`;
       await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id)
-        VALUES (?, ?, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc', 12.0, 8.0, ?, 'decrease', 'giờ', ?, NULL, NULL)`,
+        VALUES (?, ?, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc', 12.0, 8.0, ?, 'decrease', 'giờ', ?, 'Team dev', NULL)`,
         [krC1Id, t2Id, parseFloat((6.2 / m.mult).toFixed(1)), defaultSpaceId]);
 
       const c1Children = [
