@@ -205,6 +205,19 @@ app.get('/api/objectives', async (req, res) => {
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
     objectives = await all(`${baseQuery} ${whereSql} ORDER BY o.objective_id ASC`, queryParams);
 
+    // Smart Fallback: if space_id yielded 0 objectives, re-query without space constraint
+    if (objectives.length === 0 && targetSpace && targetSpace !== 'all') {
+      const fallbackClauses = [];
+      const fallbackParams = [];
+      if (tlIds && tlIds.length > 0) {
+        const placeholders = tlIds.map(() => '?').join(', ');
+        fallbackClauses.push(`o.timeline_id IN (${placeholders})`);
+        fallbackParams.push(...tlIds);
+      }
+      const fallbackWhere = fallbackClauses.length > 0 ? `WHERE ${fallbackClauses.join(' AND ')}` : '';
+      objectives = await all(`${baseQuery} ${fallbackWhere} ORDER BY o.objective_id ASC`, fallbackParams);
+    }
+
     const allKeyResults = await all('SELECT * FROM KeyResults');
     const objIds = new Set(objectives.map(o => o.objective_id));
     const keyResults = allKeyResults.filter(kr => objIds.has(kr.objective_id));
@@ -254,6 +267,19 @@ app.get('/api/okr-tree', async (req, res) => {
 
     const whereSql = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
     objectives = await all(`${baseQuery} ${whereSql} ORDER BY o.objective_id ASC`, queryParams);
+
+    // Smart Fallback: if space_id yielded 0 objectives, re-query without space constraint
+    if (objectives.length === 0 && targetSpace && targetSpace !== 'all') {
+      const fallbackClauses = [];
+      const fallbackParams = [];
+      if (tlIds && tlIds.length > 0) {
+        const placeholders = tlIds.map(() => '?').join(', ');
+        fallbackClauses.push(`o.timeline_id IN (${placeholders})`);
+        fallbackParams.push(...tlIds);
+      }
+      const fallbackWhere = fallbackClauses.length > 0 ? `WHERE ${fallbackClauses.join(' AND ')}` : '';
+      objectives = await all(`${baseQuery} ${fallbackWhere} ORDER BY o.objective_id ASC`, fallbackParams);
+    }
 
     const allKeyResults = await all('SELECT * FROM KeyResults');
     const objIds = new Set(objectives.map(o => o.objective_id));

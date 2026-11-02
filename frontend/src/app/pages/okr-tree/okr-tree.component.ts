@@ -275,10 +275,14 @@ interface TreeNode {
             <!-- Dropdown Space từ Database thay thế cho XC2026 -->
             <div class="position-relative space-dropdown-wrapper">
               <button type="button" class="toolbar-dropdown-trigger" (click)="toggleSpaceDropdown($event)" [class.active]="isSpaceDropdownOpen" title="Chọn không gian làm việc">
-                <span class="space-label">{{ selectedSpace ? selectedSpace.name : 'Chọn Space' }}</span>
+                <span class="space-label">{{ selectedSpaceId === 'all' ? 'Tất cả Không gian' : (selectedSpace ? selectedSpace.name : 'Chọn Space') }}</span>
                 <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isSpaceDropdownOpen"></i>
               </button>
               <div class="custom-select-menu space-dropdown-menu" *ngIf="isSpaceDropdownOpen">
+                <div class="custom-select-option" [class.selected]="selectedSpaceId === 'all'" (click)="selectAllSpaces()">
+                  <span style="color: #1e293b; font-weight: 500;">Tất cả Không gian</span>
+                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="selectedSpaceId === 'all'"></i>
+                </div>
                 <div class="custom-select-option" *ngFor="let s of spaces" [class.selected]="s.id === selectedSpaceId" (click)="selectSpace(s)">
                   <span style="color: #1e293b; font-weight: 500;">{{ s.name }}</span>
                   <i class="fa-solid fa-check check-icon ms-2" *ngIf="s.id === selectedSpaceId"></i>
@@ -1674,9 +1678,10 @@ export class OkrTreeComponent implements OnInit {
       next: (data) => {
         this.spaces = data || [];
         if (this.spaces.length > 0) {
+          const defaultSpace = this.spaces.find(s => s.id === 'SPC-1793153879989') || this.spaces[0];
           if (!this.selectedSpaceId || !this.spaces.some(s => s.id === this.selectedSpaceId)) {
-            this.selectedSpace = this.spaces[0];
-            this.selectedSpaceId = this.spaces[0].id;
+            this.selectedSpace = defaultSpace;
+            this.selectedSpaceId = defaultSpace.id;
           }
         }
         this.loadTreeData();
@@ -1686,6 +1691,13 @@ export class OkrTreeComponent implements OnInit {
         this.loadTreeData();
       }
     });
+  }
+
+  selectAllSpaces(): void {
+    this.selectedSpace = null;
+    this.selectedSpaceId = 'all';
+    this.isSpaceDropdownOpen = false;
+    this.loadTreeData();
   }
 
   toggleSpaceDropdown(event: MouseEvent): void {
