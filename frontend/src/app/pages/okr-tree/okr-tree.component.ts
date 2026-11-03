@@ -558,7 +558,8 @@ interface TreeNode {
                    (click)="startEditDescription()"
                    title="Nhấn để chỉnh sửa mô tả"
                    style="font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.15s ease;">
-                {{ currentDescriptionText }}
+                <span *ngIf="currentDescriptionText">{{ currentDescriptionText }}</span>
+                <span *ngIf="!currentDescriptionText" class="text-muted fst-italic" style="font-size: 12.5px;">Chưa có mô tả cho Key Result này. Nhấn để thêm...</span>
               </div>
 
               <!-- EDIT MODE -->
@@ -2772,7 +2773,7 @@ export class OkrTreeComponent implements OnInit {
   }
 
   get currentDescriptionText(): string {
-    return this.selectedKrDetail?.description || this.selectedKrNode?.description || 'Chỉ số đo lường quy trình kỹ thuật tự động thông qua Activepieces Flow tích hợp GitLab SLA.';
+    return this.selectedKrDetail?.description || this.selectedKrNode?.description || '';
   }
 
   startEditDescription(): void {

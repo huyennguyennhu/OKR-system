@@ -647,52 +647,8 @@ async function seedInitialData() {
     }
   }
 
-  // 10. Comments
-  try {
-    const commentCount = await get('SELECT count(*) as count FROM Comments');
-    if (parseInt(commentCount.count) === 0) {
-      const sampleComments = [
-        [
-          'OBJ-M10-TEAM-01',
-          'KR-A1',
-          'Alexander Nguyen (Dev Lead)',
-          'EMP004',
-          'https://ui-avatars.com/api/?name=Alexander+Nguyen&background=3157D5&color=fff',
-          'Chỉ số SLA hoàn thành Issue được tổng hợp tự động từ GitLab Events qua Activepieces Flow. Hiện đạt 91.8%, vượt ngưỡng SLA cam kết (90%).',
-          'activepieces',
-          '2026-10-28 14:30:00+00'
-        ],
-        [
-          'OBJ-M10-TEAM-01',
-          'KR-B1',
-          'Activepieces Bot',
-          'activepieces.bot',
-          'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff',
-          'Đồng bộ tiến độ phản hồi Merge Request thành công: Tỷ lệ đạt 94.2% (> 90.0% cam kết SLA).',
-          'activepieces',
-          '2026-10-28 15:45:00+00'
-        ],
-        [
-          'OBJ-M10-TEAM-01',
-          null,
-          'Huyền Nguyễn Như',
-          'EMP001',
-          'https://ui-avatars.com/api/?name=Huy%E1%BB%81n%20Nguy%E1%BB%85n%20Nh%C6%B0&background=3157D5&color=fff',
-          'Đội ngũ đã tối ưu luồng review code và duy trì SLA ổn định trong suốt chu kỳ Tháng 10.',
-          'web_user',
-          '2026-10-29 09:15:00+00'
-        ]
-      ];
-      for (const c of sampleComments) {
-        await run(`
-          INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `, c);
-      }
-    }
-  } catch (e) {
-    console.warn('Comments seeding notice:', e.message);
-  }
+  // 10. Comments (Chỉ lưu bình luận thực tế của người dùng hoặc Activepieces Flow)
+
 
   console.log('Seeding initial data complete.');
 }
