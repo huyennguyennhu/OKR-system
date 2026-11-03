@@ -551,23 +551,23 @@ interface TreeNode {
             </div>
 
             <!-- Thước đo tóm tắt (S, C, E) -->
-            <div class="row g-2 mb-2">
-              <div class="col-4">
-                <div class="metric-card p-2 rounded border bg-light text-center">
+            <div class="row g-2 mb-2 d-flex flex-nowrap w-100">
+              <div class="col-4 flex-fill" style="flex: 1 1 0; min-width: 0;">
+                <div class="metric-card p-2 rounded border bg-light text-center h-100">
                   <div class="text-muted" style="font-size: 11px;">Start (S)</div>
-                  <div class="fw-bold text-dark" style="font-size: 14px;">{{ selectedKrNode?.resultS }} {{ selectedKrNode?.unit || '%' }}</div>
+                  <div class="fw-bold text-dark text-truncate" style="font-size: 14px;">{{ selectedKrNode?.resultS }} {{ selectedKrNode?.unit || '%' }}</div>
                 </div>
               </div>
-              <div class="col-4">
-                <div class="metric-card p-2 rounded border bg-primary-subtle border-primary-subtle text-center">
+              <div class="col-4 flex-fill" style="flex: 1 1 0; min-width: 0;">
+                <div class="metric-card p-2 rounded border bg-primary-subtle border-primary-subtle text-center h-100">
                   <div class="text-primary fw-semibold" style="font-size: 11px;">Current (C)</div>
-                  <div class="fw-bold text-primary" style="font-size: 14px;">{{ selectedKrNode?.resultC }} {{ selectedKrNode?.unit || '%' }}</div>
+                  <div class="fw-bold text-primary text-truncate" style="font-size: 14px;">{{ selectedKrNode?.resultC }} {{ selectedKrNode?.unit || '%' }}</div>
                 </div>
               </div>
-              <div class="col-4">
-                <div class="metric-card p-2 rounded border bg-light text-center">
+              <div class="col-4 flex-fill" style="flex: 1 1 0; min-width: 0;">
+                <div class="metric-card p-2 rounded border bg-light text-center h-100">
                   <div class="text-muted" style="font-size: 11px;">Expected (E)</div>
-                  <div class="fw-bold text-success" style="font-size: 14px;">{{ selectedKrNode?.resultE }} {{ selectedKrNode?.unit || '%' }}</div>
+                  <div class="fw-bold text-success text-truncate" style="font-size: 14px;">{{ selectedKrNode?.resultE }} {{ selectedKrNode?.unit || '%' }}</div>
                 </div>
               </div>
             </div>
@@ -638,29 +638,86 @@ interface TreeNode {
           </div>
 
           <!-- ================= TAB GROUP 2: Comments, Check in, History ================= -->
-          <div class="kr-drawer-tab-nav d-flex border-bottom mb-3 mt-4">
-            <button class="drawer-tab-link" [class.active]="activeTab2 === 'comments'" (click)="activeTab2 = 'comments'">
-              <i class="fa-regular fa-comment-dots me-1"></i> Comments
-            </button>
-            <button class="drawer-tab-link" [class.active]="activeTab2 === 'checkin'" (click)="activeTab2 = 'checkin'">
-              <i class="fa-solid fa-clock-rotate-left me-1"></i> Check in
-            </button>
-            <button class="drawer-tab-link" [class.active]="activeTab2 === 'history'" (click)="activeTab2 = 'history'">
-              <i class="fa-solid fa-timeline me-1"></i> History
-            </button>
+          <div class="kr-drawer-tab-nav d-flex align-items-center border-bottom mb-3 mt-4 position-relative">
+            <div class="d-flex">
+              <button class="drawer-tab-link-box" [class.active]="activeTab2 === 'comments'" (click)="activeTab2 = 'comments'">
+                Comments
+              </button>
+              <button class="drawer-tab-link-box" [class.active]="activeTab2 === 'checkin'" (click)="activeTab2 = 'checkin'">
+                Check in
+              </button>
+              <button class="drawer-tab-link-box" [class.active]="activeTab2 === 'history'" (click)="activeTab2 = 'history'">
+                History
+              </button>
+            </div>
+            <!-- Sort on right side of tab nav (Newest first) -->
+            <div class="ms-auto" *ngIf="activeTab2 === 'comments'">
+              <button class="btn-sort-link" (click)="toggleCommentSort()" title="Đổi thứ tự sắp xếp">
+                {{ commentSortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
+                <i class="fa-solid fa-arrow-down ms-1" [style.transform]="commentSortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
+              </button>
+            </div>
+            <div class="ms-auto" *ngIf="activeTab2 === 'history'">
+              <button class="btn-sort-link" (click)="toggleHistorySort()" title="Đổi thứ tự sắp xếp">
+                {{ historySortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
+                <i class="fa-solid fa-arrow-down ms-1" [style.transform]="historySortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
+              </button>
+            </div>
           </div>
 
           <!-- TAB 2.1: Comments -->
           <div *ngIf="activeTab2 === 'comments'" class="tab-pane-content">
-            <!-- Khung nhập Comment -->
-            <div class="comment-input-container d-flex gap-2 mb-3">
-              <img src="https://ui-avatars.com/api/?name=User&background=3157D5&color=fff" class="avatar flex-shrink-0" style="width: 34px; height: 34px; border-radius: 50%;">
-              <div class="flex-grow-1">
-                <textarea class="form-control" rows="2" [(ngModel)]="newKrComment" placeholder="Comment something..." style="font-size: 13px;"></textarea>
-                <div class="d-flex justify-content-end mt-1">
-                  <button class="btn btn-primary btn-sm px-3" (click)="addKrComment()" [disabled]="!newKrComment.trim() || isAddingKrComment" style="font-size: 12px;">
-                    <i class="fa-solid fa-paper-plane me-1"></i> Gửi
-                  </button>
+            <!-- Composer Area (Matches Screenshots 1 & 2) -->
+            <div class="d-flex gap-2 mb-3 align-items-start">
+              <!-- Current User Avatar -->
+              <img src="https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff" class="rounded-circle flex-shrink-0" style="width: 34px; height: 34px; object-fit: cover;">
+
+              <!-- STATE 1: Idle (Collapsed - Matches Screenshot 1 & 3) -->
+              <div *ngIf="!isCommentEditorOpen" 
+                   class="comment-idle-box flex-grow-1 p-2 border rounded bg-white" 
+                   (click)="isCommentEditorOpen = true">
+                <span style="color: #818cf8; font-size: 13.5px;">Comment something...</span>
+              </div>
+
+              <!-- STATE 2: Compose (Expanded with Toolbar - Matches Screenshot 2) -->
+              <div *ngIf="isCommentEditorOpen" class="comment-editor-box border rounded bg-white flex-grow-1">
+                <!-- Toolbar -->
+                <div class="editor-toolbar d-flex align-items-center justify-content-between px-2 py-1 border-bottom" style="background: #ffffff;">
+                  <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn-editor-tool fw-bold" (click)="insertFormat('**', '**')" title="Bold">B</button>
+                    <button type="button" class="btn-editor-tool fst-italic" (click)="insertFormat('*', '*')" title="Italic">i</button>
+                    <button type="button" class="btn-editor-tool" (click)="insertFormat('')" title="Text Color">A<span style="font-size: 9px; vertical-align: middle;">:</span></button>
+                    <span class="editor-divider"></span>
+                    <button type="button" class="btn-editor-tool text-primary" title="Align Left"><i class="fa-solid fa-align-left"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Align Center"><i class="fa-solid fa-align-center"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Align Right"><i class="fa-solid fa-align-right"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Paragraph"><i class="fa-solid fa-paragraph"></i></button>
+                    <span class="editor-divider"></span>
+                    <button type="button" class="btn-editor-tool" title="Tệp đính kèm"><i class="fa-regular fa-file"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Hình ảnh"><i class="fa-regular fa-image"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Video"><i class="fa-solid fa-video"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Thêm"><i class="fa-solid fa-plus"></i></button>
+                  </div>
+                  <div class="d-flex align-items-center gap-1">
+                    <button type="button" class="btn-editor-tool" title="Undo"><i class="fa-solid fa-arrow-rotate-left"></i></button>
+                    <button type="button" class="btn-editor-tool" title="Redo"><i class="fa-solid fa-arrow-rotate-right"></i></button>
+                  </div>
+                </div>
+
+                <!-- Textarea -->
+                <textarea class="form-control border-0 px-3 py-2 w-100" rows="3" [(ngModel)]="newKrComment" placeholder="Comment something..." style="font-size: 13.5px; resize: vertical; outline: none; box-shadow: none; min-height: 80px;"></textarea>
+
+                <!-- Footer with Counters & Actions -->
+                <div class="editor-footer d-flex align-items-center justify-content-between px-3 py-2 border-top bg-white">
+                  <div class="text-muted" style="font-size: 11px;">
+                    characters : {{ commentCharCount }} words : {{ commentWordCount }}
+                  </div>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-link text-dark p-0 me-2 text-decoration-none" (click)="isCommentEditorOpen = false; newKrComment = ''" style="font-size: 13px; font-weight: 500;">Cancel</button>
+                    <button type="button" class="btn btn-primary px-3 py-1" (click)="addKrComment()" [disabled]="!newKrComment.trim() || isAddingKrComment" style="font-size: 13px; border-radius: 4px; background: #3b82f6; border-color: #3b82f6; font-weight: 500;">
+                      {{ isAddingKrComment ? 'Saving...' : 'Save' }}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -670,24 +727,30 @@ interface TreeNode {
               <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải bình luận...
             </div>
 
-            <!-- Comments List -->
-            <div class="comments-list d-flex flex-column gap-2" *ngIf="!loadingKrComments && krComments.length > 0">
-              <div class="comment-card p-2 rounded bg-light border" *ngFor="let c of krComments">
-                <div class="d-flex align-items-center gap-2 mb-1">
-                  <img *ngIf="c.author_avatar" [src]="c.author_avatar" class="avatar" style="width: 24px; height: 24px; border-radius: 50%;">
-                  <i *ngIf="!c.author_avatar && c.source === 'activepieces'" class="fa-solid fa-robot text-primary" style="font-size: 14px;"></i>
-                  <i *ngIf="!c.author_avatar && c.source !== 'activepieces'" class="fa-solid fa-user text-secondary" style="font-size: 14px;"></i>
-                  <strong style="font-size: 12px;">{{ c.author }}</strong>
-                  <span class="badge bg-primary-subtle text-primary border" *ngIf="c.source === 'activepieces'" style="font-size: 10px;">
-                    <i class="fa-solid fa-robot me-1"></i>Activepieces
-                  </span>
-                  <small class="text-muted ms-auto" style="font-size: 11px;">{{ formatTime(c.created_at || c.time) }}</small>
-                  <button class="btn btn-link text-muted p-0" title="Xóa" (click)="deleteKrComment(c.comment_id)" *ngIf="c.comment_id">
-                    <i class="fa-regular fa-trash-can" style="font-size: 11px;"></i>
-                  </button>
+            <!-- STATE 3: Comments List (Matches Screenshot 3) -->
+            <div class="comments-list d-flex flex-column" *ngIf="!loadingKrComments && krComments.length > 0">
+              <div class="comment-item d-flex gap-3 py-3 border-bottom" *ngFor="let c of sortedKrComments">
+                <!-- Avatar (Syrix logo or user image) -->
+                <div class="comment-avatar flex-shrink-0">
+                  <div *ngIf="c.source === 'activepieces' || (c.author && c.author.includes('Syrix'))" class="syrix-avatar-ring">
+                    <div class="syrix-avatar-pupil"></div>
+                  </div>
+                  <img *ngIf="!(c.source === 'activepieces' || (c.author && c.author.includes('Syrix')))" 
+                       [src]="c.author_avatar || ('https://ui-avatars.com/api/?name=' + c.author + '&background=3157D5&color=fff')" 
+                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
                 </div>
-                <div class="comment-text text-dark" style="font-size: 12.5px; line-height: 1.4; padding-left: 32px;">
-                  {{ c.content }}
+
+                <!-- Comment Content -->
+                <div class="comment-body flex-grow-1" style="min-width: 0;">
+                  <div class="d-flex align-items-center gap-2 mb-1">
+                    <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ c.author }}</span>
+                    <span class="text-muted" style="font-size: 12px;">{{ formatCommentDate(c.created_at || c.time) }}</span>
+                    <i class="fa-solid fa-link text-muted cursor-pointer" style="font-size: 11px;" title="Sao chép link"></i>
+                    <button class="btn btn-link text-muted p-0 ms-auto" title="Xóa" (click)="deleteKrComment(c.comment_id)" *ngIf="c.comment_id">
+                      <i class="fa-regular fa-trash-can" style="font-size: 11px;"></i>
+                    </button>
+                  </div>
+                  <div class="comment-text text-dark" style="font-size: 13px; line-height: 1.55; white-space: pre-wrap;">{{ c.content }}</div>
                 </div>
               </div>
             </div>
@@ -704,12 +767,12 @@ interface TreeNode {
             <!-- Form Check in mới -->
             <div class="p-3 rounded border bg-light mb-3">
               <h6 class="fw-bold text-dark mb-2" style="font-size: 12.5px;">Ghi nhận lần Check-in mới</h6>
-              <div class="row g-2 mb-2">
-                <div class="col-6">
+              <div class="row g-2 mb-2 d-flex flex-nowrap w-100">
+                <div class="col-6 flex-fill" style="flex: 1 1 0; min-width: 0;">
                   <label class="text-muted" style="font-size: 11px;">Giá trị C mới:</label>
                   <input type="number" class="form-control form-control-sm" [(ngModel)]="newCheckinValue" step="0.1">
                 </div>
-                <div class="col-6">
+                <div class="col-6 flex-fill" style="flex: 1 1 0; min-width: 0;">
                   <label class="text-muted" style="font-size: 11px;">Ghi chú Check-in:</label>
                   <input type="text" class="form-control form-control-sm" [(ngModel)]="newCheckinNote" placeholder="Lý do hoặc kết quả...">
                 </div>
@@ -751,33 +814,85 @@ interface TreeNode {
             </div>
           </div>
 
-          <!-- TAB 2.3: History (Audit Log) -->
+          <!-- TAB 2.3: History (Unified Audit Log) -->
           <div *ngIf="activeTab2 === 'history'" class="tab-pane-content">
+            <!-- Filter Pills -->
+            <div class="d-flex align-items-center gap-1 mb-3">
+              <button class="btn-filter-pill" [class.active]="historyFilter === 'all'" (click)="historyFilter = 'all'">
+                Tất cả ({{ krHistory.length }})
+              </button>
+              <button class="btn-filter-pill" [class.active]="historyFilter === 'checkin'" (click)="historyFilter = 'checkin'">
+                <i class="fa-solid fa-chart-line me-1 text-primary"></i> Check-in
+              </button>
+              <button class="btn-filter-pill" [class.active]="historyFilter === 'comment'" (click)="historyFilter = 'comment'">
+                <i class="fa-regular fa-comment-dots me-1 text-info"></i> Bình luận
+              </button>
+              <button class="btn-filter-pill" [class.active]="historyFilter === 'event'" (click)="historyFilter = 'event'">
+                <i class="fa-brands fa-gitlab me-1 text-warning"></i> GitLab SLA
+              </button>
+            </div>
+
+            <!-- Loading -->
             <div *ngIf="loadingKrHistory" class="text-center py-3 text-muted">
               <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải nhật ký truy vết...
             </div>
 
-            <div class="history-list d-flex flex-column gap-2" *ngIf="!loadingKrHistory && krHistory.length > 0">
-              <div class="p-2 rounded border bg-white" *ngFor="let h of krHistory">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 11px;">
-                    {{ h.event_key }}
-                  </span>
-                  <span class="badge" [ngClass]="h.on_time === 1 ? 'bg-success text-white' : 'bg-danger text-white'" style="font-size: 10px;">
-                    {{ h.on_time === 1 ? 'ĐẠT SLA' : 'VƯỢT SLA' }}
-                  </span>
+            <!-- History Audit List -->
+            <div class="history-audit-list d-flex flex-column gap-3" *ngIf="!loadingKrHistory && filteredKrHistory.length > 0">
+              <div class="history-item d-flex gap-3 pb-3 border-bottom" *ngFor="let h of filteredKrHistory">
+                <!-- Icon / Avatar -->
+                <div class="history-icon-col flex-shrink-0">
+                  <div *ngIf="h.type === 'checkin'" class="audit-icon-circle bg-primary-subtle text-primary border border-primary-subtle">
+                    <i class="fa-solid fa-chart-line"></i>
+                  </div>
+                  <div *ngIf="h.type === 'comment'" class="audit-icon-circle bg-info-subtle text-info border border-info-subtle">
+                    <i class="fa-solid fa-comment-dots"></i>
+                  </div>
+                  <div *ngIf="h.type === 'event'" class="audit-icon-circle" [ngClass]="h.badge_type === 'success' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'">
+                    <i class="fa-brands fa-gitlab" *ngIf="h.badge_type === 'success'"></i>
+                    <i class="fa-solid fa-triangle-exclamation" *ngIf="h.badge_type !== 'success'"></i>
+                  </div>
                 </div>
-                <div class="text-dark fw-medium mb-1" style="font-size: 12.5px;">
-                  {{ h.reason }}
-                </div>
-                <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
-                  <span><i class="fa-solid fa-user me-1"></i>{{ h.employee_name || h.employee_id }}</span>
-                  <span>{{ formatTime(h.created_at || h.event_time) }}</span>
+
+                <!-- Details -->
+                <div class="history-details flex-grow-1" style="min-width: 0;">
+                  <!-- Top Row: Actor, Badge, Date -->
+                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                    <span class="fw-bold text-dark" style="font-size: 13px;">{{ h.actor }}</span>
+                    <span class="badge" [ngClass]="h.badge_type === 'primary' ? 'bg-primary-subtle text-primary border' : (h.badge_type === 'info' ? 'bg-info-subtle text-info border' : (h.badge_type === 'success' ? 'bg-success-subtle text-success border' : 'bg-danger-subtle text-danger border'))" style="font-size: 10px; font-weight: 600;">
+                      {{ h.badge_text }}
+                    </span>
+                    <span class="text-muted ms-auto" style="font-size: 11.5px;">{{ formatCommentDate(h.created_at) }}</span>
+                  </div>
+
+                  <!-- Title / Event Summary -->
+                  <div class="fw-semibold text-dark mb-1" style="font-size: 13px; line-height: 1.4;">
+                    {{ h.title }}
+                  </div>
+
+                  <!-- Checkin Specific Data Box -->
+                  <div *ngIf="h.type === 'checkin'" class="p-2 rounded bg-light border d-flex gap-3 align-items-center mt-1" style="font-size: 12px;">
+                    <div><span class="text-muted">Cập nhật:</span> <strong class="text-primary">{{ h.metadata?.current_value }}%</strong></div>
+                    <div><span class="text-muted">Tiến độ:</span> <strong class="text-success">{{ h.metadata?.progress }}%</strong></div>
+                    <div *ngIf="h.metadata?.denominator"><span class="text-muted">Chỉ tiêu:</span> <strong>{{ h.metadata?.numerator }}/{{ h.metadata?.denominator }}</strong></div>
+                  </div>
+
+                  <!-- Comment Specific Box -->
+                  <div *ngIf="h.type === 'comment'" class="p-2 rounded bg-light border text-muted mt-1" style="font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; font-style: italic;">
+                    "{{ h.description }}"
+                  </div>
+
+                  <!-- Event Specific Box -->
+                  <div *ngIf="h.type === 'event'" class="text-muted mt-1" style="font-size: 12px; line-height: 1.4;">
+                    {{ h.description }}
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="text-center py-4 text-muted" *ngIf="!loadingKrHistory && krHistory.length === 0">
+            <!-- Empty History -->
+            <div class="text-center py-4 text-muted" *ngIf="!loadingKrHistory && filteredKrHistory.length === 0">
+              <i class="fa-solid fa-clock-rotate-left fa-2x mb-1 text-secondary opacity-50 d-block"></i>
               <p class="mb-0" style="font-size: 12.5px;">Chưa có dữ liệu nhật ký sự kiện cho Key Result này.</p>
             </div>
           </div>
@@ -918,6 +1033,17 @@ interface TreeNode {
     .justify-content-center { justify-content: center; }
     .gap-2 { gap: 0.5rem; }
     .gap-3 { gap: 1rem; }
+    .w-100 { width: 100% !important; }
+    .h-100 { height: 100% !important; }
+    .flex-fill { flex: 1 1 0% !important; min-width: 0 !important; }
+    .flex-nowrap { flex-wrap: nowrap !important; }
+    .row { display: flex; flex-wrap: wrap; margin-left: -0.25rem; margin-right: -0.25rem; }
+    .g-2 { gap: 0.5rem; }
+    .col-4 { flex: 0 0 33.333333%; max-width: 33.333333%; padding-left: 0.25rem; padding-right: 0.25rem; box-sizing: border-box; }
+    .col-6 { flex: 0 0 50%; max-width: 50%; padding-left: 0.25rem; padding-right: 0.25rem; box-sizing: border-box; }
+    .metric-card { height: 100%; box-sizing: border-box; }
+    .bg-primary-subtle { background-color: #eff6ff !important; }
+    .border-primary-subtle { border-color: #bfdbfe !important; }
     
     .text-center { text-align: center; }
     .text-end { text-align: right; }
@@ -1762,6 +1888,180 @@ interface TreeNode {
     .node-text:hover {
       color: var(--primary, #3157D5);
     }
+
+    /* Syrix Avatar with vibrant conic gradient ring (Matches Image 3) */
+    .syrix-avatar-ring {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      padding: 3px;
+      background: conic-gradient(from 180deg at 50% 50%, #f97316 0deg, #ef4444 120deg, #3b82f6 240deg, #f97316 360deg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .syrix-avatar-pupil {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .syrix-avatar-pupil::after {
+      content: '';
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #0f172a;
+      position: absolute;
+    }
+    .syrix-avatar-pupil::before {
+      content: '';
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #ffffff;
+      position: absolute;
+      top: 5px;
+      left: 5px;
+      z-index: 2;
+    }
+
+    /* Tab Link Box styling (Matches Screenshots 1, 2, 3) */
+    .drawer-tab-link-box {
+      border: 1px solid transparent;
+      background: transparent;
+      color: #64748b;
+      padding: 6px 14px;
+      font-weight: 500;
+      font-size: 13.5px;
+      cursor: pointer;
+      border-radius: 6px 6px 0 0;
+      transition: all 0.15s ease;
+      margin-bottom: -1px;
+    }
+    .drawer-tab-link-box:hover {
+      color: #2563eb;
+    }
+    .drawer-tab-link-box.active {
+      border: 1px solid #e2e8f0;
+      border-bottom: 1px solid #ffffff;
+      background: #ffffff;
+      color: #2563eb;
+      font-weight: 600;
+    }
+    .btn-sort-link {
+      background: none;
+      border: none;
+      color: #334155;
+      font-size: 12.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 6px;
+      font-weight: 500;
+    }
+    .btn-sort-link:hover {
+      color: #2563eb;
+    }
+
+    /* Comment Idle Box (Collapsed) */
+    .comment-idle-box {
+      min-height: 44px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 10px 14px;
+      color: #94a3b8;
+      font-size: 13.5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      background: #ffffff;
+      transition: border-color 0.15s ease;
+    }
+    .comment-idle-box:hover {
+      border-color: #93c5fd;
+    }
+
+    /* Comment Editor Box (Expanded) */
+    .comment-editor-box {
+      border: 1px solid #93c5fd;
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+      overflow: hidden;
+    }
+    .btn-editor-tool {
+      background: transparent;
+      border: none;
+      padding: 3px 6px;
+      color: #475569;
+      font-size: 12.5px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+    }
+    .btn-editor-tool:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+    .editor-divider {
+      display: inline-block;
+      width: 1px;
+      height: 14px;
+      background: #e2e8f0;
+      margin: 0 4px;
+    }
+
+    /* History Filter Pills */
+    .btn-filter-pill {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      padding: 3px 10px;
+      font-size: 12px;
+      color: #64748b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-filter-pill:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .btn-filter-pill.active {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #2563eb;
+      font-weight: 600;
+    }
+
+    /* Audit Icon Circle */
+    .audit-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+    .bg-info-subtle { background-color: #ecfeff !important; }
+    .text-info { color: #0891b2 !important; }
+    .border-info-subtle { border-color: #a5f3fc !important; }
+    .bg-success-subtle { background-color: #f0fdf4 !important; }
+    .border-success-subtle { border-color: #bbf7d0 !important; }
+    .bg-danger-subtle { background-color: #fef2f2 !important; }
+    .border-danger-subtle { border-color: #fecaca !important; }
   `]
 })
 export class OkrTreeComponent implements OnInit {
@@ -1779,6 +2079,8 @@ export class OkrTreeComponent implements OnInit {
   loadingKrComments = false;
   newKrComment = '';
   isAddingKrComment = false;
+  isCommentEditorOpen = false;
+  commentSortOrder: 'newest' | 'oldest' = 'newest';
 
   // Checkins in Right Bar
   krCheckins: any[] = [];
@@ -1790,6 +2092,8 @@ export class OkrTreeComponent implements OnInit {
   // Audit History in Right Bar
   krHistory: any[] = [];
   loadingKrHistory = false;
+  historyFilter: 'all' | 'checkin' | 'comment' | 'event' = 'all';
+  historySortOrder: 'newest' | 'oldest' = 'newest';
 
   activeDropdownId: string | null = null;
   showFilter = false;
@@ -2366,6 +2670,10 @@ export class OkrTreeComponent implements OnInit {
     this.newCheckinValue = parseFloat(node.resultC) || 0;
     this.newCheckinNote = '';
     this.newKrComment = '';
+    this.isCommentEditorOpen = false;
+    this.commentSortOrder = 'newest';
+    this.historyFilter = 'all';
+    this.historySortOrder = 'newest';
 
     this.loadKrFullDetail(node.id);
     this.loadKrComments(node.id);
@@ -2442,6 +2750,70 @@ export class OkrTreeComponent implements OnInit {
     });
   }
 
+  get commentCharCount(): number {
+    return (this.newKrComment || '').length;
+  }
+
+  get commentWordCount(): number {
+    const trimmed = (this.newKrComment || '').trim();
+    return trimmed ? trimmed.split(/\s+/).length : 0;
+  }
+
+  get sortedKrComments(): OkrComment[] {
+    if (!this.krComments) return [];
+    return [...this.krComments].sort((a, b) => {
+      const timeA = new Date(a.created_at || a.time || 0).getTime();
+      const timeB = new Date(b.created_at || b.time || 0).getTime();
+      return this.commentSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+  }
+
+  toggleCommentSort(): void {
+    this.commentSortOrder = this.commentSortOrder === 'newest' ? 'oldest' : 'newest';
+  }
+
+  get filteredKrHistory(): any[] {
+    if (!this.krHistory) return [];
+    let list = this.krHistory;
+    if (this.historyFilter !== 'all') {
+      list = list.filter(item => item.type === this.historyFilter);
+    }
+    return [...list].sort((a, b) => {
+      const timeA = new Date(a.created_at || a.event_time || 0).getTime();
+      const timeB = new Date(b.created_at || b.event_time || 0).getTime();
+      return this.historySortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+  }
+
+  toggleHistorySort(): void {
+    this.historySortOrder = this.historySortOrder === 'newest' ? 'oldest' : 'newest';
+  }
+
+  insertFormat(prefix: string, suffix: string = ''): void {
+    this.newKrComment = (this.newKrComment || '') + prefix + suffix;
+  }
+
+  formatCommentDate(dateStr?: string): string {
+    if (!dateStr) return 'Vừa xong';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      const month = months[d.getMonth()];
+      const day = String(d.getDate()).padStart(2, '0');
+      const year = d.getFullYear();
+      let hours = d.getHours();
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      const ampm = hours >= 12 ? 'PM' : 'AM';
+      hours = hours % 12;
+      hours = hours ? hours : 12;
+      const formattedHours = String(hours).padStart(2, '0');
+      return `${month} ${day}, ${year} ${formattedHours}:${minutes} ${ampm}`;
+    } catch {
+      return dateStr;
+    }
+  }
+
   addKrComment(): void {
     if (!this.newKrComment.trim() || !this.selectedKrNode) return;
     this.isAddingKrComment = true;
@@ -2457,8 +2829,10 @@ export class OkrTreeComponent implements OnInit {
       next: () => {
         this.newKrComment = '';
         this.isAddingKrComment = false;
+        this.isCommentEditorOpen = false;
         if (this.selectedKrNode) {
           this.loadKrComments(this.selectedKrNode.id);
+          this.loadKrHistory(this.selectedKrNode.id);
         }
       },
       error: (err) => {

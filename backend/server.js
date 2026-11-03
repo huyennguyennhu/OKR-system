@@ -905,11 +905,31 @@ app.get('/api/key-results/:id/checkins', async (req, res) => {
   }
 });
 
-// 3.3. Key Result Audit Log / History Endpoint
+// 3.3. Key Result Audit Log / History Endpoint (Unified Audit Log of Check-ins, Comments, and GitLab SLA events)
 app.get('/api/key-results/:id/history', async (req, res) => {
   try {
     const { id } = req.params;
-    const history = await all(`
+
+    // 1. Fetch Check-ins
+    const checkins = await all(`
+      SELECT result_id, kr_id, current_value, progress, numerator, denominator, status, calculated_at
+      FROM MetricResults
+      WHERE kr_id = ?
+      ORDER BY calculated_at DESC
+      LIMIT 50
+    `, [id]);
+
+    // 2. Fetch Comments
+    const comments = await all(`
+      SELECT comment_id, kr_id, author, author_avatar, content, source, created_at
+      FROM Comments
+      WHERE kr_id = ?
+      ORDER BY created_at DESC
+      LIMIT 50
+    `, [id]);
+
+    // 3. Fetch Event Assignments (GitLab SLA)
+    const events = await all(`
       SELECT 
         ea.assignment_id,
         ea.event_key,
@@ -930,9 +950,69 @@ app.get('/api/key-results/:id/history', async (req, res) => {
       LEFT JOIN Employees e ON ea.employee_id = e.employee_id
       WHERE ea.kr_id = ?
       ORDER BY ea.created_at DESC
-      LIMIT 100
+      LIMIT 50
     `, [id]);
-    res.json(history);
+
+    // Combine into unified audit log items
+    const auditList = [];
+
+    // Map Check-ins
+    for (const ck of checkins) {
+      auditList.push({
+        id: `checkin-${ck.result_id}`,
+        type: 'checkin',
+        title: `Cập nhật tiến độ: C = ${ck.current_value}%`,
+        description: `Giá trị C được cập nhật thành ${ck.current_value}%. Tiến độ đạt ${ck.progress}% (${ck.numerator || 0}/${ck.denominator || 0} chỉ tiêu hoàn thành).`,
+        actor: ck.status === 'activepieces_synced' ? 'Activepieces Bot' : 'Hệ thống OKR',
+        author_avatar: ck.status === 'activepieces_synced' ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : null,
+        badge_text: 'CHECK-IN',
+        badge_type: 'primary',
+        created_at: ck.calculated_at,
+        metadata: {
+          current_value: ck.current_value,
+          progress: ck.progress,
+          numerator: ck.numerator,
+          denominator: ck.denominator
+        }
+      });
+    }
+
+    // Map Comments
+    for (const cm of comments) {
+      auditList.push({
+        id: `comment-${cm.comment_id}`,
+        type: 'comment',
+        title: `Thêm bình luận mới`,
+        description: cm.content,
+        actor: cm.author,
+        author_avatar: cm.author_avatar,
+        badge_text: 'COMMENT',
+        badge_type: 'info',
+        source: cm.source,
+        created_at: cm.created_at
+      });
+    }
+
+    // Map GitLab SLA events
+    for (const ev of events) {
+      auditList.push({
+        id: `event-${ev.assignment_id}`,
+        type: 'event',
+        title: ev.reason || `Sự kiện GitLab: ${ev.event_key}`,
+        description: `${ev.employee_name ? 'Nhân sự: ' + ev.employee_name + ' | ' : ''}Thời gian xử lý: ${ev.duration_minutes || 0} phút (${ev.on_time === 1 ? 'Đạt SLA' : 'Vượt SLA'}).`,
+        actor: ev.employee_name || 'GitLab Webhook',
+        author_avatar: null,
+        badge_text: ev.on_time === 1 ? 'SLA ON TIME' : 'SLA OVERDUE',
+        badge_type: ev.on_time === 1 ? 'success' : 'danger',
+        created_at: ev.created_at || ev.event_time,
+        metadata: ev
+      });
+    }
+
+    // Sort newest first
+    auditList.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+    res.json(auditList);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
