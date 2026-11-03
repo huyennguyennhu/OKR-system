@@ -647,28 +647,8 @@ async function seedInitialData() {
     }
   }
 
-  // 10. AuditLogs (Lưu vết các thay đổi thuộc tính hệ thống & chỉ số KR)
-  const auditCount = await get('SELECT count(*) as count FROM AuditLogs');
-  if (parseInt(auditCount.count) <= 1) {
-    const sampleAuditLogs = [
-      ['KR-A1', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Current value', '88.5 %', '91.5 %', '2026-10-28 09:00:18'],
-      ['KR-A1', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', '85 %', '90 %', '2026-10-20 08:30:00'],
-      ['KR-B1', 'OBJ-M10-TEAM-01', 'Syrix Task', 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff', 'Current value', '92.0 %', '94.2 %', '2026-10-28 14:25:31'],
-      ['KR-B1', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', '85 %', '90 %', '2026-10-20 08:30:00'],
-      ['KR-C1', 'OBJ-M10-TEAM-01', 'Syrix Task', 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff', 'Current value', '6.5 giờ', '6.2 giờ', '2026-10-28 16:45:12'],
-      ['KR-A1-01', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Current value', '90.0 %', '95.0 %', '2026-10-28 09:00:18'],
-      ['KR-B1-01', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Current value', '90.0 %', '96.0 %', '2026-10-28 14:25:31'],
-      ['KR-C1-01', 'OBJ-M10-TEAM-01', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Current value', '6.0 giờ', '5.5 giờ', '2026-10-28 16:45:12']
-    ];
-    for (const log of sampleAuditLogs) {
-      await run(`
-        INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, log);
-    }
-  }
+  // 10. AuditLogs & Comments (Chỉ lưu vết thực tế khi có thao tác phát sinh từ người dùng hoặc Activepieces Flow)
 
-  // 10. Comments (Chỉ lưu bình luận thực tế của người dùng hoặc Activepieces Flow)
 
 
   console.log('Seeding initial data complete.');
