@@ -539,11 +539,39 @@ interface TreeNode {
 
           <!-- TAB 1.1: General -->
           <div *ngIf="activeTab1 === 'general'" class="tab-pane-content mb-4">
-            <!-- Description -->
+            <!-- Description (Editable) -->
             <div class="mb-3">
-              <label class="text-muted fw-bold mb-1" style="font-size: 12px; display: block;">Description</label>
-              <div class="p-2 rounded bg-light border text-dark" style="font-size: 13px; line-height: 1.5;">
-                {{ selectedKrDetail?.description || selectedKrNode?.description || 'Chỉ số đo lường quy trình kỹ thuật tự động thông qua Activepieces Flow tích hợp GitLab SLA.' }}
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <label class="text-muted fw-bold mb-0" style="font-size: 12px;">Description</label>
+                <button *ngIf="!isEditingDescription" 
+                        type="button" 
+                        class="btn btn-link btn-sm text-primary p-0 text-decoration-none d-flex align-items-center gap-1" 
+                        (click)="startEditDescription()" 
+                        style="font-size: 11.5px; font-weight: 500;">
+                  <i class="fa-solid fa-pen-to-square" style="font-size: 11px;"></i> Sửa
+                </button>
+              </div>
+
+              <!-- VIEW MODE -->
+              <div *ngIf="!isEditingDescription" 
+                   class="p-2 rounded bg-light border text-dark description-view-box" 
+                   (click)="startEditDescription()"
+                   title="Nhấn để chỉnh sửa mô tả"
+                   style="font-size: 13px; line-height: 1.5; cursor: pointer; transition: all 0.15s ease;">
+                {{ currentDescriptionText }}
+              </div>
+
+              <!-- EDIT MODE -->
+              <div *ngIf="isEditingDescription" class="description-edit-box">
+                <textarea class="form-control mb-2" rows="3" [(ngModel)]="editingDescriptionValue" 
+                          placeholder="Nhập mô tả / quy tắc cho Key Result..." 
+                          style="font-size: 13px; line-height: 1.5;"></textarea>
+                <div class="d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-sm btn-light border" (click)="cancelEditDescription()" [disabled]="isSavingDescription" style="font-size: 12px;">Hủy</button>
+                  <button type="button" class="btn btn-sm btn-primary" (click)="saveDescription()" [disabled]="isSavingDescription" style="font-size: 12px; background: #3b82f6; border-color: #3b82f6;">
+                    <i class="fa-solid fa-check me-1"></i> {{ isSavingDescription ? 'Đang lưu...' : 'Lưu mô tả' }}
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1970,6 +1998,11 @@ interface TreeNode {
       border-color: #93c5fd;
     }
 
+    .description-view-box:hover {
+      background: #f1f5f9 !important;
+      border-color: #93c5fd !important;
+    }
+
     /* Comment Editor Box (Expanded) */
     .comment-editor-box {
       border: 1px solid #93c5fd;
@@ -2077,6 +2110,11 @@ export class OkrTreeComponent implements OnInit {
   loadingKrHistory = false;
   historyFilter: 'all' | 'checkin' | 'comment' | 'event' = 'all';
   historySortOrder: 'newest' | 'oldest' = 'newest';
+
+  // Description Edit in Right Bar
+  isEditingDescription = false;
+  editingDescriptionValue = '';
+  isSavingDescription = false;
 
   activeDropdownId: string | null = null;
   showFilter = false;
@@ -2657,6 +2695,8 @@ export class OkrTreeComponent implements OnInit {
     this.commentSortOrder = 'newest';
     this.historyFilter = 'all';
     this.historySortOrder = 'newest';
+    this.isEditingDescription = false;
+    this.editingDescriptionValue = '';
 
     this.loadKrFullDetail(node.id);
     this.loadKrComments(node.id);
@@ -2729,6 +2769,47 @@ export class OkrTreeComponent implements OnInit {
       error: (err) => {
         console.error('Error loading comments:', err);
         this.loadingKrComments = false;
+      }
+    });
+  }
+
+  get currentDescriptionText(): string {
+    return this.selectedKrDetail?.description || this.selectedKrNode?.description || 'Chỉ số đo lường quy trình kỹ thuật tự động thông qua Activepieces Flow tích hợp GitLab SLA.';
+  }
+
+  startEditDescription(): void {
+    this.editingDescriptionValue = this.currentDescriptionText;
+    this.isEditingDescription = true;
+  }
+
+  cancelEditDescription(): void {
+    this.isEditingDescription = false;
+  }
+
+  saveDescription(): void {
+    if (!this.selectedKrNode) return;
+    this.isSavingDescription = true;
+    const newDesc = this.editingDescriptionValue.trim();
+    this.okrService.updateKeyResult(this.selectedKrNode.id, {
+      description: newDesc
+    }).subscribe({
+      next: () => {
+        this.isSavingDescription = false;
+        this.isEditingDescription = false;
+        if (this.selectedKrDetail) {
+          this.selectedKrDetail.description = newDesc;
+        }
+        if (this.selectedKrNode) {
+          this.selectedKrNode.description = newDesc;
+        }
+        if (this.selectedKrNode) {
+          this.loadKrHistory(this.selectedKrNode.id);
+        }
+      },
+      error: (err) => {
+        this.isSavingDescription = false;
+        console.error('Error updating description:', err);
+        alert('Lỗi cập nhật mô tả: ' + (err.error?.error || err.message));
       }
     });
   }

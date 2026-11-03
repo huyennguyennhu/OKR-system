@@ -2297,7 +2297,7 @@ app.post('/api/key-results', async (req, res) => {
 
 app.put('/api/key-results/:id', async (req, res) => {
   try {
-    const { title, start_value, expected_value, current_value, direction, unit, metric_id } = req.body;
+    const { title, start_value, expected_value, current_value, direction, unit, metric_id, description } = req.body;
     const oldKr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [req.params.id]);
 
     await run(
@@ -2308,12 +2308,13 @@ app.put('/api/key-results/:id', async (req, res) => {
         current_value = COALESCE(?, current_value),
         direction = COALESCE(?, direction),
         unit = COALESCE(?, unit),
-        metric_id = COALESCE(?, metric_id)
+        metric_id = COALESCE(?, metric_id),
+        description = COALESCE(?, description)
        WHERE kr_id = ?`,
-      [title, start_value, expected_value, current_value, direction, unit, metric_id, req.params.id]
+      [title, start_value, expected_value, current_value, direction, unit, metric_id, description, req.params.id]
     );
 
-    // Record audit log if title or expected_value changed
+    // Record audit log if title, expected_value, or description changed
     if (oldKr) {
       if (title && oldKr.title !== title) {
         await run(`
@@ -2326,6 +2327,12 @@ app.put('/api/key-results/:id', async (req, res) => {
           INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
         `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`]);
+      }
+      if (description !== undefined && description !== null && oldKr.description !== description) {
+        await run(`
+          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff', 'Description', oldKr.description || 'None', description]);
       }
     }
 

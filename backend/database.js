@@ -111,6 +111,8 @@ async function initDatabase() {
       unit TEXT DEFAULT '%',
       space_id TEXT,
       assignee_id TEXT,
+      parent_kr_id TEXT,
+      description TEXT,
       FOREIGN KEY (objective_id) REFERENCES Objectives(objective_id)
     )
   `);

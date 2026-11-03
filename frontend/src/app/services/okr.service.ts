@@ -84,6 +84,7 @@ export interface KeyResult {
   direction: 'increase' | 'decrease';
   unit: string;
   assignee_id?: string;
+  description?: string;
   progress?: number;
   objective_title?: string;
 }
