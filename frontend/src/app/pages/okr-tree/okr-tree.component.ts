@@ -654,8 +654,8 @@ interface TreeNode {
           </div>
 
           <!-- ================= TAB GROUP 2: Comments, Check in, History ================= -->
-          <div class="kr-drawer-tab-nav d-flex align-items-center border-bottom mb-3 mt-4 position-relative">
-            <div class="d-flex">
+          <div class="kr-drawer-tab-nav d-flex align-items-center justify-content-between border-bottom mb-3 mt-4 position-relative w-100">
+            <div class="d-flex align-items-center">
               <button class="drawer-tab-link-box" [class.active]="activeTab2 === 'comments'" (click)="activeTab2 = 'comments'">
                 Comments
               </button>
@@ -666,21 +666,17 @@ interface TreeNode {
                 History
               </button>
             </div>
-            <!-- Sort on right side of tab nav (Newest first) -->
-            <div class="ms-auto" *ngIf="activeTab2 === 'comments'">
-              <button class="btn-sort-link" (click)="toggleCommentSort()" title="Đổi thứ tự sắp xếp">
+            <!-- Sort on right side of tab nav (Newest first) - aligned to right -->
+            <div class="ms-auto d-flex align-items-center" style="margin-left: auto;">
+              <button *ngIf="activeTab2 === 'comments'" class="btn-sort-link" (click)="toggleCommentSort()" title="Đổi thứ tự sắp xếp">
                 {{ commentSortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
                 <i class="fa-solid fa-arrow-down ms-1" [style.transform]="commentSortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
               </button>
-            </div>
-            <div class="ms-auto" *ngIf="activeTab2 === 'checkin'">
-              <button class="btn-sort-link" (click)="toggleCheckinSort()" title="Đổi thứ tự sắp xếp">
+              <button *ngIf="activeTab2 === 'checkin'" class="btn-sort-link" (click)="toggleCheckinSort()" title="Đổi thứ tự sắp xếp">
                 {{ checkinSortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
                 <i class="fa-solid fa-arrow-down ms-1" [style.transform]="checkinSortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
               </button>
-            </div>
-            <div class="ms-auto" *ngIf="activeTab2 === 'history'">
-              <button class="btn-sort-link" (click)="toggleHistorySort()" title="Đổi thứ tự sắp xếp">
+              <button *ngIf="activeTab2 === 'history'" class="btn-sort-link" (click)="toggleHistorySort()" title="Đổi thứ tự sắp xếp">
                 {{ historySortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
                 <i class="fa-solid fa-arrow-down ms-1" [style.transform]="historySortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
               </button>
@@ -1981,6 +1977,7 @@ interface TreeNode {
     }
 
     .rounded-circle { border-radius: 50% !important; }
+    .ms-auto { margin-left: auto !important; }
     /* Comment Idle Box (Collapsed) */
     .comment-idle-box {
       min-height: 44px;

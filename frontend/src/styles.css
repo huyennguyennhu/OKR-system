@@ -1493,3 +1493,11 @@ pre {
   }
 }
 
+
+/* Margin Auto Utilities */
+.ms-auto, .ml-auto {
+  margin-left: auto !important;
+}
+.me-auto, .mr-auto {
+  margin-right: auto !important;
+}
