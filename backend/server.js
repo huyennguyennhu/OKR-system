@@ -344,6 +344,11 @@ app.get('/api/okr-tree', async (req, res) => {
         resultE: String(kr.expected_value),
         risk,
         tl: parentTl || 'TL-M10-2026',
+        objective_id: kr.objective_id,
+        parent_kr_id: kr.parent_kr_id,
+        unit: kr.unit || '%',
+        direction: kr.direction || 'increase',
+        description: rule ? `Quy tắc đo lường SLA: ${rule.event_type} <= ${rule.sla_value}h. ${rule.formula}` : 'Chỉ số đo lường hiệu năng kỹ thuật tự động qua GitLab Activepieces Flow.',
         children: childKrNodes
       };
     };
@@ -394,6 +399,8 @@ app.get('/api/okr-tree', async (req, res) => {
         resultE: String(obj.expected_value || 100),
         risk,
         tl: obj.timeline_id || 'Q3-2026',
+        objective_id: obj.objective_id,
+        description: obj.description || '',
         children: [...childObjNodes, ...krNodes]
       };
     };
@@ -411,7 +418,13 @@ app.get('/api/okr-tree', async (req, res) => {
 app.get('/api/objectives/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const objective = await get('SELECT * FROM Objectives WHERE objective_id = $1', [id]);
+    let objective = await get('SELECT * FROM Objectives WHERE objective_id = $1', [id]);
+    if (!objective) {
+      const kr = await get('SELECT * FROM KeyResults WHERE kr_id = $1', [id]);
+      if (kr) {
+        objective = await get('SELECT * FROM Objectives WHERE objective_id = $1', [kr.objective_id]);
+      }
+    }
     if (!objective) {
       return res.status(404).json({ error: 'Objective not found' });
     }
@@ -785,6 +798,141 @@ app.get('/api/key-results', async (req, res) => {
     });
 
     res.json(formattedKrs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3.1. Single Key Result Detail Endpoint (For Drawer / Right Bar)
+app.get('/api/key-results/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const kr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [id]);
+    if (!kr) {
+      return res.status(404).json({ error: 'Key Result not found' });
+    }
+
+    const obj = await get('SELECT * FROM Objectives WHERE objective_id = ?', [kr.objective_id]);
+    const rule = await get('SELECT * FROM MeasurementRules WHERE kr_id = ? OR kr_id = ?', [kr.kr_id, kr.parent_kr_id || kr.kr_id]);
+    const emp = kr.assignee_id ? await get('SELECT * FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR full_name = ?', [kr.assignee_id, kr.assignee_id, kr.assignee_id]) : null;
+    const team = kr.assignee_id ? await get('SELECT * FROM Teams WHERE id = ? OR code = ? OR name = ?', [kr.assignee_id, kr.assignee_id, kr.assignee_id]) : null;
+
+    // Build ancestors hierarchy breadcrumb
+    const ancestors = [];
+    if (obj) {
+      if (obj.parent_id) {
+        const grandParent = await get('SELECT * FROM Objectives WHERE objective_id = ?', [obj.parent_id]);
+        if (grandParent) {
+          ancestors.push({
+            id: grandParent.objective_id,
+            title: grandParent.title,
+            type: 'company_obj',
+            icon: 'fa-building'
+          });
+        }
+      }
+      ancestors.push({
+        id: obj.objective_id,
+        title: obj.title,
+        type: obj.level === 'COMPANY' ? 'company_obj' : 'team_obj',
+        icon: 'fa-building'
+      });
+    }
+
+    if (kr.parent_kr_id) {
+      const parentKr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [kr.parent_kr_id]);
+      if (parentKr) {
+        ancestors.push({
+          id: parentKr.kr_id,
+          title: parentKr.title,
+          type: 'team_kr',
+          icon: 'fa-bullseye'
+        });
+      }
+    }
+
+    ancestors.push({
+      id: kr.kr_id,
+      title: kr.title,
+      type: kr.parent_kr_id ? 'ind_kr' : 'team_kr',
+      icon: kr.parent_kr_id ? 'fa-user' : 'fa-bullseye'
+    });
+
+    let progress = 0;
+    if (kr.direction === 'increase') {
+      const span = kr.expected_value - kr.start_value;
+      progress = span !== 0 ? ((kr.current_value - kr.start_value) / span) * 100 : 100;
+    } else {
+      const span = kr.start_value - kr.expected_value;
+      progress = span !== 0 ? ((kr.start_value - kr.current_value) / span) * 100 : 100;
+    }
+    progress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
+
+    let assignTo = 'Team dev';
+    let assignToAvatar = undefined;
+    if (emp) {
+      assignTo = emp.full_name;
+      assignToAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
+    } else if (team) {
+      assignTo = team.name;
+    } else if (kr.assignee_id) {
+      assignTo = kr.assignee_id;
+    }
+
+    res.json({
+      ...kr,
+      progress,
+      assignTo,
+      assignToAvatar,
+      objective: obj,
+      rule,
+      ancestors,
+      description: rule ? `Quy tắc đo lường SLA: ${rule.event_type} <= ${rule.sla_value}h. ${rule.formula}` : 'Chỉ số đo lường hiệu năng kỹ thuật tự động qua GitLab Activepieces Flow.'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3.2. Key Result Check-in History Endpoint
+app.get('/api/key-results/:id/checkins', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const checkins = await all('SELECT * FROM MetricResults WHERE kr_id = ? ORDER BY calculated_at DESC LIMIT 50', [id]);
+    res.json(checkins);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// 3.3. Key Result Audit Log / History Endpoint
+app.get('/api/key-results/:id/history', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const history = await all(`
+      SELECT 
+        ea.assignment_id,
+        ea.event_key,
+        ea.kr_id,
+        ea.employee_id,
+        e.full_name as employee_name,
+        ea.included,
+        ea.reason,
+        ea.duration_minutes,
+        ea.on_time,
+        ea.created_at,
+        ge.project_code,
+        ge.object_kind,
+        ge.action,
+        ge.event_time
+      FROM EventAssignments ea
+      LEFT JOIN GitLabEvents ge ON ea.event_key = ge.event_key
+      LEFT JOIN Employees e ON ea.employee_id = e.employee_id
+      WHERE ea.kr_id = ?
+      ORDER BY ea.created_at DESC
+      LIMIT 100
+    `, [id]);
+    res.json(history);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

@@ -441,4 +441,17 @@ export class OkrService {
   deleteComment(commentId: number | string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/comments/${encodeURIComponent(commentId)}`);
   }
+
+  // --- Key Result Details, Check-ins & Audit History ---
+  getKeyResultById(id: string): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/key-results/${encodeURIComponent(id)}`);
+  }
+
+  getKrCheckins(id: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/key-results/${encodeURIComponent(id)}/checkins`);
+  }
+
+  getKrHistory(id: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.apiUrl}/key-results/${encodeURIComponent(id)}/history`);
+  }
 }

@@ -2,7 +2,7 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { OkrService, Space, Timeline, Employee, Team } from '../../services/okr.service';
+import { OkrService, Space, Timeline, Employee, Team, OkrComment } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 interface TreeNode {
@@ -24,6 +24,12 @@ interface TreeNode {
   resultE: string;
   risk: 'danger' | 'warning' | 'none';
   tl: string;
+
+  objective_id?: string;
+  parent_kr_id?: string;
+  unit?: string;
+  direction?: string;
+  description?: string;
 }
 
 @Component({
@@ -347,8 +353,9 @@ interface TreeNode {
                         </div>
                         
                         <!-- Title -->
-                        <span class="node-title cursor-pointer" (click)="onNodeTitleClick(node, $event)" title="Xem chi tiết Objective">
-                          <span class="node-id me-1">{{ node.id }}</span> {{ node.title }}
+                        <span class="node-title cursor-pointer" [title]="isKrNode(node) ? 'Mở bảng thông tin Key Result' : 'Xem chi tiết Objective'">
+                          <span class="node-id me-1" (click)="onNodeIdClick(node, $event)" title="Đi tới trang chi tiết">{{ node.id }}</span>
+                          <span class="node-text" (click)="onNodeTextClick(node, $event)">{{ node.title }}</span>
                         </span>
                       </div>
                       <div class="node-subtitle text-muted ms-5" *ngIf="(node.type === 'ind_kr' || node.type === 'team_kr') && node.metricSub">
@@ -460,6 +467,321 @@ interface TreeNode {
 
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <!-- Right Bar (Drawer) for Key Result Details -->
+      <div class="kr-drawer-backdrop" *ngIf="showRightBar" (click)="closeKrRightBar()"></div>
+      <div class="kr-drawer-panel" [class.open]="showRightBar" *ngIf="showRightBar">
+        
+        <!-- Header: Breadcrumbs & Actions -->
+        <div class="kr-drawer-header d-flex justify-content-between align-items-center p-3 border-bottom">
+          <!-- Breadcrumbs Trail -->
+          <div class="kr-breadcrumbs-trail d-flex align-items-center flex-wrap gap-1" style="font-size: 13px;">
+            <ng-container *ngFor="let item of selectedKrDetail?.ancestors || []; let last = last">
+              <span class="breadcrumb-chip d-flex align-items-center gap-1 text-primary cursor-pointer" 
+                    [class.fw-bold]="last" 
+                    (click)="onBreadcrumbClick(item)" 
+                    [title]="item.title">
+                <i class="fa-solid" [ngClass]="item.icon || 'fa-folder'"></i>
+                <span>{{ item.id }}</span>
+              </span>
+              <span class="text-muted mx-1" *ngIf="!last">/</span>
+            </ng-container>
+            <ng-container *ngIf="!selectedKrDetail?.ancestors || selectedKrDetail?.ancestors.length === 0">
+              <span class="breadcrumb-chip d-flex align-items-center gap-1 text-primary fw-bold">
+                <i class="fa-solid fa-bullseye"></i>
+                <span>{{ selectedKrNode?.id }}</span>
+              </span>
+            </ng-container>
+          </div>
+
+          <!-- Top-right Action Buttons -->
+          <div class="d-flex align-items-center gap-1">
+            <button class="btn btn-sm btn-icon text-muted" (click)="goToFullDetailFromDrawer()" title="Mở trang chi tiết đầy đủ (Full Page)">
+              <i class="fa-solid fa-code" style="font-size: 13px;"></i>
+            </button>
+            <button class="btn btn-sm btn-icon text-muted" (click)="closeKrRightBar()" title="Đóng">
+              <i class="fa-solid fa-xmark" style="font-size: 15px;"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Body: Scrollable Content -->
+        <div class="kr-drawer-body p-3 flex-grow-1 overflow-auto">
+          
+          <!-- Status Badge -->
+          <div class="mb-2">
+            <span class="badge px-2 py-1" 
+                  [ngClass]="{
+                    'bg-danger-subtle text-danger border border-danger-subtle': (selectedKrNode?.risk === 'danger' || (selectedKrNode?.progress || 0) < 50),
+                    'bg-warning-subtle text-warning border border-warning-subtle': ((selectedKrNode?.risk === 'warning' || ((selectedKrNode?.progress || 0) >= 50 && (selectedKrNode?.progress || 0) < 75)) && selectedKrNode?.risk !== 'danger'),
+                    'bg-success-subtle text-success border border-success-subtle': ((selectedKrNode?.progress || 0) >= 75 && selectedKrNode?.risk === 'none')
+                  }" style="font-size: 11px; font-weight: 700;">
+              <i class="fa-regular fa-clock me-1" *ngIf="selectedKrNode?.risk === 'danger' || (selectedKrNode?.progress || 0) < 50"></i>
+              <i class="fa-solid fa-triangle-exclamation me-1" *ngIf="selectedKrNode?.risk === 'warning' || ((selectedKrNode?.progress || 0) >= 50 && (selectedKrNode?.progress || 0) < 75)"></i>
+              <i class="fa-regular fa-circle-check me-1" *ngIf="(selectedKrNode?.progress || 0) >= 75"></i>
+              {{ (selectedKrNode?.risk === 'danger' || (selectedKrNode?.progress || 0) < 50) ? 'OVERDUE' : (((selectedKrNode?.progress || 0) < 75) ? 'BEHIND' : 'ON TRACK') }}
+            </span>
+          </div>
+
+          <!-- KR Title -->
+          <h4 class="kr-drawer-title fw-bold text-dark mb-3" style="font-size: 17px; line-height: 1.4;">
+            {{ selectedKrNode?.title }}
+          </h4>
+
+          <!-- ================= TAB GROUP 1: General & Detail ================= -->
+          <div class="kr-drawer-tab-nav d-flex border-bottom mb-3">
+            <button class="drawer-tab-link" [class.active]="activeTab1 === 'general'" (click)="activeTab1 = 'general'">
+              General
+            </button>
+            <button class="drawer-tab-link" [class.active]="activeTab1 === 'detail'" (click)="activeTab1 = 'detail'">
+              Detail
+            </button>
+          </div>
+
+          <!-- TAB 1.1: General -->
+          <div *ngIf="activeTab1 === 'general'" class="tab-pane-content mb-4">
+            <!-- Description -->
+            <div class="mb-3">
+              <label class="text-muted fw-bold mb-1" style="font-size: 12px; display: block;">Description</label>
+              <div class="p-2 rounded bg-light border text-dark" style="font-size: 13px; line-height: 1.5;">
+                {{ selectedKrDetail?.description || selectedKrNode?.description || 'Chỉ số đo lường quy trình kỹ thuật tự động thông qua Activepieces Flow tích hợp GitLab SLA.' }}
+              </div>
+            </div>
+
+            <!-- Thước đo tóm tắt (S, C, E) -->
+            <div class="row g-2 mb-2">
+              <div class="col-4">
+                <div class="metric-card p-2 rounded border bg-light text-center">
+                  <div class="text-muted" style="font-size: 11px;">Start (S)</div>
+                  <div class="fw-bold text-dark" style="font-size: 14px;">{{ selectedKrNode?.resultS }} {{ selectedKrNode?.unit || '%' }}</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="metric-card p-2 rounded border bg-primary-subtle border-primary-subtle text-center">
+                  <div class="text-primary fw-semibold" style="font-size: 11px;">Current (C)</div>
+                  <div class="fw-bold text-primary" style="font-size: 14px;">{{ selectedKrNode?.resultC }} {{ selectedKrNode?.unit || '%' }}</div>
+                </div>
+              </div>
+              <div class="col-4">
+                <div class="metric-card p-2 rounded border bg-light text-center">
+                  <div class="text-muted" style="font-size: 11px;">Expected (E)</div>
+                  <div class="fw-bold text-success" style="font-size: 14px;">{{ selectedKrNode?.resultE }} {{ selectedKrNode?.unit || '%' }}</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Assignee & Timeline info -->
+            <div class="p-2 rounded border bg-white d-flex align-items-center justify-content-between mt-2" style="font-size: 13px;">
+              <div class="d-flex align-items-center gap-2">
+                <img *ngIf="selectedKrNode?.assignToAvatar" [src]="selectedKrNode?.assignToAvatar" class="avatar" style="width: 26px; height: 26px; border-radius: 50%;">
+                <span *ngIf="!selectedKrNode?.assignToAvatar" class="badge bg-light text-dark border"><i class="fa-solid fa-users"></i></span>
+                <span class="fw-medium text-dark">{{ selectedKrNode?.assignTo }}</span>
+              </div>
+              <span class="badge bg-secondary-subtle text-secondary">{{ selectedKrNode?.tl }}</span>
+            </div>
+          </div>
+
+          <!-- TAB 1.2: Detail -->
+          <div *ngIf="activeTab1 === 'detail'" class="tab-pane-content mb-4">
+            <!-- Progress Bar Card -->
+            <div class="p-3 rounded border bg-light mb-3">
+              <div class="d-flex justify-content-between align-items-center mb-1" style="font-size: 13px;">
+                <span class="text-muted fw-bold">Tiến độ hoàn thành:</span>
+                <span class="fw-bold" [ngClass]="(selectedKrNode?.progress || 0) >= 70 ? 'text-success' : 'text-warning'">{{ selectedKrNode?.progress }}%</span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div class="progress-bar" [ngClass]="(selectedKrNode?.progress || 0) >= 70 ? 'bg-success' : 'bg-warning'" [style.width.%]="selectedKrNode?.progress"></div>
+              </div>
+            </div>
+
+            <!-- Measurement Rules Details (bê từ OKR Detail) -->
+            <div class="card p-3 border mb-3">
+              <h6 class="fw-bold text-dark mb-2" style="font-size: 13px;">
+                <i class="fa-solid fa-ruler-combined text-primary me-1"></i> Thuộc tính & Quy tắc đo SLA
+              </h6>
+              <div class="d-flex flex-column gap-2" style="font-size: 12px;">
+                <div class="d-flex justify-content-between border-bottom pb-1">
+                  <span class="text-muted">Loại sự kiện:</span>
+                  <span class="fw-semibold text-dark">{{ selectedKrDetail?.rule?.event_type || 'GitLab Webhook' }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-1">
+                  <span class="text-muted">SLA tiêu chuẩn:</span>
+                  <span class="fw-semibold text-primary">{{ selectedKrDetail?.rule?.sla_value || 24 }} giờ làm việc</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-1">
+                  <span class="text-muted">Bộ lọc nhãn:</span>
+                  <span class="fw-semibold text-dark">{{ selectedKrDetail?.rule?.filters || 'Story / Bug / Improvement' }}</span>
+                </div>
+                <div class="d-flex justify-content-between border-bottom pb-1">
+                  <span class="text-muted">Lịch làm việc:</span>
+                  <span class="fw-semibold text-dark">Trừ 1.5h trưa, đóng băng T7/CN</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted">Flow đồng bộ:</span>
+                  <span class="badge bg-primary-subtle text-primary border">{{ selectedKrDetail?.rule?.flow_code || 'FLOW-ACTIVEPIECES' }}</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Quick update Current value -->
+            <div class="p-3 rounded border bg-light">
+              <label class="fw-bold text-dark mb-1" style="font-size: 12px; display: block;">Cập nhật nhanh giá trị C:</label>
+              <div class="input-group input-group-sm">
+                <input type="number" class="form-control" [(ngModel)]="newCheckinValue" step="0.1" style="font-size: 13px;">
+                <button class="btn btn-primary btn-sm" (click)="submitCheckin()" [disabled]="isSubmittingCheckin">
+                  <i class="fa-solid fa-check me-1"></i> {{ isSubmittingCheckin ? 'Đang lưu...' : 'Cập nhật C' }}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- ================= TAB GROUP 2: Comments, Check in, History ================= -->
+          <div class="kr-drawer-tab-nav d-flex border-bottom mb-3 mt-4">
+            <button class="drawer-tab-link" [class.active]="activeTab2 === 'comments'" (click)="activeTab2 = 'comments'">
+              <i class="fa-regular fa-comment-dots me-1"></i> Comments
+            </button>
+            <button class="drawer-tab-link" [class.active]="activeTab2 === 'checkin'" (click)="activeTab2 = 'checkin'">
+              <i class="fa-solid fa-clock-rotate-left me-1"></i> Check in
+            </button>
+            <button class="drawer-tab-link" [class.active]="activeTab2 === 'history'" (click)="activeTab2 = 'history'">
+              <i class="fa-solid fa-timeline me-1"></i> History
+            </button>
+          </div>
+
+          <!-- TAB 2.1: Comments -->
+          <div *ngIf="activeTab2 === 'comments'" class="tab-pane-content">
+            <!-- Khung nhập Comment -->
+            <div class="comment-input-container d-flex gap-2 mb-3">
+              <img src="https://ui-avatars.com/api/?name=User&background=3157D5&color=fff" class="avatar flex-shrink-0" style="width: 34px; height: 34px; border-radius: 50%;">
+              <div class="flex-grow-1">
+                <textarea class="form-control" rows="2" [(ngModel)]="newKrComment" placeholder="Comment something..." style="font-size: 13px;"></textarea>
+                <div class="d-flex justify-content-end mt-1">
+                  <button class="btn btn-primary btn-sm px-3" (click)="addKrComment()" [disabled]="!newKrComment.trim() || isAddingKrComment" style="font-size: 12px;">
+                    <i class="fa-solid fa-paper-plane me-1"></i> Gửi
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading -->
+            <div *ngIf="loadingKrComments" class="text-center py-3 text-muted">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải bình luận...
+            </div>
+
+            <!-- Comments List -->
+            <div class="comments-list d-flex flex-column gap-2" *ngIf="!loadingKrComments && krComments.length > 0">
+              <div class="comment-card p-2 rounded bg-light border" *ngFor="let c of krComments">
+                <div class="d-flex align-items-center gap-2 mb-1">
+                  <img *ngIf="c.author_avatar" [src]="c.author_avatar" class="avatar" style="width: 24px; height: 24px; border-radius: 50%;">
+                  <i *ngIf="!c.author_avatar && c.source === 'activepieces'" class="fa-solid fa-robot text-primary" style="font-size: 14px;"></i>
+                  <i *ngIf="!c.author_avatar && c.source !== 'activepieces'" class="fa-solid fa-user text-secondary" style="font-size: 14px;"></i>
+                  <strong style="font-size: 12px;">{{ c.author }}</strong>
+                  <span class="badge bg-primary-subtle text-primary border" *ngIf="c.source === 'activepieces'" style="font-size: 10px;">
+                    <i class="fa-solid fa-robot me-1"></i>Activepieces
+                  </span>
+                  <small class="text-muted ms-auto" style="font-size: 11px;">{{ formatTime(c.created_at || c.time) }}</small>
+                  <button class="btn btn-link text-muted p-0" title="Xóa" (click)="deleteKrComment(c.comment_id)" *ngIf="c.comment_id">
+                    <i class="fa-regular fa-trash-can" style="font-size: 11px;"></i>
+                  </button>
+                </div>
+                <div class="comment-text text-dark" style="font-size: 12.5px; line-height: 1.4; padding-left: 32px;">
+                  {{ c.content }}
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty Comments -->
+            <div class="text-center py-4 text-muted" *ngIf="!loadingKrComments && krComments.length === 0">
+              <i class="fa-regular fa-comment-dots fa-2x mb-1 text-secondary opacity-50 d-block"></i>
+              <p class="mb-0" style="font-size: 12.5px;">Chưa có bình luận nào cho Key Result này.</p>
+            </div>
+          </div>
+
+          <!-- TAB 2.2: Check in -->
+          <div *ngIf="activeTab2 === 'checkin'" class="tab-pane-content">
+            <!-- Form Check in mới -->
+            <div class="p-3 rounded border bg-light mb-3">
+              <h6 class="fw-bold text-dark mb-2" style="font-size: 12.5px;">Ghi nhận lần Check-in mới</h6>
+              <div class="row g-2 mb-2">
+                <div class="col-6">
+                  <label class="text-muted" style="font-size: 11px;">Giá trị C mới:</label>
+                  <input type="number" class="form-control form-control-sm" [(ngModel)]="newCheckinValue" step="0.1">
+                </div>
+                <div class="col-6">
+                  <label class="text-muted" style="font-size: 11px;">Ghi chú Check-in:</label>
+                  <input type="text" class="form-control form-control-sm" [(ngModel)]="newCheckinNote" placeholder="Lý do hoặc kết quả...">
+                </div>
+              </div>
+              <div class="d-flex justify-content-end">
+                <button class="btn btn-primary btn-sm" (click)="submitCheckin()" [disabled]="isSubmittingCheckin">
+                  <i class="fa-solid fa-floppy-disk me-1"></i> Lưu Check-in
+                </button>
+              </div>
+            </div>
+
+            <!-- Checkin History List -->
+            <div *ngIf="loadingKrCheckins" class="text-center py-3 text-muted">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải lịch sử check-in...
+            </div>
+
+            <div class="checkin-timeline d-flex flex-column gap-2" *ngIf="!loadingKrCheckins && krCheckins.length > 0">
+              <div class="p-2 rounded border bg-white" *ngFor="let ck of krCheckins">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="fw-bold text-primary" style="font-size: 13px;">
+                    C = {{ ck.current_value }} {{ selectedKrNode?.unit || '%' }}
+                  </span>
+                  <span class="badge" [ngClass]="ck.progress >= 70 ? 'bg-success-subtle text-success border' : 'bg-warning-subtle text-warning border'" style="font-size: 11px;">
+                    Tiến độ: {{ ck.progress }}%
+                  </span>
+                </div>
+                <div class="d-flex justify-content-between text-muted" style="font-size: 11.5px;">
+                  <span>
+                    <i class="fa-solid fa-circle-check text-success me-1"></i>
+                    Đạt: {{ ck.numerator }} / {{ ck.denominator }} sự kiện
+                  </span>
+                  <span>{{ formatTime(ck.calculated_at) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center py-4 text-muted" *ngIf="!loadingKrCheckins && krCheckins.length === 0">
+              <p class="mb-0" style="font-size: 12.5px;">Chưa có lịch sử thay đổi giá trị C cho Key Result này.</p>
+            </div>
+          </div>
+
+          <!-- TAB 2.3: History (Audit Log) -->
+          <div *ngIf="activeTab2 === 'history'" class="tab-pane-content">
+            <div *ngIf="loadingKrHistory" class="text-center py-3 text-muted">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải nhật ký truy vết...
+            </div>
+
+            <div class="history-list d-flex flex-column gap-2" *ngIf="!loadingKrHistory && krHistory.length > 0">
+              <div class="p-2 rounded border bg-white" *ngFor="let h of krHistory">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                  <span class="badge bg-secondary-subtle text-secondary border font-monospace" style="font-size: 11px;">
+                    {{ h.event_key }}
+                  </span>
+                  <span class="badge" [ngClass]="h.on_time === 1 ? 'bg-success text-white' : 'bg-danger text-white'" style="font-size: 10px;">
+                    {{ h.on_time === 1 ? 'ĐẠT SLA' : 'VƯỢT SLA' }}
+                  </span>
+                </div>
+                <div class="text-dark fw-medium mb-1" style="font-size: 12.5px;">
+                  {{ h.reason }}
+                </div>
+                <div class="d-flex justify-content-between text-muted" style="font-size: 11px;">
+                  <span><i class="fa-solid fa-user me-1"></i>{{ h.employee_name || h.employee_id }}</span>
+                  <span>{{ formatTime(h.created_at || h.event_time) }}</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="text-center py-4 text-muted" *ngIf="!loadingKrHistory && krHistory.length === 0">
+              <p class="mb-0" style="font-size: 12.5px;">Chưa có dữ liệu nhật ký sự kiện cho Key Result này.</p>
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -1334,9 +1656,141 @@ interface TreeNode {
       background-color: #f8fafc;
       border: 1px solid #e2e8f0;
     }
+
+    /* Right Bar (Drawer) Styles */
+    .kr-drawer-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.35);
+      backdrop-filter: blur(2px);
+      z-index: 1040;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .kr-drawer-panel {
+      position: fixed;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 520px;
+      max-width: 90vw;
+      background: #ffffff;
+      z-index: 1050;
+      box-shadow: -4px 0 25px rgba(0, 0, 0, 0.15);
+      display: flex;
+      flex-direction: column;
+      animation: slideInRight 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes slideInRight {
+      from { transform: translateX(100%); }
+      to { transform: translateX(0); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .kr-drawer-header {
+      background: #ffffff;
+    }
+
+    .breadcrumb-chip {
+      padding: 2px 6px;
+      border-radius: 4px;
+      background: #f1f5f9;
+      text-decoration: none;
+      font-size: 12px;
+      transition: background 0.15s ease;
+    }
+
+    .breadcrumb-chip:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-icon {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      cursor: pointer;
+    }
+
+    .btn-icon:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .kr-drawer-tab-nav {
+      gap: 1.5rem;
+    }
+
+    .drawer-tab-link {
+      background: none;
+      border: none;
+      padding: 0.5rem 0.25rem;
+      font-size: 13px;
+      font-weight: 600;
+      color: #64748b;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .drawer-tab-link:hover {
+      color: var(--primary, #3157D5);
+    }
+
+    .drawer-tab-link.active {
+      color: var(--primary, #3157D5);
+      border-bottom-color: var(--primary, #3157D5);
+    }
+
+    .node-id:hover {
+      text-decoration: underline;
+      color: var(--primary, #3157D5);
+    }
+
+    .node-text:hover {
+      color: var(--primary, #3157D5);
+    }
   `]
 })
 export class OkrTreeComponent implements OnInit {
+  // --- Right Bar (Drawer) State ---
+  showRightBar = false;
+  selectedKrNode: TreeNode | null = null;
+  selectedKrDetail: any = null;
+  loadingKrDetail = false;
+
+  activeTab1: 'general' | 'detail' = 'general';
+  activeTab2: 'comments' | 'checkin' | 'history' = 'comments';
+
+  // Comments in Right Bar
+  krComments: OkrComment[] = [];
+  loadingKrComments = false;
+  newKrComment = '';
+  isAddingKrComment = false;
+
+  // Checkins in Right Bar
+  krCheckins: any[] = [];
+  loadingKrCheckins = false;
+  newCheckinValue: number | null = null;
+  newCheckinNote = '';
+  isSubmittingCheckin = false;
+
+  // Audit History in Right Bar
+  krHistory: any[] = [];
+  loadingKrHistory = false;
+
   activeDropdownId: string | null = null;
   showFilter = false;
   selectedFilterLevel: string = 'All';
@@ -1856,18 +2310,252 @@ export class OkrTreeComponent implements OnInit {
     this.activeDropdownId = null;
   }
 
+  isKrNode(node: TreeNode): boolean {
+    return node.type === 'team_kr' || node.type === 'ind_kr' || node.id.startsWith('KR-');
+  }
+
   onNodeTitleClick(node: TreeNode, event: MouseEvent): void {
     event.stopPropagation();
-    this.editNode(node);
+    if (this.isKrNode(node)) {
+      this.openKrRightBar(node);
+    } else {
+      this.router.navigate(['/objectives', node.id]);
+    }
+  }
+
+  onNodeIdClick(node: TreeNode, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.isKrNode(node)) {
+      const objId = node.objective_id || this.findParentObjectiveId(node) || node.id;
+      this.router.navigate(['/objectives', objId], { queryParams: { kr: node.id } });
+    } else {
+      this.router.navigate(['/objectives', node.id]);
+    }
+  }
+
+  onNodeTextClick(node: TreeNode, event: MouseEvent): void {
+    event.stopPropagation();
+    if (this.isKrNode(node)) {
+      this.openKrRightBar(node);
+    } else {
+      this.router.navigate(['/objectives', node.id]);
+    }
+  }
+
+  findParentObjectiveId(targetNode: TreeNode): string | null {
+    if (targetNode.objective_id) return targetNode.objective_id;
+    const findInNodes = (nodes: TreeNode[], currentObjId: string | null): string | null => {
+      for (const n of nodes) {
+        const objId = (n.type === 'company_obj' || n.type === 'team_obj') ? n.id : currentObjId;
+        if (n.id === targetNode.id) return objId;
+        if (n.children && n.children.length > 0) {
+          const found = findInNodes(n.children, objId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    return findInNodes(this.treeData, null);
+  }
+
+  openKrRightBar(node: TreeNode): void {
+    this.selectedKrNode = node;
+    this.showRightBar = true;
+    this.activeTab1 = 'general';
+    this.activeTab2 = 'comments';
+    this.newCheckinValue = parseFloat(node.resultC) || 0;
+    this.newCheckinNote = '';
+    this.newKrComment = '';
+
+    this.loadKrFullDetail(node.id);
+    this.loadKrComments(node.id);
+    this.loadKrCheckins(node.id);
+    this.loadKrHistory(node.id);
+  }
+
+  closeKrRightBar(): void {
+    this.showRightBar = false;
+  }
+
+  onBreadcrumbClick(item: any): void {
+    if (!item?.id) return;
+    if (item.id.startsWith('KR-')) {
+      const foundKr = this.findNodeById(item.id);
+      if (foundKr) {
+        this.openKrRightBar(foundKr);
+      } else {
+        this.loadKrFullDetail(item.id);
+        this.loadKrComments(item.id);
+        this.loadKrCheckins(item.id);
+        this.loadKrHistory(item.id);
+      }
+    } else {
+      this.router.navigate(['/objectives', item.id]);
+    }
+  }
+
+  findNodeById(id: string): TreeNode | null {
+    const search = (nodes: TreeNode[]): TreeNode | null => {
+      for (const n of nodes) {
+        if (n.id === id) return n;
+        if (n.children && n.children.length > 0) {
+          const found = search(n.children);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+    return search(this.treeData);
+  }
+
+  goToFullDetailFromDrawer(): void {
+    if (!this.selectedKrNode) return;
+    const objId = this.selectedKrNode.objective_id || this.findParentObjectiveId(this.selectedKrNode) || this.selectedKrNode.id;
+    this.router.navigate(['/objectives', objId], { queryParams: { kr: this.selectedKrNode.id } });
+  }
+
+  loadKrFullDetail(krId: string): void {
+    this.loadingKrDetail = true;
+    this.okrService.getKeyResultById(krId).subscribe({
+      next: (data) => {
+        this.selectedKrDetail = data || {};
+        this.loadingKrDetail = false;
+      },
+      error: (err) => {
+        console.error('Error loading KR details:', err);
+        this.loadingKrDetail = false;
+      }
+    });
+  }
+
+  loadKrComments(krId: string): void {
+    this.loadingKrComments = true;
+    this.okrService.getComments({ kr_id: krId }).subscribe({
+      next: (data) => {
+        this.krComments = data || [];
+        this.loadingKrComments = false;
+      },
+      error: (err) => {
+        console.error('Error loading comments:', err);
+        this.loadingKrComments = false;
+      }
+    });
+  }
+
+  addKrComment(): void {
+    if (!this.newKrComment.trim() || !this.selectedKrNode) return;
+    this.isAddingKrComment = true;
+    const payload: Partial<OkrComment> = {
+      kr_id: this.selectedKrNode.id,
+      objective_id: this.selectedKrNode.objective_id,
+      content: this.newKrComment.trim(),
+      author: 'Bạn (Quản trị viên)',
+      source: 'web_user'
+    };
+
+    this.okrService.addComment(payload).subscribe({
+      next: () => {
+        this.newKrComment = '';
+        this.isAddingKrComment = false;
+        if (this.selectedKrNode) {
+          this.loadKrComments(this.selectedKrNode.id);
+        }
+      },
+      error: (err) => {
+        console.error('Error adding comment:', err);
+        this.isAddingKrComment = false;
+      }
+    });
+  }
+
+  deleteKrComment(commentId: number | string | undefined): void {
+    if (!commentId) return;
+    this.okrService.deleteComment(commentId).subscribe({
+      next: () => {
+        this.krComments = this.krComments.filter(c => c.comment_id !== commentId);
+      },
+      error: (err) => console.error('Error deleting comment:', err)
+    });
+  }
+
+  loadKrCheckins(krId: string): void {
+    this.loadingKrCheckins = true;
+    this.okrService.getKrCheckins(krId).subscribe({
+      next: (data) => {
+        this.krCheckins = data || [];
+        this.loadingKrCheckins = false;
+      },
+      error: (err) => {
+        console.error('Error loading checkins:', err);
+        this.loadingKrCheckins = false;
+      }
+    });
+  }
+
+  submitCheckin(): void {
+    if (this.newCheckinValue === null || isNaN(this.newCheckinValue) || !this.selectedKrNode) return;
+    this.isSubmittingCheckin = true;
+    const payload = {
+      current_value: Number(this.newCheckinValue),
+      reason: this.newCheckinNote.trim() || `Check-in thủ công: C = ${this.newCheckinValue}`,
+      comment: this.newCheckinNote.trim() || `Check-in thủ công giá trị C = ${this.newCheckinValue}`
+    };
+
+    this.okrService.updateKrCurrentValue(this.selectedKrNode.id, payload).subscribe({
+      next: () => {
+        this.isSubmittingCheckin = false;
+        if (this.selectedKrNode) {
+          this.selectedKrNode.resultC = String(this.newCheckinValue);
+          this.loadKrCheckins(this.selectedKrNode.id);
+          this.loadKrComments(this.selectedKrNode.id);
+          this.loadKrHistory(this.selectedKrNode.id);
+          this.loadKrFullDetail(this.selectedKrNode.id);
+        }
+        this.loadTreeData();
+        this.newCheckinNote = '';
+      },
+      error: (err) => {
+        this.isSubmittingCheckin = false;
+        console.error('Error submitting checkin:', err);
+        alert('Lỗi cập nhật check-in: ' + (err.error?.error || err.message));
+      }
+    });
+  }
+
+  loadKrHistory(krId: string): void {
+    this.loadingKrHistory = true;
+    this.okrService.getKrHistory(krId).subscribe({
+      next: (data) => {
+        this.krHistory = data || [];
+        this.loadingKrHistory = false;
+      },
+      error: (err) => {
+        console.error('Error loading history:', err);
+        this.loadingKrHistory = false;
+      }
+    });
+  }
+
+  formatTime(dateStr?: string): string {
+    if (!dateStr) return 'Vừa xong';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+      return dateStr;
+    }
   }
 
   editNode(node: TreeNode): void {
-    const isKr = node.type === 'ind_kr' || node.type === 'team_kr' || node.id.startsWith('KR-');
+    const isKr = this.isKrNode(node);
     if (isKr) {
-      this.editingKrNode = node;
-      this.editKrTitle = node.title;
-      this.editKrExpected = parseFloat(node.resultE) || 100;
-      this.showKrModal = true;
+      this.openKrRightBar(node);
     } else {
       this.router.navigate(['/objectives', node.id]);
     }
