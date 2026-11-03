@@ -232,22 +232,42 @@
             <div class="comment-input-box mb-3">
               <textarea class="form-control" rows="2" [(ngModel)]="newComment" placeholder="Nhập ghi chú hoặc phản hồi về mục tiêu này..."></textarea>
               <div class="d-flex justify-content-end mt-2">
-                <button class="btn btn-primary btn-sm" (click)="addComment()" [disabled]="!newComment.trim()">
-                  <i class="fa-solid fa-paper-plane me-1"></i> Gửi bình luận
+                <button class="btn btn-primary btn-sm" (click)="addComment()" [disabled]="!newComment.trim() || isAddingComment">
+                  <i class="fa-solid fa-paper-plane me-1"></i> {{ isAddingComment ? 'Đang gửi...' : 'Gửi bình luận' }}
                 </button>
               </div>
             </div>
-            <div class="comments-list">
+
+            <div *ngIf="loadingComments" class="text-center py-3 text-muted">
+              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải bình luận...
+            </div>
+
+            <div class="comments-list" *ngIf="!loadingComments && comments.length > 0">
               <div class="comment-item" *ngFor="let c of comments">
-                <div class="comment-avatar"><i class="fa-solid fa-user"></i></div>
+                <div class="comment-avatar">
+                  <img *ngIf="c.author_avatar" [src]="c.author_avatar" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;" alt="avatar">
+                  <i *ngIf="!c.author_avatar && c.source === 'activepieces'" class="fa-solid fa-robot"></i>
+                  <i *ngIf="!c.author_avatar && c.source !== 'activepieces'" class="fa-solid fa-user"></i>
+                </div>
                 <div class="comment-body">
-                  <div class="comment-header">
+                  <div class="comment-header d-flex align-items-center">
                     <strong>{{ c.author }}</strong>
-                    <small class="text-muted ms-2" style="font-size: 12px;">{{ c.time }}</small>
+                    <span class="badge bg-primary-subtle text-primary border ms-2" *ngIf="c.source === 'activepieces'" style="font-size: 10px;">
+                      <i class="fa-solid fa-robot me-1"></i>Activepieces Flow
+                    </span>
+                    <small class="text-muted ms-2" style="font-size: 12px;">{{ formatCommentTime(c.created_at || c.time) }}</small>
+                    <button class="btn btn-link text-muted p-0 ms-auto" title="Xóa bình luận" (click)="deleteComment(c.comment_id)" *ngIf="c.comment_id">
+                      <i class="fa-regular fa-trash-can" style="font-size: 11px;"></i>
+                    </button>
                   </div>
                   <div class="comment-content">{{ c.content }}</div>
                 </div>
               </div>
+            </div>
+
+            <div class="text-center py-4 text-muted" *ngIf="!loadingComments && comments.length === 0">
+              <i class="fa-regular fa-comment-dots fa-2x mb-2 text-secondary opacity-50 d-block"></i>
+              <p class="mb-0" style="font-size: 13px;">Chưa có bình luận nào cho mục tiêu này. Hãy là người đầu tiên để lại phản hồi!</p>
             </div>
           </div>
           <div *ngIf="activeTab === 'traceability'" class="p-4 bg-light rounded text-center">

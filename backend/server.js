@@ -112,7 +112,9 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
         const updated = await recalculateOkrProgress(targetKr.kr_id, payload.current_value, {
           numerator: payload.numerator,
           denominator: payload.denominator,
-          actor_id: payload.employee_id
+          actor_id: payload.employee_id,
+          comment: payload.comment || payload.note || payload.reason,
+          author: payload.author || payload.actor_id || payload.employee_id
         });
         return res.status(200).json({
           success: true,
@@ -918,6 +920,31 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
     `, [options.event_key, krId, employeeId, reason, duration, onTime]);
   }
 
+  // Record comment/check-in note into Comments table if provided
+  const commentText = options.comment || options.note;
+  if (commentText && typeof commentText === 'string' && commentText.trim()) {
+    const rawActor = options.author || options.actor_id || 'Activepieces Automation Bot';
+    let authorName = rawActor;
+    let authorAvatar = 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff';
+    const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR gitlab_user_id LIKE ?', [rawActor, rawActor, `%${rawActor}%`]);
+    if (emp) {
+      authorName = emp.full_name;
+      authorAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
+    }
+    await run(`
+      INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, [
+      kr.objective_id,
+      krId,
+      authorName,
+      options.author_id || options.actor_id || rawActor,
+      authorAvatar,
+      commentText.trim(),
+      options.source || 'activepieces'
+    ]);
+  }
+
   return {
     key_result: {
       kr_id: krId,
@@ -1339,7 +1366,7 @@ app.put('/api/holidays/:id', async (req, res) => {
 const handleKrMetricUpdate = async (req, res) => {
   try {
     const krId = req.params.id;
-    const { current_value, currentValue, period, event_key, actor_id, reason, source, numerator, denominator, on_time, duration_minutes } = req.body;
+    const { current_value, currentValue, period, event_key, actor_id, reason, source, numerator, denominator, on_time, duration_minutes, comment, note, author } = req.body;
     
     const targetValue = current_value !== undefined ? current_value : currentValue;
     if (targetValue === undefined || targetValue === null || isNaN(parseFloat(targetValue))) {
@@ -1355,7 +1382,10 @@ const handleKrMetricUpdate = async (req, res) => {
       numerator,
       denominator,
       on_time,
-      duration_minutes
+      duration_minutes,
+      comment,
+      note,
+      author
     });
 
     res.json({
@@ -1371,6 +1401,97 @@ const handleKrMetricUpdate = async (req, res) => {
 app.patch('/api/key-results/:id/current-value', handleKrMetricUpdate);
 app.put('/api/key-results/:id/current-value', handleKrMetricUpdate);
 app.post('/api/key-results/:id/metric-update', handleKrMetricUpdate);
+
+// ==========================================
+// 4.4. Comments APIs (Bình luận / Ghi chú Check-in)
+// ==========================================
+app.get('/api/comments', async (req, res) => {
+  try {
+    const { objective_id, kr_id } = req.query;
+    let query = 'SELECT * FROM Comments';
+    const params = [];
+    const conditions = [];
+
+    if (objective_id) {
+      conditions.push('(objective_id = ? OR kr_id IN (SELECT kr_id FROM KeyResults WHERE objective_id = ?))');
+      params.push(objective_id, objective_id);
+    }
+    if (kr_id) {
+      conditions.push('kr_id = ?');
+      params.push(kr_id);
+    }
+
+    if (conditions.length > 0) {
+      query += ` WHERE ${conditions.join(' AND ')}`;
+    }
+    query += ' ORDER BY created_at DESC';
+
+    const comments = await all(query, params);
+    res.json(comments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/comments', async (req, res) => {
+  try {
+    const { objective_id, kr_id, content, author, author_id, author_avatar, source } = req.body;
+    if (!content || !content.trim()) {
+      return res.status(400).json({ error: 'Nội dung bình luận không được để trống' });
+    }
+
+    let finalAuthor = author || 'Người dùng';
+    let finalAvatar = author_avatar;
+    if (author_id) {
+      const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ?', [author_id]);
+      if (emp) {
+        finalAuthor = emp.full_name;
+        if (!finalAvatar) {
+          finalAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
+        }
+      }
+    }
+
+    let targetObjId = objective_id;
+    if (!targetObjId && kr_id) {
+      const kr = await get('SELECT objective_id FROM KeyResults WHERE kr_id = ?', [kr_id]);
+      if (kr) targetObjId = kr.objective_id;
+    }
+
+    const result = await run(`
+      INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      RETURNING *
+    `, [
+      targetObjId || null,
+      kr_id || null,
+      finalAuthor,
+      author_id || null,
+      finalAvatar || null,
+      content.trim(),
+      source || 'web_user'
+    ]);
+
+    const created = result.rows && result.rows.length > 0 ? result.rows[0] : null;
+    res.status(201).json({
+      success: true,
+      message: 'Đã lưu bình luận thành công',
+      comment: created
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/comments/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM Comments WHERE comment_id = ?', [id]);
+    res.json({ success: true, message: 'Đã xóa bình luận' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // 5. Employees Endpoint
 app.get('/api/employees', async (req, res) => {

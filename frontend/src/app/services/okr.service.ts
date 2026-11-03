@@ -60,6 +60,19 @@ export interface SpaceMember { id: string; space_id: string; user_name: string; 
 export interface MetricConversion { id: string; source_metric_id: string; target_metric_id: string; conversion_ratio: number; }
 export interface Template { id: string; name: string; formula: string; template_type: string; }
 
+export interface OkrComment {
+  comment_id?: number | string;
+  objective_id?: string;
+  kr_id?: string;
+  author: string;
+  author_id?: string;
+  author_avatar?: string;
+  content: string;
+  source?: string;
+  created_at?: string;
+  time?: string;
+}
+
 export interface KeyResult {
   kr_id: string;
   objective_id: string;
@@ -414,5 +427,18 @@ export class OkrService {
 
   deleteFlowRun(runId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/flow-runs/${encodeURIComponent(runId)}`);
+  }
+
+  // --- Comments APIs ---
+  getComments(params?: { objective_id?: string; kr_id?: string }): Observable<OkrComment[]> {
+    return this.http.get<OkrComment[]>(`${this.apiUrl}/comments`, { params: params as any });
+  }
+
+  addComment(comment: Partial<OkrComment>): Observable<any> {
+    return this.http.post(`${this.apiUrl}/comments`, comment);
+  }
+
+  deleteComment(commentId: number | string): Observable<any> {
+    return this.http.delete(`${this.apiUrl}/comments/${encodeURIComponent(commentId)}`);
   }
 }

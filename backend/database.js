@@ -340,6 +340,26 @@ async function initDatabase() {
     )
   `);
 
+  // 8c. Comments table (Lưu vết bình luận, phản hồi và ghi chú check-in từ Activepieces & người dùng)
+  await run(`
+    CREATE TABLE IF NOT EXISTS Comments (
+      comment_id SERIAL PRIMARY KEY,
+      objective_id TEXT,
+      kr_id TEXT,
+      author TEXT NOT NULL,
+      author_id TEXT,
+      author_avatar TEXT,
+      content TEXT NOT NULL,
+      source TEXT DEFAULT 'activepieces',
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  try {
+    await run('CREATE INDEX IF NOT EXISTS idx_comments_objective ON Comments(objective_id)');
+    await run('CREATE INDEX IF NOT EXISTS idx_comments_kr ON Comments(kr_id)');
+  } catch (e) {}
+
 
   await run(`
     CREATE TABLE IF NOT EXISTS Teams (
@@ -604,6 +624,53 @@ async function seedInitialData() {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, r);
     }
+  }
+
+  // 10. Comments
+  try {
+    const commentCount = await get('SELECT count(*) as count FROM Comments');
+    if (parseInt(commentCount.count) === 0) {
+      const sampleComments = [
+        [
+          'OBJ-M10-TEAM-01',
+          'KR-A1',
+          'Alexander Nguyen (Dev Lead)',
+          'EMP004',
+          'https://ui-avatars.com/api/?name=Alexander+Nguyen&background=3157D5&color=fff',
+          'Chỉ số SLA hoàn thành Issue được tổng hợp tự động từ GitLab Events qua Activepieces Flow. Hiện đạt 91.8%, vượt ngưỡng SLA cam kết (90%).',
+          'activepieces',
+          '2026-10-28 14:30:00+00'
+        ],
+        [
+          'OBJ-M10-TEAM-01',
+          'KR-B1',
+          'Activepieces Bot',
+          'activepieces.bot',
+          'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff',
+          'Đồng bộ tiến độ phản hồi Merge Request thành công: Tỷ lệ đạt 94.2% (> 90.0% cam kết SLA).',
+          'activepieces',
+          '2026-10-28 15:45:00+00'
+        ],
+        [
+          'OBJ-M10-TEAM-01',
+          null,
+          'Huyền Nguyễn Như',
+          'EMP001',
+          'https://ui-avatars.com/api/?name=Huy%E1%BB%81n%20Nguy%E1%BB%85n%20Nh%C6%B0&background=3157D5&color=fff',
+          'Đội ngũ đã tối ưu luồng review code và duy trì SLA ổn định trong suốt chu kỳ Tháng 10.',
+          'web_user',
+          '2026-10-29 09:15:00+00'
+        ]
+      ];
+      for (const c of sampleComments) {
+        await run(`
+          INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        `, c);
+      }
+    }
+  } catch (e) {
+    console.warn('Comments seeding notice:', e.message);
   }
 
   console.log('Seeding initial data complete.');

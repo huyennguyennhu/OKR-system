@@ -2,7 +2,7 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
-import { OkrService, Objective, Employee, Metric, Timeline, KeyResult, Team } from '../../services/okr.service';
+import { OkrService, Objective, Employee, Metric, Timeline, KeyResult, Team, OkrComment } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 export interface BreadcrumbItem {
@@ -53,13 +53,9 @@ export class ObjectiveDetailComponent implements OnInit {
   
   activeTab = 'comments';
 
-  comments: Array<{ author: string, time: string, content: string }> = [
-    {
-      author: 'alex.dev (Dev Lead)',
-      time: '28/10/2026 14:30',
-      content: 'Chỉ số SLA đo lường được tổng hợp tự động từ GitLab Events qua Activepieces. Đạt chỉ tiêu cam kết chất lượng.'
-    }
-  ];
+  comments: OkrComment[] = [];
+  loadingComments = false;
+  isAddingComment = false;
   newComment = '';
 
   showAddKrModal = false;
@@ -160,6 +156,7 @@ export class ObjectiveDetailComponent implements OnInit {
           this.objective.expected_value = 100;
         }
         this.loading = false;
+        this.loadComments(id);
       },
       error: (err) => {
         console.error('Error loading objective', err);
@@ -548,14 +545,77 @@ export class ObjectiveDetailComponent implements OnInit {
     return 'badge-danger';
   }
 
-  addComment(): void {
-    if (!this.newComment.trim()) return;
-    this.comments.unshift({
-      author: 'Bạn (Quản trị viên)',
-      time: 'Vừa xong',
-      content: this.newComment.trim()
+  loadComments(objId: string): void {
+    if (!objId) return;
+    this.loadingComments = true;
+    this.okrService.getComments({ objective_id: objId }).subscribe({
+      next: (data) => {
+        this.comments = data || [];
+        this.loadingComments = false;
+      },
+      error: (err) => {
+        console.error('Error loading comments', err);
+        this.loadingComments = false;
+      }
     });
-    this.newComment = '';
+  }
+
+  addComment(): void {
+    if (!this.newComment.trim() || !this.objective?.objective_id) return;
+    const content = this.newComment.trim();
+    this.isAddingComment = true;
+    const commentPayload: Partial<OkrComment> = {
+      objective_id: this.objective.objective_id,
+      content,
+      author: 'Bạn (Quản trị viên)',
+      source: 'web_user'
+    };
+
+    this.okrService.addComment(commentPayload).subscribe({
+      next: () => {
+        this.newComment = '';
+        this.isAddingComment = false;
+        this.loadComments(this.objective.objective_id);
+      },
+      error: (err) => {
+        console.error('Error adding comment', err);
+        this.isAddingComment = false;
+        // Fallback local unshift if server error
+        this.comments.unshift({
+          author: 'Bạn (Quản trị viên)',
+          created_at: new Date().toISOString(),
+          content,
+          source: 'web_user'
+        });
+        this.newComment = '';
+      }
+    });
+  }
+
+  deleteComment(commentId: number | string | undefined): void {
+    if (!commentId) return;
+    this.okrService.deleteComment(commentId).subscribe({
+      next: () => {
+        this.comments = this.comments.filter(c => c.comment_id !== commentId);
+      },
+      error: (err) => console.error('Error deleting comment', err)
+    });
+  }
+
+  formatCommentTime(dateStr?: string): string {
+    if (!dateStr) return 'Vừa xong';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = String(d.getDate()).padStart(2, '0');
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const year = d.getFullYear();
+      const hours = String(d.getHours()).padStart(2, '0');
+      const minutes = String(d.getMinutes()).padStart(2, '0');
+      return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch {
+      return dateStr;
+    }
   }
 
   goToAuditLog(): void {
