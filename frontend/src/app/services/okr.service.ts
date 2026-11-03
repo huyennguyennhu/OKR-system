@@ -172,7 +172,23 @@ export interface AuditAssignment {
   event_time: string;
 }
 
+export interface SystemChangeLog {
+  log_id: number;
+  kr_id?: string;
+  kr_title?: string;
+  objective_id?: string;
+  objective_title?: string;
+  author: string;
+  author_avatar?: string;
+  field_name: string;
+  old_value?: string;
+  new_value?: string;
+  new_value_avatar?: string;
+  created_at: string;
+}
+
 export interface AuditLogData {
+  system_changes?: SystemChangeLog[];
   assignments: AuditAssignment[];
   processing_logs: any[];
 }

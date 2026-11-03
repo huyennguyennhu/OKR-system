@@ -1,14 +1,14 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { OkrService, AuditAssignment } from '../../services/okr.service';
+import { OkrService, AuditAssignment, SystemChangeLog } from '../../services/okr.service';
 
 @Component({
   selector: 'app-audit-log',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <!-- Lớp phủ khóa trang trong suốt (không làm mờ, chặn tương tác khi đang tải) -->
+    <!-- Lớp phủ khóa trang trong suốt -->
     <div class="page-loading-overlay" *ngIf="loading"></div>
 
     <div class="audit-log-page">
@@ -18,12 +18,107 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
           AuditLog
         </h3>
         <p class="subtitle mb-0">
-          Giải trình minh bạch lý do mỗi sự kiện GitLab được tính hoặc loại khỏi chỉ số Key Results (RQ1 & RQ4).
+          Ghi lại minh bạch toàn bộ sự thay đổi của hệ thống (giá trị C, quy tắc đo lường, cấu hình) và giải trình truy vết sự kiện SLA (RQ1 & RQ4).
         </p>
       </div>
 
-      <!-- BẢNG SỰ KIỆN SLA DUY NHẤT -->
-      <div>
+      <!-- Tab Navigation Switcher -->
+      <div class="audit-tab-nav mb-3 d-flex align-items-center gap-2">
+        <button 
+          type="button" 
+          class="audit-tab-btn" 
+          [class.active]="activeTab === 'system'"
+          (click)="switchTab('system')">
+          <i class="fa-solid fa-clock-rotate-left me-1"></i>
+          <span>Thay đổi hệ thống & chỉ số ({{ systemChanges.length }})</span>
+        </button>
+        <button 
+          type="button" 
+          class="audit-tab-btn" 
+          [class.active]="activeTab === 'events'"
+          (click)="switchTab('events')">
+          <i class="fa-solid fa-clipboard-check me-1"></i>
+          <span>Truy vết SLA sự kiện GitLab ({{ assignments.length }})</span>
+        </button>
+      </div>
+
+      <!-- ================= TAB 1: THAY ĐỔI HỆ THỐNG & CHỈ SỐ ================= -->
+      <div *ngIf="activeTab === 'system'">
+        <!-- Filter Bar -->
+        <div class="filter-bar mb-3">
+          <div class="filter-search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" class="form-control filter-input" placeholder="Tìm theo KR, người cập nhật, thuộc tính, giá trị..." [(ngModel)]="systemSearchQuery">
+            <button type="button" class="clear-search-btn" *ngIf="systemSearchQuery" (click)="systemSearchQuery=''" title="Xóa tìm kiếm">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Bảng Thay đổi hệ thống -->
+        <div class="table-container">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th style="width: 170px;">Thời điểm</th>
+                <th>Chỉ số / Đối tượng</th>
+                <th>Người thực hiện</th>
+                <th class="text-center" style="width: 140px;">Thuộc tính</th>
+                <th>Giá trị trước</th>
+                <th>Giá trị mới</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngIf="loading">
+                <td colspan="6" class="table-loading-cell">
+                  <div class="table-loading-content">
+                    <div class="loading-spinner-circle"></div>
+                    <span>Đang tải nhật ký thay đổi hệ thống...</span>
+                  </div>
+                </td>
+              </tr>
+              <ng-container *ngIf="!loading">
+                <tr *ngFor="let item of filteredSystemChanges">
+                  <td>
+                    <span class="text-muted" style="font-size: 12.5px;">{{ formatDate(item.created_at) }}</span>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="badge badge-info" *ngIf="item.kr_id">{{ item.kr_id }}</span>
+                      <strong style="font-size: 13px;">{{ item.kr_title || item.objective_title || item.objective_id || '-' }}</strong>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="d-flex align-items-center gap-2">
+                      <img [src]="item.author_avatar || getAvatarUrl(item.author)" class="author-avatar" alt="Avatar">
+                      <span style="font-weight: 500; font-size: 13px;">{{ item.author }}</span>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge" [ngClass]="getFieldBadgeClass(item.field_name)">
+                      {{ item.field_name }}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="value-diff-old">{{ item.old_value || 'Chưa có' }}</span>
+                  </td>
+                  <td>
+                    <span class="value-diff-new">{{ item.new_value }}</span>
+                  </td>
+                </tr>
+                <tr *ngIf="filteredSystemChanges.length === 0">
+                  <td colspan="6" class="text-center text-muted py-4">
+                    {{ systemSearchQuery ? 'Không tìm thấy thay đổi nào phù hợp bộ lọc.' : 'Chưa có nhật ký thay đổi hệ thống nào.' }}
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ================= TAB 2: TRUY VẾT SỰ KIỆN SLA GITLAB ================= -->
+      <div *ngIf="activeTab === 'events'">
         <!-- Thanh lọc: Tìm kiếm + Dropdown Trạng thái -->
         <div class="filter-bar mb-3">
           <div class="filter-search-wrapper">
@@ -129,9 +224,7 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
         </div>
       </div>
 
-      
-
-      <!-- Detail Modal -->
+      <!-- Detail Modal cho Sự kiện GitLab -->
       <div class="modal-overlay" *ngIf="selectedAssignment">
         <div class="modal-content">
           <div class="card-header mb-3">
@@ -178,30 +271,116 @@ import { OkrService, AuditAssignment } from '../../services/okr.service';
     .justify-end { justify-content: flex-end; }
     .gap-2 { gap: 0.5rem; }
     table { background-color: #ffffff; }
+
+    /* Audit Tab Navigation */
+    .audit-tab-nav {
+      border-bottom: 1px solid #e2e8f0;
+      padding-bottom: 8px;
+    }
+    .audit-tab-btn {
+      padding: 8px 16px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #64748b;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+    }
+    .audit-tab-btn:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .audit-tab-btn.active {
+      background: #4f46e5;
+      color: #ffffff;
+      border-color: #4f46e5;
+      box-shadow: 0 1px 3px rgba(79, 70, 229, 0.25);
+    }
+
+    /* Author Avatar */
+    .author-avatar {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+
+    /* Diff Styling */
+    .value-diff-old {
+      color: #94a3b8;
+      text-decoration: line-through;
+      font-size: 12.5px;
+      padding: 2px 6px;
+      background: #f8fafc;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .value-diff-new {
+      color: #047857;
+      font-weight: 600;
+      font-size: 13px;
+      padding: 2px 6px;
+      background: #ecfdf5;
+      border-radius: 4px;
+      display: inline-block;
+    }
   `]
 })
 export class AuditLogComponent implements OnInit {
-  activeTab: 'events' | 'pipeline' = 'events';
+  activeTab: 'system' | 'events' = 'system';
 
+  systemChanges: SystemChangeLog[] = [];
   assignments: AuditAssignment[] = [];
   processingLogs: any[] = [];
   selectedAssignment: AuditAssignment | null = null;
   loading = true;
+
+  // Search cho Tab Thay đổi hệ thống
+  systemSearchQuery = '';
 
   // Filter cho Tab Sự kiện SLA
   searchQuery = '';
   selectedStatus = 'all';
   isStatusDropdownOpen = false;
 
-  // Filter cho Tab Pipeline Engine
-  pipelineSearchQuery = '';
-  selectedPipelineStatus = 'all';
-  isPipelineStatusDropdownOpen = false;
+  constructor(private okrService: OkrService) {}
 
-  switchTab(tab: 'events' | 'pipeline'): void {
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.custom-select-wrapper')) {
+      this.isStatusDropdownOpen = false;
+    }
+  }
+
+  ngOnInit(): void {
+    this.loadLogs();
+  }
+
+  switchTab(tab: 'system' | 'events'): void {
     this.activeTab = tab;
     this.isStatusDropdownOpen = false;
-    this.isPipelineStatusDropdownOpen = false;
+  }
+
+  get filteredSystemChanges(): SystemChangeLog[] {
+    return this.systemChanges.filter(item => {
+      const q = this.systemSearchQuery.toLowerCase().trim();
+      if (!q) return true;
+      return (
+        (item.kr_id && item.kr_id.toLowerCase().includes(q)) ||
+        (item.kr_title && item.kr_title.toLowerCase().includes(q)) ||
+        (item.objective_title && item.objective_title.toLowerCase().includes(q)) ||
+        (item.author && item.author.toLowerCase().includes(q)) ||
+        (item.field_name && item.field_name.toLowerCase().includes(q)) ||
+        (item.old_value && item.old_value.toLowerCase().includes(q)) ||
+        (item.new_value && item.new_value.toLowerCase().includes(q))
+      );
+    });
   }
 
   get filteredAssignments(): AuditAssignment[] {
@@ -226,33 +405,6 @@ export class AuditLogComponent implements OnInit {
     });
   }
 
-  get filteredProcessingLogs(): any[] {
-    return this.processingLogs.filter(log => {
-      const q = this.pipelineSearchQuery.toLowerCase().trim();
-      const matchSearch = !q ||
-        (log.run_id && log.run_id.toLowerCase().includes(q)) ||
-        (log.status && log.status.toLowerCase().includes(q)) ||
-        (log.error_message && log.error_message.toLowerCase().includes(q));
-
-      const matchStatus = this.selectedPipelineStatus === 'all' ||
-        (log.status && log.status.toUpperCase() === this.selectedPipelineStatus.toUpperCase());
-
-      return matchSearch && matchStatus;
-    });
-  }
-
-  constructor(private okrService: OkrService) {}
-
-  ngOnInit(): void {
-    this.loadLogs();
-  }
-
-  @HostListener('document:click')
-  onDocumentClick(): void {
-    this.isStatusDropdownOpen = false;
-    this.isPipelineStatusDropdownOpen = false;
-  }
-
   toggleStatusDropdown(event: MouseEvent): void {
     event.stopPropagation();
     this.isStatusDropdownOpen = !this.isStatusDropdownOpen;
@@ -272,30 +424,29 @@ export class AuditLogComponent implements OnInit {
     }
   }
 
-  togglePipelineStatusDropdown(event: MouseEvent): void {
-    event.stopPropagation();
-    this.isPipelineStatusDropdownOpen = !this.isPipelineStatusDropdownOpen;
+  getFieldBadgeClass(field: string): string {
+    if (!field) return 'badge-secondary';
+    const lower = field.toLowerCase();
+    if (lower.includes('current')) return 'badge-primary';
+    if (lower.includes('expected')) return 'badge-info';
+    if (lower.includes('rule')) return 'badge-warning';
+    if (lower.includes('task') || lower.includes('title')) return 'badge-success';
+    return 'badge-secondary';
   }
 
-  selectPipelineStatus(status: string): void {
-    this.selectedPipelineStatus = status;
-    this.isPipelineStatusDropdownOpen = false;
-  }
-
-  getSelectedPipelineStatusLabel(): string {
-    switch (this.selectedPipelineStatus) {
-      case 'SUCCESS': return 'SUCCESS (Thành công)';
-      case 'DUPLICATE': return 'DUPLICATE (Trùng lặp)';
-      case 'EXCLUDED': return 'EXCLUDED (Loại trừ)';
-      case 'FAILED': return 'FAILED (Thất bại)';
-      default: return 'Tất cả trạng thái';
+  getAvatarUrl(author: string): string {
+    if (!author) return 'https://ui-avatars.com/api/?name=User&background=3157D5&color=fff&rounded=true';
+    if (author.includes('Huyen') || author.includes('Huyền')) {
+      return 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true';
     }
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=3157D5&color=fff&rounded=true`;
   }
 
   loadLogs(): void {
     this.loading = true;
     this.okrService.getAuditLogs().subscribe({
       next: (data) => {
+        this.systemChanges = data.system_changes || [];
         this.assignments = data.assignments || [];
         this.processingLogs = data.processing_logs || [];
         this.loading = false;

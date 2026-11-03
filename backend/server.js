@@ -142,6 +142,32 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
           comment: payload.comment || payload.note || payload.reason,
           author: payload.author || payload.actor_id || payload.employee_id
         });
+
+        // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
+        const flowRunId = payload.run_id || `RUN-${Date.now()}`;
+        const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        try {
+          await run(`
+            INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?, ?, ?)
+            ON CONFLICT (run_id) DO NOTHING
+          `, [
+            flowRunId,
+            payload.flow_code || `FLOW-${targetKr.kr_id}`,
+            payload.flow_name || `Activepieces Automation Flow (${targetKr.kr_id})`,
+            payload.trigger_type || 'Schedule',
+            payload.start_time || nowIso,
+            payload.end_time || nowIso,
+            payload.duration_ms || 950,
+            payload.input_count || 1,
+            payload.output_count || 1,
+            `Cập nhật chỉ số cá nhân IC_i = ${payload.current_value} cho nhân viên ${payload.employee_id} (${targetKr.kr_id}).`,
+            JSON.stringify(payload, null, 2)
+          ]);
+        } catch (flowErr) {
+          console.warn('FlowRuns auto-log warning:', flowErr.message);
+        }
+
         return res.status(200).json({
           success: true,
           message: `Updated KR ${targetKr.kr_id} for employee ${payload.employee_id}`,
@@ -1338,6 +1364,22 @@ const saveMeasurementRuleHandler = async (req, res) => {
       overtime_handling, lunch_break_rule, weekend_holiday_rule
     ]);
 
+    // Record system change to AuditLogs
+    try {
+      await run(`
+        INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      `, [
+        kr_id,
+        objective_id,
+        'Huyền Nguyễn Như',
+        'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true',
+        'Measurement Rule',
+        'Quy tắc hiện tại',
+        `Cập nhật [${flow_code}]: SLA ${sla_value}h, Ngưỡng ${threshold_percent}%`
+      ]);
+    } catch (e) {}
+
     res.json({
       success: true,
       message: `Quy tắc đo lường cho [${flow_code}] đã được lưu thành công vào cơ sở dữ liệu.`,
@@ -1732,7 +1774,30 @@ app.get('/api/audit-logs', async (req, res) => {
     
     const processingLogs = await all('SELECT * FROM ProcessingLogs ORDER BY start_time DESC LIMIT 50');
 
+    // Fetch system changes from AuditLogs (Ghi lại sự thay đổi của hệ thống: Giá trị C, Target, Tên, Luật đo lường)
+    const systemChanges = await all(`
+      SELECT 
+        al.log_id,
+        al.kr_id,
+        kr.title as kr_title,
+        al.objective_id,
+        obj.title as objective_title,
+        al.author,
+        al.author_avatar,
+        al.field_name,
+        al.old_value,
+        al.new_value,
+        al.new_value_avatar,
+        al.created_at
+      FROM AuditLogs al
+      LEFT JOIN KeyResults kr ON al.kr_id = kr.kr_id
+      LEFT JOIN Objectives obj ON al.objective_id = obj.objective_id
+      ORDER BY al.created_at DESC
+      LIMIT 100
+    `);
+
     res.json({
+      system_changes: systemChanges || [],
       assignments: logs,
       processing_logs: processingLogs
     });
