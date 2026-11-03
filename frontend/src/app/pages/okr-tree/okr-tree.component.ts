@@ -498,9 +498,6 @@ interface TreeNode {
 
           <!-- Top-right Action Buttons -->
           <div class="d-flex align-items-center gap-1">
-            <button class="btn btn-sm btn-icon text-muted" (click)="goToFullDetailFromDrawer()" title="Mở trang chi tiết đầy đủ (Full Page)">
-              <i class="fa-solid fa-code" style="font-size: 13px;"></i>
-            </button>
             <button class="btn btn-sm btn-icon text-muted" (click)="closeKrRightBar()" title="Đóng">
               <i class="fa-solid fa-xmark" style="font-size: 15px;"></i>
             </button>
