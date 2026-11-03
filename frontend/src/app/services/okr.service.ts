@@ -426,6 +426,10 @@ export class OkrService {
     return this.http.post(`${this.apiUrl}/flow-runs/simulate`, { flow_code: flowCode });
   }
 
+  recordFlowRun(flowRunData: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/flow-runs`, flowRunData);
+  }
+
   deleteFlowRun(runId: string): Observable<any> {
     return this.http.delete(`${this.apiUrl}/flow-runs/${encodeURIComponent(runId)}`);
   }

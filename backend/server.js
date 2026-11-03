@@ -86,6 +86,32 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
     // Direct KR update by kr_id
     if (payload.kr_id && payload.current_value !== undefined) {
       const updated = await recalculateOkrProgress(payload.kr_id, payload.current_value, payload);
+
+      // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
+      const flowRunId = payload.run_id || `RUN-${Date.now()}`;
+      const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      try {
+        await run(`
+          INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?, ?, ?)
+          ON CONFLICT (run_id) DO NOTHING
+        `, [
+          flowRunId,
+          payload.flow_code || `FLOW-${payload.kr_id}`,
+          payload.flow_name || `Activepieces Automation Flow (${payload.kr_id})`,
+          payload.trigger_type || 'Webhook',
+          payload.start_time || nowIso,
+          payload.end_time || nowIso,
+          payload.duration_ms || 1200,
+          payload.input_count || 1,
+          payload.output_count || 1,
+          `Đồng bộ giá trị C = ${payload.current_value} cho ${payload.kr_id}. Ghi chú: ${payload.comment || payload.note || 'None'}.`,
+          JSON.stringify(payload, null, 2)
+        ]);
+      } catch (flowErr) {
+        console.warn('FlowRuns auto-log warning:', flowErr.message);
+      }
+
       return res.status(200).json({
         success: true,
         message: `Updated KR ${payload.kr_id} to ${payload.current_value}`,
@@ -947,12 +973,14 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   // Update KeyResult
   await run('UPDATE KeyResults SET current_value = ? WHERE kr_id = ?', [val, krId]);
 
-  // Record AuditLog for field change (History Tab)
+  // Record AuditLog for system change to Current value
   if (oldVal !== undefined && oldVal !== null && Number(oldVal) !== Number(val)) {
     const auditAuthor = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Huyền Nguyễn Như');
     const auditAvatar = (auditAuthor.includes('Huyen') || auditAuthor.includes('Huyền'))
       ? 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true'
-      : ((options.source === 'activepieces' || options.actor_id) ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`);
+      : ((options.source === 'activepieces' || options.actor_id) 
+          ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' 
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`);
 
     await run(`
       INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
@@ -1030,13 +1058,13 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
     }
   }
 
-  // Record MetricResults history (Check in Tab)
+  // Record MetricResults history
   const period = options.period || 'Q3-2026';
   const numerator = options.numerator !== undefined ? options.numerator : Math.round(val);
   const denominator = options.denominator !== undefined ? options.denominator : 100;
-  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Huyền Nguyễn Như');
+  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Bạn (Quản trị viên)');
   const targetField = options.target_field || 'Current';
-  const note = (options.note !== undefined && options.note !== null && options.note !== '') ? options.note : null;
+  const note = options.note !== undefined ? options.note : (options.comment || options.reason || null);
 
   await run(
     `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, author, target_field, note, calculated_at)
@@ -1081,15 +1109,17 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
     `, [options.event_key, krId, employeeId, reason, duration, onTime]);
   }
 
-  // Record comment into Comments table ONLY if explicit comment text is provided
-  const commentText = options.comment;
+  // Record comment/check-in note into Comments table if provided
+  const commentText = options.comment || options.note;
   if (commentText && typeof commentText === 'string' && commentText.trim()) {
-    const rawActor = options.author || (options.source === 'activepieces' || options.actor_id ? 'Activepieces Automation Bot' : 'Huyền Nguyễn Như');
+    const rawActor = options.author || options.actor_id || 'Activepieces Automation Bot';
     let authorName = rawActor;
-    let authorAvatar = (rawActor.includes('Huyen') || rawActor.includes('Huyền'))
-      ? 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true'
-      : ((options.source === 'activepieces' || options.actor_id) ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : `https://ui-avatars.com/api/?name=${encodeURIComponent(rawActor)}&background=3157D5&color=fff&rounded=true`);
-
+    let authorAvatar = 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff';
+    const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR gitlab_user_id LIKE ?', [rawActor, rawActor, `%${rawActor}%`]);
+    if (emp) {
+      authorName = emp.full_name;
+      authorAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
+    }
     await run(`
       INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -1100,7 +1130,7 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
       options.author_id || options.actor_id || rawActor,
       authorAvatar,
       commentText.trim(),
-      options.source || (options.actor_id ? 'activepieces' : 'web_user')
+      options.source || 'activepieces'
     ]);
   }
 
@@ -1599,15 +1629,8 @@ app.post('/api/comments', async (req, res) => {
       return res.status(400).json({ error: 'Nội dung bình luận không được để trống' });
     }
 
-    let finalAuthor = author || 'Huyền Nguyễn Như';
+    let finalAuthor = author || 'Người dùng';
     let finalAvatar = author_avatar;
-    if (!finalAvatar) {
-      if (finalAuthor.includes('Huyen') || finalAuthor.includes('Huyền')) {
-        finalAvatar = 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true';
-      } else {
-        finalAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalAuthor)}&background=3157D5&color=fff&rounded=true`;
-      }
-    }
     if (author_id) {
       const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ?', [author_id]);
       if (emp) {
@@ -1784,6 +1807,66 @@ app.get('/api/flow-runs', async (req, res) => {
       flows,
       runs: filteredRuns
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint: Record a Flow Run (Dành cho Activepieces Flow hoặc hệ thống tự động ghi nhật ký lần chạy)
+app.post('/api/flow-runs', async (req, res) => {
+  try {
+    const {
+      run_id,
+      flow_code,
+      flow_name,
+      trigger_type,
+      start_time,
+      end_time,
+      duration_ms,
+      status,
+      input_count,
+      output_count,
+      data_created,
+      payload_json,
+      error_message
+    } = req.body;
+
+    const id = run_id || `RUN-${Date.now()}`;
+    const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+
+    await run(`
+      INSERT INTO FlowRuns (
+        run_id, flow_code, flow_name, trigger_type, start_time, end_time,
+        duration_ms, status, input_count, output_count, data_created, payload_json, error_message, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      ON CONFLICT (run_id) DO UPDATE SET
+        status = EXCLUDED.status,
+        end_time = EXCLUDED.end_time,
+        duration_ms = EXCLUDED.duration_ms,
+        input_count = EXCLUDED.input_count,
+        output_count = EXCLUDED.output_count,
+        data_created = EXCLUDED.data_created,
+        payload_json = EXCLUDED.payload_json,
+        error_message = EXCLUDED.error_message
+    `, [
+      id,
+      flow_code || 'FLOW-CUSTOM',
+      flow_name || 'Activepieces Automation Flow',
+      trigger_type || 'Schedule',
+      start_time || nowIso,
+      end_time || nowIso,
+      duration_ms || 0,
+      status || 'SUCCESS',
+      input_count || 0,
+      output_count || 0,
+      data_created || null,
+      typeof payload_json === 'object' ? JSON.stringify(payload_json, null, 2) : (payload_json || null),
+      error_message || null
+    ]);
+
+    const created = await get('SELECT * FROM FlowRuns WHERE run_id = ?', [id]);
+    res.status(201).json({ success: true, run: created });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
