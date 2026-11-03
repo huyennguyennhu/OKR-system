@@ -645,6 +645,12 @@ interface TreeNode {
                 <i class="fa-solid fa-arrow-down ms-1" [style.transform]="commentSortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
               </button>
             </div>
+            <div class="ms-auto" *ngIf="activeTab2 === 'checkin'">
+              <button class="btn-sort-link" (click)="toggleCheckinSort()" title="Đổi thứ tự sắp xếp">
+                {{ checkinSortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
+                <i class="fa-solid fa-arrow-down ms-1" [style.transform]="checkinSortOrder === 'oldest' ? 'rotate(180deg)' : 'none'" style="transition: transform 0.2s ease;"></i>
+              </button>
+            </div>
             <div class="ms-auto" *ngIf="activeTab2 === 'history'">
               <button class="btn-sort-link" (click)="toggleHistorySort()" title="Đổi thứ tự sắp xếp">
                 {{ historySortOrder === 'newest' ? 'Newest first' : 'Oldest first' }}
@@ -752,52 +758,71 @@ interface TreeNode {
 
           <!-- TAB 2.2: Check in -->
           <div *ngIf="activeTab2 === 'checkin'" class="tab-pane-content">
-            <!-- Form Check in mới -->
+            <!-- Form Check in mới (Cập nhật số liệu & ghi chú Note) -->
             <div class="p-3 rounded border bg-light mb-3">
-              <h6 class="fw-bold text-dark mb-2" style="font-size: 12.5px;">Ghi nhận lần Check-in mới</h6>
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="fw-bold text-dark" style="font-size: 13px;">Ghi nhận lần Check-in mới</span>
+                <span class="text-muted" style="font-size: 11.5px;">Cập nhật số liệu & ghi chú Note</span>
+              </div>
               <div class="row g-2 mb-2 d-flex flex-nowrap w-100">
-                <div class="col-6 flex-fill" style="flex: 1 1 0; min-width: 0;">
+                <div class="col-4" style="flex: 0 0 130px;">
                   <label class="text-muted" style="font-size: 11px;">Giá trị C mới:</label>
-                  <input type="number" class="form-control form-control-sm" [(ngModel)]="newCheckinValue" step="0.1">
+                  <input type="number" class="form-control form-control-sm bg-white" [(ngModel)]="newCheckinValue" step="0.1" placeholder="Nhập C...">
                 </div>
-                <div class="col-6 flex-fill" style="flex: 1 1 0; min-width: 0;">
-                  <label class="text-muted" style="font-size: 11px;">Ghi chú Check-in:</label>
-                  <input type="text" class="form-control form-control-sm" [(ngModel)]="newCheckinNote" placeholder="Lý do hoặc kết quả...">
+                <div class="col-8 flex-fill" style="flex: 1 1 0; min-width: 0;">
+                  <label class="text-muted" style="font-size: 11px;">Ghi chú (Note):</label>
+                  <input type="text" class="form-control form-control-sm bg-white" [(ngModel)]="newCheckinNote" placeholder="Lý do hoặc kết quả...">
                 </div>
               </div>
               <div class="d-flex justify-content-end">
-                <button class="btn btn-primary btn-sm" (click)="submitCheckin()" [disabled]="isSubmittingCheckin">
-                  <i class="fa-solid fa-floppy-disk me-1"></i> Lưu Check-in
+                <button class="btn btn-primary btn-sm px-3" (click)="submitCheckin()" [disabled]="isSubmittingCheckin" style="background: #3b82f6; border-color: #3b82f6;">
+                  <i class="fa-solid fa-floppy-disk me-1"></i> {{ isSubmittingCheckin ? 'Đang lưu...' : 'Lưu Check-in' }}
                 </button>
               </div>
             </div>
 
-            <!-- Checkin History List -->
+            <!-- Loading -->
             <div *ngIf="loadingKrCheckins" class="text-center py-3 text-muted">
               <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải lịch sử check-in...
             </div>
 
-            <div class="checkin-timeline d-flex flex-column gap-2" *ngIf="!loadingKrCheckins && krCheckins.length > 0">
-              <div class="p-2 rounded border bg-white" *ngFor="let ck of krCheckins">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <span class="fw-bold text-primary" style="font-size: 13px;">
-                    C = {{ ck.current_value }} {{ selectedKrNode?.unit || '%' }}
-                  </span>
-                  <span class="badge" [ngClass]="ck.progress >= 70 ? 'bg-success-subtle text-success border' : 'bg-warning-subtle text-warning border'" style="font-size: 11px;">
-                    Tiến độ: {{ ck.progress }}%
-                  </span>
+            <!-- Checkin Feed List (Matches media_1793682152604_e86d3e81.png) -->
+            <div class="checkin-feed-list d-flex flex-column" *ngIf="!loadingKrCheckins && krCheckins.length > 0">
+              <div class="checkin-feed-item d-flex gap-3 py-3 border-bottom" *ngFor="let ck of sortedKrCheckins">
+                <!-- Avatar: Syrix logo if Syrix Task/activepieces, else user avatar -->
+                <div class="checkin-avatar flex-shrink-0">
+                  <div *ngIf="isSyrixAuthor(ck.author)" class="syrix-avatar-ring">
+                    <div class="syrix-avatar-pupil"></div>
+                  </div>
+                  <img *ngIf="!isSyrixAuthor(ck.author)" 
+                       [src]="ck.author_avatar || getAvatarUrl(ck.author)" 
+                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
                 </div>
-                <div class="d-flex justify-content-between text-muted" style="font-size: 11.5px;">
-                  <span>
-                    <i class="fa-solid fa-circle-check text-success me-1"></i>
-                    Đạt: {{ ck.numerator }} / {{ ck.denominator }} sự kiện
-                  </span>
-                  <span>{{ formatTime(ck.calculated_at) }}</span>
+
+                <!-- Checkin Content -->
+                <div class="checkin-body flex-grow-1" style="min-width: 0;">
+                  <!-- Line 1: Author updated the [field] value to [value] [relative time] -->
+                  <div class="checkin-headline text-dark mb-1" style="font-size: 13.5px; line-height: 1.45;">
+                    <strong class="fw-bold">{{ ck.author || 'Syrix Task' }}</strong>
+                    <span> updated the {{ ck.target_field || 'Current' }} value to </span>
+                    <strong class="fw-bold">{{ ck.current_value }}</strong>
+                    <span class="text-muted ms-2" style="font-size: 12.5px;">{{ formatRelativeTime(ck.calculated_at) }}</span>
+                  </div>
+
+                  <!-- Line 2: Note: [note text or None] -->
+                  <div class="checkin-note text-dark" style="font-size: 13px; line-height: 1.55;">
+                    <strong class="fw-semibold">Note:</strong>
+                    <span class="ms-1" [style.color]="(!ck.note || ck.note.trim() === 'None') ? '#94a3b8' : '#1e293b'">
+                      {{ ck.note || 'None' }}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
 
+            <!-- Empty Checkins -->
             <div class="text-center py-4 text-muted" *ngIf="!loadingKrCheckins && krCheckins.length === 0">
+              <i class="fa-solid fa-clock-rotate-left fa-2x mb-1 text-secondary opacity-50 d-block"></i>
               <p class="mb-0" style="font-size: 12.5px;">Chưa có lịch sử thay đổi giá trị C cho Key Result này.</p>
             </div>
           </div>
@@ -2076,6 +2101,7 @@ export class OkrTreeComponent implements OnInit {
   newCheckinValue: number | null = null;
   newCheckinNote = '';
   isSubmittingCheckin = false;
+  checkinSortOrder: 'newest' | 'oldest' = 'newest';
 
   // Audit History in Right Bar
   krHistory: any[] = [];
@@ -2854,13 +2880,67 @@ export class OkrTreeComponent implements OnInit {
     });
   }
 
+  get sortedKrCheckins(): any[] {
+    if (!this.krCheckins) return [];
+    return [...this.krCheckins].sort((a, b) => {
+      const timeA = new Date(a.calculated_at || 0).getTime();
+      const timeB = new Date(b.calculated_at || 0).getTime();
+      return this.checkinSortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
+  }
+
+  toggleCheckinSort(): void {
+    this.checkinSortOrder = this.checkinSortOrder === 'newest' ? 'oldest' : 'newest';
+  }
+
+  isSyrixAuthor(author?: string): boolean {
+    if (!author) return true;
+    const a = author.toLowerCase();
+    return a.includes('syrix') || a.includes('activepieces') || a.includes('bot');
+  }
+
+  getAvatarUrl(author?: string): string {
+    if (!author) return 'https://ui-avatars.com/api/?name=User&background=3157D5&color=fff';
+    if (author.includes('Y Nguyen')) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces';
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=3157D5&color=fff`;
+  }
+
+  formatRelativeTime(dateStr?: string): string {
+    if (!dateStr) return 'Just now';
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const now = new Date();
+      const diffMs = now.getTime() - d.getTime();
+      if (diffMs < 0) return 'Just now';
+      const diffSec = Math.floor(diffMs / 1000);
+      const diffMin = Math.floor(diffSec / 60);
+      const diffHour = Math.floor(diffMin / 60);
+      const diffDay = Math.floor(diffHour / 24);
+      const diffMonth = Math.floor(diffDay / 30);
+      const diffYear = Math.floor(diffDay / 365);
+
+      if (diffYear > 0) return `${diffYear} ${diffYear === 1 ? 'year' : 'years'} ago`;
+      if (diffMonth > 0) return `${diffMonth} ${diffMonth === 1 ? 'month' : 'months'} ago`;
+      if (diffDay > 0) return `${diffDay} ${diffDay === 1 ? 'day' : 'days'} ago`;
+      if (diffHour > 0) return `${diffHour} ${diffHour === 1 ? 'hour' : 'hours'} ago`;
+      if (diffMin > 0) return `${diffMin} ${diffMin === 1 ? 'min' : 'mins'} ago`;
+      return 'Just now';
+    } catch {
+      return dateStr;
+    }
+  }
+
   submitCheckin(): void {
     if (this.newCheckinValue === null || isNaN(this.newCheckinValue) || !this.selectedKrNode) return;
     this.isSubmittingCheckin = true;
+    const noteText = this.newCheckinNote.trim();
     const payload = {
       current_value: Number(this.newCheckinValue),
-      reason: this.newCheckinNote.trim() || `Check-in thủ công: C = ${this.newCheckinValue}`,
-      comment: this.newCheckinNote.trim() || `Check-in thủ công giá trị C = ${this.newCheckinValue}`
+      reason: noteText || `Check-in: C = ${this.newCheckinValue}`,
+      comment: noteText || `Check-in: C = ${this.newCheckinValue}`,
+      note: noteText || null,
+      author: 'Huyền Nguyễn Như'
     };
 
     this.okrService.updateKrCurrentValue(this.selectedKrNode.id, payload).subscribe({

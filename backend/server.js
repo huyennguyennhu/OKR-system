@@ -912,7 +912,7 @@ app.get('/api/key-results/:id/history', async (req, res) => {
 
     // 1. Fetch Check-ins
     const checkins = await all(`
-      SELECT result_id, kr_id, current_value, progress, numerator, denominator, status, calculated_at
+      SELECT result_id, kr_id, current_value, progress, numerator, denominator, status, author, target_field, note, calculated_at
       FROM MetricResults
       WHERE kr_id = ?
       ORDER BY calculated_at DESC
@@ -958,12 +958,14 @@ app.get('/api/key-results/:id/history', async (req, res) => {
 
     // Map Check-ins
     for (const ck of checkins) {
+      const actorName = ck.author || (ck.status === 'activepieces_synced' ? 'Syrix Task' : 'Hệ thống OKR');
+      const targetName = ck.target_field || 'Current';
       auditList.push({
         id: `checkin-${ck.result_id}`,
         type: 'checkin',
-        title: `Cập nhật tiến độ: C = ${ck.current_value}%`,
-        description: `Giá trị C được cập nhật thành ${ck.current_value}%. Tiến độ đạt ${ck.progress}% (${ck.numerator || 0}/${ck.denominator || 0} chỉ tiêu hoàn thành).`,
-        actor: ck.status === 'activepieces_synced' ? 'Activepieces Bot' : 'Hệ thống OKR',
+        title: `${actorName} updated the ${targetName} value to ${ck.current_value}`,
+        description: ck.note ? `Note: ${ck.note}` : 'Note: None',
+        actor: actorName,
         author_avatar: ck.status === 'activepieces_synced' ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : null,
         badge_text: 'CHECK-IN',
         badge_type: 'primary',
@@ -972,7 +974,9 @@ app.get('/api/key-results/:id/history', async (req, res) => {
           current_value: ck.current_value,
           progress: ck.progress,
           numerator: ck.numerator,
-          denominator: ck.denominator
+          denominator: ck.denominator,
+          note: ck.note,
+          target_field: targetName
         }
       });
     }
@@ -1105,10 +1109,14 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   const period = options.period || 'Q3-2026';
   const numerator = options.numerator !== undefined ? options.numerator : Math.round(val);
   const denominator = options.denominator !== undefined ? options.denominator : 100;
+  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Bạn (Quản trị viên)');
+  const targetField = options.target_field || 'Current';
+  const note = options.note !== undefined ? options.note : (options.comment || options.reason || null);
+
   await run(
-    `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, calculated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'activepieces_synced', CURRENT_TIMESTAMP)`,
-    [krId, period, numerator, denominator, val, clampedProgress]
+    `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, author, target_field, note, calculated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'activepieces_synced', ?, ?, ?, CURRENT_TIMESTAMP)`,
+    [krId, period, numerator, denominator, val, clampedProgress, author, targetField, note]
   );
 
   // Traceability: Log event assignment if event_key is provided
