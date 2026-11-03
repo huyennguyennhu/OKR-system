@@ -360,6 +360,25 @@ async function initDatabase() {
     await run('CREATE INDEX IF NOT EXISTS idx_comments_kr ON Comments(kr_id)');
   } catch (e) {}
 
+  // 10. AuditLogs table (Lịch sử chỉnh sửa các thuộc tính KR / Objective)
+  await run(`
+    CREATE TABLE IF NOT EXISTS AuditLogs (
+      log_id SERIAL PRIMARY KEY,
+      kr_id TEXT,
+      objective_id TEXT,
+      author TEXT NOT NULL DEFAULT 'Y Nguyen',
+      author_avatar TEXT,
+      field_name TEXT NOT NULL,
+      old_value TEXT,
+      new_value TEXT,
+      new_value_avatar TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  try {
+    await run('CREATE INDEX IF NOT EXISTS idx_auditlogs_kr ON AuditLogs(kr_id)');
+  } catch (e) {}
+
 
   await run(`
     CREATE TABLE IF NOT EXISTS Teams (

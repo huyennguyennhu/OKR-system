@@ -827,84 +827,53 @@ interface TreeNode {
             </div>
           </div>
 
-          <!-- TAB 2.3: History (Unified Audit Log) -->
+          <!-- TAB 2.3: History (Matches media_1793682184386_1cea203b.png) -->
           <div *ngIf="activeTab2 === 'history'" class="tab-pane-content">
-            <!-- Filter Pills -->
-            <div class="d-flex align-items-center gap-1 mb-3">
-              <button class="btn-filter-pill" [class.active]="historyFilter === 'all'" (click)="historyFilter = 'all'">
-                Tất cả ({{ krHistory.length }})
-              </button>
-              <button class="btn-filter-pill" [class.active]="historyFilter === 'checkin'" (click)="historyFilter = 'checkin'">
-                <i class="fa-solid fa-chart-line me-1 text-primary"></i> Check-in
-              </button>
-              <button class="btn-filter-pill" [class.active]="historyFilter === 'comment'" (click)="historyFilter = 'comment'">
-                <i class="fa-regular fa-comment-dots me-1 text-info"></i> Bình luận
-              </button>
-              <button class="btn-filter-pill" [class.active]="historyFilter === 'event'" (click)="historyFilter = 'event'">
-                <i class="fa-brands fa-gitlab me-1 text-warning"></i> GitLab SLA
-              </button>
-            </div>
-
             <!-- Loading -->
             <div *ngIf="loadingKrHistory" class="text-center py-3 text-muted">
-              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải nhật ký truy vết...
+              <i class="fa-solid fa-spinner fa-spin me-2"></i> Đang tải nhật ký lịch sử...
             </div>
 
-            <!-- History Audit List -->
-            <div class="history-audit-list d-flex flex-column gap-3" *ngIf="!loadingKrHistory && filteredKrHistory.length > 0">
-              <div class="history-item d-flex gap-3 pb-3 border-bottom" *ngFor="let h of filteredKrHistory">
-                <!-- Icon / Avatar -->
-                <div class="history-icon-col flex-shrink-0">
-                  <div *ngIf="h.type === 'checkin'" class="audit-icon-circle bg-primary-subtle text-primary border border-primary-subtle">
-                    <i class="fa-solid fa-chart-line"></i>
-                  </div>
-                  <div *ngIf="h.type === 'comment'" class="audit-icon-circle bg-info-subtle text-info border border-info-subtle">
-                    <i class="fa-solid fa-comment-dots"></i>
-                  </div>
-                  <div *ngIf="h.type === 'event'" class="audit-icon-circle" [ngClass]="h.badge_type === 'success' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-danger-subtle text-danger border border-danger-subtle'">
-                    <i class="fa-brands fa-gitlab" *ngIf="h.badge_type === 'success'"></i>
-                    <i class="fa-solid fa-triangle-exclamation" *ngIf="h.badge_type !== 'success'"></i>
-                  </div>
+            <!-- History Feed List -->
+            <div class="history-feed-list d-flex flex-column" *ngIf="!loadingKrHistory && krHistory.length > 0">
+              <div class="history-feed-item d-flex gap-3 py-3 border-bottom" *ngFor="let h of sortedKrHistory">
+                <!-- Avatar on left -->
+                <div class="history-avatar flex-shrink-0">
+                  <img [src]="h.author_avatar || getAvatarUrl(h.author)" 
+                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
                 </div>
 
-                <!-- Details -->
-                <div class="history-details flex-grow-1" style="min-width: 0;">
-                  <!-- Top Row: Actor, Badge, Date -->
-                  <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
-                    <span class="fw-bold text-dark" style="font-size: 13px;">{{ h.actor }}</span>
-                    <span class="badge" [ngClass]="h.badge_type === 'primary' ? 'bg-primary-subtle text-primary border' : (h.badge_type === 'info' ? 'bg-info-subtle text-info border' : (h.badge_type === 'success' ? 'bg-success-subtle text-success border' : 'bg-danger-subtle text-danger border'))" style="font-size: 10px; font-weight: 600;">
-                      {{ h.badge_text }}
+                <!-- Details on right -->
+                <div class="history-body flex-grow-1" style="min-width: 0;">
+                  <!-- Line 1: Author updated the [field_name]  [relative time] -->
+                  <div class="history-headline text-dark mb-1" style="font-size: 13.5px; line-height: 1.45;">
+                    <strong class="fw-bold">{{ h.author || 'Y Nguyen' }}</strong>
+                    <span> updated the {{ h.field_name }}</span>
+                    <span class="text-muted ms-2" style="font-size: 12.5px;">{{ formatRelativeTime(h.created_at) }}</span>
+                  </div>
+
+                  <!-- Line 2: [old_value] → [new_value] -->
+                  <div class="history-diff d-flex align-items-center flex-wrap gap-2" style="font-size: 13px; line-height: 1.55;">
+                    <!-- Old value -->
+                    <span class="old-val" [style.color]="(!h.old_value || h.old_value.trim() === 'None') ? '#94a3b8' : '#334155'">
+                      {{ h.old_value || 'None' }}
                     </span>
-                    <span class="text-muted ms-auto" style="font-size: 11.5px;">{{ formatCommentDate(h.created_at) }}</span>
-                  </div>
 
-                  <!-- Title / Event Summary -->
-                  <div class="fw-semibold text-dark mb-1" style="font-size: 13px; line-height: 1.4;">
-                    {{ h.title }}
-                  </div>
+                    <!-- Arrow -->
+                    <span class="diff-arrow mx-1" style="color: #94a3b8; font-size: 13px;">→</span>
 
-                  <!-- Checkin Specific Data Box -->
-                  <div *ngIf="h.type === 'checkin'" class="p-2 rounded bg-light border d-flex gap-3 align-items-center mt-1" style="font-size: 12px;">
-                    <div><span class="text-muted">Cập nhật:</span> <strong class="text-primary">{{ h.metadata?.current_value }}%</strong></div>
-                    <div><span class="text-muted">Tiến độ:</span> <strong class="text-success">{{ h.metadata?.progress }}%</strong></div>
-                    <div *ngIf="h.metadata?.denominator"><span class="text-muted">Chỉ tiêu:</span> <strong>{{ h.metadata?.numerator }}/{{ h.metadata?.denominator }}</strong></div>
-                  </div>
-
-                  <!-- Comment Specific Box -->
-                  <div *ngIf="h.type === 'comment'" class="p-2 rounded bg-light border text-muted mt-1" style="font-size: 12.5px; line-height: 1.5; white-space: pre-wrap; font-style: italic;">
-                    "{{ h.description }}"
-                  </div>
-
-                  <!-- Event Specific Box -->
-                  <div *ngIf="h.type === 'event'" class="text-muted mt-1" style="font-size: 12px; line-height: 1.4;">
-                    {{ h.description }}
+                    <!-- New value with optional avatar (e.g. for Assignee) -->
+                    <span class="new-val d-inline-flex align-items-center gap-1" style="color: #0f172a;">
+                      <img *ngIf="h.new_value_avatar" [src]="h.new_value_avatar" class="rounded-circle" style="width: 20px; height: 20px; object-fit: cover;">
+                      <span>{{ h.new_value }}</span>
+                    </span>
                   </div>
                 </div>
               </div>
             </div>
 
             <!-- Empty History -->
-            <div class="text-center py-4 text-muted" *ngIf="!loadingKrHistory && filteredKrHistory.length === 0">
+            <div class="text-center py-4 text-muted" *ngIf="!loadingKrHistory && krHistory.length === 0">
               <i class="fa-solid fa-clock-rotate-left fa-2x mb-1 text-secondary opacity-50 d-block"></i>
               <p class="mb-0" style="font-size: 12.5px;">Chưa có dữ liệu nhật ký sự kiện cho Key Result này.</p>
             </div>
@@ -2784,6 +2753,15 @@ export class OkrTreeComponent implements OnInit {
 
   toggleCommentSort(): void {
     this.commentSortOrder = this.commentSortOrder === 'newest' ? 'oldest' : 'newest';
+  }
+
+  get sortedKrHistory(): any[] {
+    if (!this.krHistory) return [];
+    return [...this.krHistory].sort((a, b) => {
+      const timeA = new Date(a.created_at || 0).getTime();
+      const timeB = new Date(b.created_at || 0).getTime();
+      return this.historySortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+    });
   }
 
   get filteredKrHistory(): any[] {
