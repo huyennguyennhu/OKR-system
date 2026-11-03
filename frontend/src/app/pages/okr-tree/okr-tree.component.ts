@@ -569,15 +569,6 @@ interface TreeNode {
               </div>
             </div>
 
-            <!-- Assignee & Timeline info -->
-            <div class="p-2 rounded border bg-white d-flex align-items-center justify-content-between mt-2" style="font-size: 13px;">
-              <div class="d-flex align-items-center gap-2">
-                <img *ngIf="selectedKrNode?.assignToAvatar" [src]="selectedKrNode?.assignToAvatar" class="avatar" style="width: 26px; height: 26px; border-radius: 50%;">
-                <span *ngIf="!selectedKrNode?.assignToAvatar" class="badge bg-light text-dark border"><i class="fa-solid fa-users"></i></span>
-                <span class="fw-medium text-dark">{{ selectedKrNode?.assignTo }}</span>
-              </div>
-              <span class="badge bg-secondary-subtle text-secondary">{{ selectedKrNode?.tl }}</span>
-            </div>
           </div>
 
           <!-- TAB 1.2: Detail -->
