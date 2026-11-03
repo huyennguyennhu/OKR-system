@@ -71,6 +71,10 @@ body {
   font-size: 13px;
 }
 
+.rounded-circle {
+  border-radius: 50% !important;
+}
+
 /* Layout */
 .app-container {
   display: flex;

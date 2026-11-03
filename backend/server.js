@@ -2320,19 +2320,19 @@ app.put('/api/key-results/:id', async (req, res) => {
         await run(`
           INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff', 'Task Name', oldKr.title, title]);
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Task Name', oldKr.title, title]);
       }
       if (expected_value !== undefined && expected_value !== null && Number(oldKr.expected_value) !== Number(expected_value)) {
         await run(`
           INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`]);
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`]);
       }
       if (description !== undefined && description !== null && oldKr.description !== description) {
         await run(`
           INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
           VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff', 'Description', oldKr.description || 'None', description]);
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Description', oldKr.description || 'None', description]);
       }
     }
 

@@ -692,7 +692,7 @@ interface TreeNode {
             <!-- Composer Area (Matches Screenshots 1 & 2) -->
             <div class="d-flex gap-2 mb-3 align-items-start">
               <!-- Current User Avatar -->
-              <img src="https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff" class="rounded-circle flex-shrink-0" style="width: 34px; height: 34px; object-fit: cover;">
+              <img src="https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true" class="rounded-circle flex-shrink-0" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
 
               <!-- STATE 1: Idle (Collapsed - Matches Screenshot 1 & 3) -->
               <div *ngIf="!isCommentEditorOpen" 
@@ -758,8 +758,8 @@ interface TreeNode {
                     <div class="syrix-avatar-pupil"></div>
                   </div>
                   <img *ngIf="!(c.source === 'activepieces' || (c.author && c.author.includes('Syrix')))" 
-                       [src]="c.author_avatar || ('https://ui-avatars.com/api/?name=' + c.author + '&background=3157D5&color=fff')" 
-                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
+                       [src]="c.author_avatar || ('https://ui-avatars.com/api/?name=' + c.author + '&background=3157D5&color=fff&rounded=true')" 
+                       class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
 
                 <!-- Comment Content -->
@@ -824,7 +824,7 @@ interface TreeNode {
                   </div>
                   <img *ngIf="!isSyrixAuthor(ck.author)" 
                        [src]="ck.author_avatar || getAvatarUrl(ck.author)" 
-                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
+                       class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
 
                 <!-- Checkin Content -->
@@ -868,7 +868,7 @@ interface TreeNode {
                 <!-- Avatar on left -->
                 <div class="history-avatar flex-shrink-0">
                   <img [src]="h.author_avatar || getAvatarUrl(h.author)" 
-                       class="rounded-circle" style="width: 34px; height: 34px; object-fit: cover;">
+                       class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
 
                 <!-- Details on right -->
@@ -892,7 +892,7 @@ interface TreeNode {
 
                     <!-- New value with optional avatar (e.g. for Assignee) -->
                     <span class="new-val d-inline-flex align-items-center gap-1" style="color: #0f172a;">
-                      <img *ngIf="h.new_value_avatar" [src]="h.new_value_avatar" class="rounded-circle" style="width: 20px; height: 20px; object-fit: cover;">
+                      <img *ngIf="h.new_value_avatar" [src]="h.new_value_avatar" class="rounded-circle" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover;">
                       <span>{{ h.new_value }}</span>
                     </span>
                   </div>
@@ -1980,6 +1980,7 @@ interface TreeNode {
       color: #2563eb;
     }
 
+    .rounded-circle { border-radius: 50% !important; }
     /* Comment Idle Box (Collapsed) */
     .comment-idle-box {
       min-height: 44px;
@@ -2959,9 +2960,9 @@ export class OkrTreeComponent implements OnInit {
   }
 
   getAvatarUrl(author?: string): string {
-    if (!author) return 'https://ui-avatars.com/api/?name=User&background=3157D5&color=fff';
+    if (!author) return 'https://ui-avatars.com/api/?name=User&background=3157D5&color=fff&rounded=true';
     if (author.includes('Y Nguyen')) return 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces';
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=3157D5&color=fff`;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(author)}&background=3157D5&color=fff&rounded=true`;
   }
 
   formatRelativeTime(dateStr?: string): string {
