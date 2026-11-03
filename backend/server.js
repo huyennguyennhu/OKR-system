@@ -910,8 +910,8 @@ app.get('/api/key-results/:id/history', async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Fetch from AuditLogs
-    let history = await all(`
+    // Fetch from AuditLogs (Real user/activepieces actions only)
+    const history = await all(`
       SELECT log_id, kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, new_value_avatar, created_at
       FROM AuditLogs
       WHERE kr_id = ?
@@ -919,44 +919,7 @@ app.get('/api/key-results/:id/history', async (req, res) => {
       LIMIT 50
     `, [id]);
 
-    // If no specific audit logs exist for this KR yet, fallback to realistic base logs
-    if (!history || history.length === 0) {
-      const kr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [id]);
-      history = [
-        {
-          log_id: 1,
-          kr_id: id,
-          author: 'Y Nguyen',
-          author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces',
-          field_name: 'Description',
-          old_value: 'None',
-          new_value: kr?.description || 'Quy tắc SLA: Issue hoàn thành trong vòng tối đa 24 tiếng làm việc kể từ lúc tạo.',
-          created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          log_id: 2,
-          kr_id: id,
-          author: 'Y Nguyen',
-          author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces',
-          field_name: 'Task Name',
-          old_value: 'Tỷ lệ hoàn thành Issue đúng cam kết SLA',
-          new_value: kr?.title || 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%',
-          created_at: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString()
-        },
-        {
-          log_id: 3,
-          kr_id: id,
-          author: 'Y Nguyen',
-          author_avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=64&h=64&fit=crop&crop=faces',
-          field_name: 'Assignee',
-          old_value: 'None',
-          new_value: kr?.assignee_id || 'Team dev',
-          created_at: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
-        }
-      ];
-    }
-
-    res.json(history);
+    res.json(history || []);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -971,6 +934,7 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   const kr = await get('SELECT * FROM KeyResults WHERE kr_id = ?', [krId]);
   if (!kr) throw new Error(`KeyResult with id ${krId} not found`);
 
+  const oldVal = kr.current_value;
   const val = parseFloat(newCurrentValue);
   let progress = 0;
   if (kr.direction === 'increase') {
@@ -982,6 +946,27 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
 
   // Update KeyResult
   await run('UPDATE KeyResults SET current_value = ? WHERE kr_id = ?', [val, krId]);
+
+  // Record AuditLog for field change (History Tab)
+  if (oldVal !== undefined && oldVal !== null && Number(oldVal) !== Number(val)) {
+    const auditAuthor = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Huyền Nguyễn Như');
+    const auditAvatar = (auditAuthor.includes('Huyen') || auditAuthor.includes('Huyền'))
+      ? 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true'
+      : ((options.source === 'activepieces' || options.actor_id) ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`);
+
+    await run(`
+      INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+    `, [
+      krId,
+      kr.objective_id,
+      auditAuthor,
+      auditAvatar,
+      'Current value',
+      `${oldVal} ${kr.unit || '%'}`,
+      `${val} ${kr.unit || '%'}`
+    ]);
+  }
 
   // If this KR has a parent_kr_id, recalculate parent KR
   if (kr.parent_kr_id) {
@@ -1045,13 +1030,13 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
     }
   }
 
-  // Record MetricResults history
+  // Record MetricResults history (Check in Tab)
   const period = options.period || 'Q3-2026';
   const numerator = options.numerator !== undefined ? options.numerator : Math.round(val);
   const denominator = options.denominator !== undefined ? options.denominator : 100;
-  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Bạn (Quản trị viên)');
+  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Huyền Nguyễn Như');
   const targetField = options.target_field || 'Current';
-  const note = options.note !== undefined ? options.note : (options.comment || options.reason || null);
+  const note = (options.note !== undefined && options.note !== null && options.note !== '') ? options.note : null;
 
   await run(
     `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, author, target_field, note, calculated_at)
@@ -1096,17 +1081,15 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
     `, [options.event_key, krId, employeeId, reason, duration, onTime]);
   }
 
-  // Record comment/check-in note into Comments table if provided
-  const commentText = options.comment || options.note;
+  // Record comment into Comments table ONLY if explicit comment text is provided
+  const commentText = options.comment;
   if (commentText && typeof commentText === 'string' && commentText.trim()) {
-    const rawActor = options.author || options.actor_id || 'Activepieces Automation Bot';
+    const rawActor = options.author || (options.source === 'activepieces' || options.actor_id ? 'Activepieces Automation Bot' : 'Huyền Nguyễn Như');
     let authorName = rawActor;
-    let authorAvatar = 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff';
-    const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR gitlab_user_id LIKE ?', [rawActor, rawActor, `%${rawActor}%`]);
-    if (emp) {
-      authorName = emp.full_name;
-      authorAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.full_name)}&background=3157D5&color=fff`;
-    }
+    let authorAvatar = (rawActor.includes('Huyen') || rawActor.includes('Huyền'))
+      ? 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true'
+      : ((options.source === 'activepieces' || options.actor_id) ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' : `https://ui-avatars.com/api/?name=${encodeURIComponent(rawActor)}&background=3157D5&color=fff&rounded=true`);
+
     await run(`
       INSERT INTO Comments (objective_id, kr_id, author, author_id, author_avatar, content, source, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -1117,7 +1100,7 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
       options.author_id || options.actor_id || rawActor,
       authorAvatar,
       commentText.trim(),
-      options.source || 'activepieces'
+      options.source || (options.actor_id ? 'activepieces' : 'web_user')
     ]);
   }
 
@@ -1616,8 +1599,15 @@ app.post('/api/comments', async (req, res) => {
       return res.status(400).json({ error: 'Nội dung bình luận không được để trống' });
     }
 
-    let finalAuthor = author || 'Người dùng';
+    let finalAuthor = author || 'Huyền Nguyễn Như';
     let finalAvatar = author_avatar;
+    if (!finalAvatar) {
+      if (finalAuthor.includes('Huyen') || finalAuthor.includes('Huyền')) {
+        finalAvatar = 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true';
+      } else {
+        finalAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(finalAuthor)}&background=3157D5&color=fff&rounded=true`;
+      }
+    }
     if (author_id) {
       const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ?', [author_id]);
       if (emp) {

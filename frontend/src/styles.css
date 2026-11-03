@@ -1501,3 +1501,6 @@ pre {
 .me-auto, .mr-auto {
   margin-right: auto !important;
 }
+
+.rounded-circle { border-radius: 50% !important; }
+

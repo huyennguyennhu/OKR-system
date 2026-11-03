@@ -2892,7 +2892,8 @@ export class OkrTreeComponent implements OnInit {
       kr_id: this.selectedKrNode.id,
       objective_id: this.selectedKrNode.objective_id,
       content: this.newKrComment.trim(),
-      author: 'Bạn (Quản trị viên)',
+      author: 'Huyền Nguyễn Như',
+      author_avatar: 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true',
       source: 'web_user'
     };
 
@@ -2995,7 +2996,6 @@ export class OkrTreeComponent implements OnInit {
     const payload = {
       current_value: Number(this.newCheckinValue),
       reason: noteText || `Check-in: C = ${this.newCheckinValue}`,
-      comment: noteText || `Check-in: C = ${this.newCheckinValue}`,
       note: noteText || null,
       author: 'Huyền Nguyễn Như'
     };

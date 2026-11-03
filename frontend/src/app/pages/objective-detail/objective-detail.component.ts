@@ -567,7 +567,8 @@ export class ObjectiveDetailComponent implements OnInit {
     const commentPayload: Partial<OkrComment> = {
       objective_id: this.objective.objective_id,
       content,
-      author: 'Bạn (Quản trị viên)',
+      author: 'Huyền Nguyễn Như',
+      author_avatar: 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true',
       source: 'web_user'
     };
 
