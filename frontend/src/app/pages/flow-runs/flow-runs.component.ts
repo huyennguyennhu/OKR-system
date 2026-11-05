@@ -411,12 +411,27 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
             <!-- Member metrics from payload if present -->
             <div class="member-trace-metrics mt-2 pt-2 border-top border-primary-subtle" *ngIf="getMemberTraceDetails(selectedRunForModal, pendingTraceMember) as m">
               <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 12.5px;">
-                <span *ngIf="m.IC_i !== undefined">Chỉ số đúng hạn (IC_i): <strong class="text-primary">{{ m.IC_i }}%</strong></span>
-                <span *ngIf="m.Ni !== undefined">Số Issue đạt (Ni/Di): <strong class="text-dark">{{ m.Ni }}/{{ m.Di }}</strong></span>
-                <span *ngIf="m.new_value !== undefined">Tiến độ cập nhật: <strong class="text-primary">{{ m.new_value }}%</strong></span>
-                <span *ngIf="m.working_hours_spent">Thời gian review: <strong class="text-primary">{{ m.working_hours_spent }}h</strong> (SLA: {{ m.sla_limit_hours }}h)</span>
-                <span *ngIf="m.resolve_time_hours">Thời gian giải quyết: <strong class="text-primary">{{ m.resolve_time_hours }}h</strong> (SLA: {{ m.sla_limit_hours }}h)</span>
-                <span *ngIf="m.status" class="badge badge-success"><i class="fa-solid fa-check me-1"></i>{{ m.status }}</span>
+                <span *ngIf="m.IC_i !== undefined || m.ic_percent !== undefined">
+                  Chỉ số đúng hạn (IC_i): <strong class="text-primary">{{ m.IC_i !== undefined ? m.IC_i : m.ic_percent }}%</strong>
+                </span>
+                <span *ngIf="m.Ni !== undefined || m.ontime_issues !== undefined">
+                  Số Issue đạt: <strong class="text-dark">{{ m.Ni !== undefined ? m.Ni : m.ontime_issues }}/{{ m.Di !== undefined ? m.Di : m.due_issues }}</strong>
+                </span>
+                <span *ngIf="m.due_sp !== undefined">
+                  Story Points: <strong class="text-dark">{{ m.ontime_sp }}/{{ m.due_sp }} SP</strong>
+                </span>
+                <span *ngIf="m.new_value !== undefined && m.IC_i === undefined && m.ic_percent === undefined">
+                  Tiến độ cập nhật: <strong class="text-primary">{{ m.new_value }}%</strong>
+                </span>
+                <span *ngIf="m.working_hours_spent || m.avg_response_hours">
+                  Thời gian review: <strong class="text-primary">{{ m.working_hours_spent || m.avg_response_hours }}h</strong> (SLA: {{ m.sla_limit_hours || 4.0 }}h)
+                </span>
+                <span *ngIf="m.resolve_time_hours || m.mttr_hours">
+                  Thời gian giải quyết: <strong class="text-primary">{{ m.resolve_time_hours || m.mttr_hours }}h</strong> (SLA: {{ m.sla_limit_hours || 8.0 }}h)
+                </span>
+                <span *ngIf="m.status || m.sla_status" class="badge" [ngClass]="(m.status === 'PASS' || m.status === 'ON_TIME' || m.sla_status === 'PASS' || m.sla_status === 'ON_TIME') ? 'badge-success' : 'badge-danger'">
+                  <i class="fa-solid fa-check me-1"></i>{{ m.status || m.sla_status }}
+                </span>
               </div>
             </div>
           </div>
@@ -1670,15 +1685,50 @@ export class FlowRunsComponent implements OnInit {
     if (!run || !memberName) return null;
     try {
       const payload = typeof run.payload_json === 'string' ? JSON.parse(run.payload_json) : run.payload_json;
-      if (payload && Array.isArray(payload.member_results)) {
+      if (!payload) return null;
+
+      // 1. Check standardized summary_metrics.individual_breakdown (4-part structure)
+      const breakdown = payload.summary_metrics?.individual_breakdown || payload.individual_breakdown;
+      if (Array.isArray(breakdown)) {
+        const found = breakdown.find((m: any) =>
+          (m.name && m.name.toLowerCase().includes(memberName.toLowerCase())) ||
+          (memberName.toLowerCase().includes((m.name || '').toLowerCase())) ||
+          (m.employee && m.employee.toLowerCase().includes(memberName.toLowerCase())) ||
+          (m.emp_id && memberName.toLowerCase().includes(m.emp_id.toLowerCase()))
+        );
+        if (found) {
+          return {
+            ...found,
+            IC_i: found.ic_percent !== undefined ? found.ic_percent : found.IC_i,
+            Ni: found.ontime_issues !== undefined ? found.ontime_issues : (found.ontime !== undefined ? found.ontime : found.Ni),
+            Di: found.due_issues !== undefined ? found.due_issues : (found.reviews !== undefined ? found.reviews : found.Di),
+            status: found.status || found.sla_status || 'PASS'
+          };
+        }
+      }
+
+      // 2. Check legacy / alternative member_results
+      if (Array.isArray(payload.member_results)) {
         const found = payload.member_results.find((m: any) => 
           (m.employee && m.employee.toLowerCase().includes(memberName.toLowerCase())) ||
           (memberName.toLowerCase().includes((m.employee || '').toLowerCase()))
         );
         if (found) return found;
       }
-      if (payload && (payload.author === memberName || payload.reviewer === memberName || payload.developer === memberName)) {
+
+      // 3. Check direct author, reviewer, developer
+      if (payload.author === memberName || payload.reviewer === memberName || payload.developer === memberName) {
         return payload;
+      }
+
+      // 4. Check source_records for this member
+      if (Array.isArray(payload.source_records)) {
+        const matchingRecord = payload.source_records.find((r: any) =>
+          (r.assignee && memberName.toLowerCase().includes(r.assignee.toLowerCase())) ||
+          (r.reviewer && memberName.toLowerCase().includes(r.reviewer.toLowerCase())) ||
+          (r.developer && memberName.toLowerCase().includes(r.developer.toLowerCase()))
+        );
+        if (matchingRecord) return matchingRecord;
       }
     } catch {
       return null;

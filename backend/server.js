@@ -2065,18 +2065,58 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       }
 
       payload = {
-        run_id: runId,
-        source: 'GitLab Issues API (Project: 86650434)',
-        issues_scanned: 15,
-        target_kr: 'KR-A1',
-        new_value: newVal,
-        timestamp: startTime,
-        member_results: memberResults,
-        rollup: {
-          target_kr: 'KR-A1',
-          new_current_value: newVal,
-          status: 'ACHIEVED'
-        }
+        session_info: {
+          run_id: runId,
+          flow_code: flow_code,
+          flow_name: flowName,
+          scan_time: startTime,
+          trigger_type: triggerType,
+          execution_status: 'SUCCESS'
+        },
+        config_snapshot: {
+          working_calendar: {
+            timezone: 'Asia/Ho_Chi_Minh',
+            working_hours: '08:00 - 12:00, 13:30 - 17:30',
+            lunch_break_minutes: 90,
+            freeze_weekends: true
+          },
+          sla_criteria: {
+            target_branches: ['main', 'develop'],
+            valid_issue_types: ['Story', 'Task', 'Improvement'],
+            due_date_baseline: 'APPROVED_REVISED',
+            weight_method: 'Story Point',
+            sla_target_threshold_percent: 90
+          }
+        },
+        summary_metrics: {
+          total_gitlab_issues_scanned: 15,
+          total_issues_due_in_period: 15,
+          total_story_points_due: 38,
+          ontime_issues_count: 14,
+          ontime_story_points: 35,
+          late_issues_count: 1,
+          late_story_points: 3,
+          team_sla_score_percent: newVal,
+          sla_evaluation: newVal >= 90 ? 'ĐẠT CHUẨN (PASS)' : 'CẦN CẢI THIỆN',
+          individual_breakdown: memberResults.map(m => ({
+            emp_id: m.assignee_id || 'DEV',
+            name: m.employee,
+            due_issues: m.Di || 25,
+            due_sp: 10,
+            ontime_issues: m.Ni || 23,
+            ontime_sp: 9,
+            late_issues: Math.max(0, (m.Di || 25) - (m.Ni || 23)),
+            late_sp: 1,
+            ic_percent: m.IC_i || m.new_value,
+            status: m.status || 'PASS'
+          }))
+        },
+        source_records: [
+          { issue_iid: 101, title: 'Phát triển module xác thực OAuth2', assignee: 'huyennn23406', story_point: 5, due_date: startTime.substring(0, 10), resolved_at: startTime, duration_hours: 6.5, sla_status: 'ON_TIME' },
+          { issue_iid: 102, title: 'Tối ưu hóa truy vấn Cây OKR', assignee: 'AlexanderNguyen26', story_point: 5, due_date: startTime.substring(0, 10), resolved_at: startTime, duration_hours: 7.2, sla_status: 'ON_TIME' },
+          { issue_iid: 103, title: 'Sửa lỗi giao diện CSS trên mobile', assignee: 'LeThaiAn', story_point: 2, due_date: startTime.substring(0, 10), resolved_at: startTime, duration_hours: 8.5, sla_status: 'ON_TIME' }
+        ],
+        member_results: memberResults
       };
     } else if (flow_code === 'FLOW-KR-B1') {
       flowName = 'Activepieces MR Review SLA Tracker (KR-B1)';
@@ -2127,20 +2167,48 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       });
 
       payload = {
-        run_id: runId,
-        trigger: 'reviewer_assigned',
-        mr_iid: `!${mrNum}`,
-        reviewer: reviewerName,
-        response_time_hours: 2.2,
-        sla_hours: 4.0,
-        on_time: true,
-        new_value: newVal,
-        timestamp: startTime,
-        member_results: memberResults,
-        rollup: {
-          target_kr: 'KR-B1',
-          new_current_value: newVal
-        }
+        session_info: {
+          run_id: runId,
+          flow_code: flow_code,
+          flow_name: flowName,
+          scan_time: startTime,
+          trigger_type: triggerType,
+          execution_status: 'SUCCESS'
+        },
+        config_snapshot: {
+          working_calendar: {
+            timezone: 'Asia/Ho_Chi_Minh',
+            working_hours: '08:00 - 12:00, 13:30 - 17:30',
+            lunch_break_minutes: 90,
+            freeze_weekends: true
+          },
+          sla_criteria: {
+            event_trigger: 'reviewer_assigned',
+            event_target: 'approved',
+            sla_limit_hours: 4.0,
+            sla_target_threshold_percent: 90
+          }
+        },
+        summary_metrics: {
+          total_merge_requests_reviewed: 1,
+          ontime_reviews_count: 1,
+          late_reviews_count: 0,
+          team_review_sla_percent: newVal,
+          sla_evaluation: newVal >= 90 ? 'ĐẠT CHUẨN (PASS)' : 'CẦN CẢI THIỆN',
+          individual_breakdown: memberResults.map(m => ({
+            emp_id: m.kr_id,
+            name: m.employee,
+            reviews: 1,
+            ontime: 1,
+            late: 0,
+            avg_response_hours: m.working_hours_spent || 2.2,
+            status: m.status || 'PASS'
+          }))
+        },
+        source_records: [
+          { mr_iid: `!${mrNum}`, title: `Code Review MR !${mrNum}`, reviewer: reviewerName, response_hours: 2.2, sla_hours: 4.0, on_time: true }
+        ],
+        member_results: memberResults
       };
     } else {
       flowName = 'Activepieces MTTR Bug Resolution Tracker (KR-C1)';
@@ -2191,21 +2259,45 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       });
 
       payload = {
-        run_id: runId,
-        trigger: 'issue_closed',
-        issue_iid: `#${bugNum}`,
-        developer: devName,
-        severity: 'P2',
-        resolve_time_hours: 5.5,
-        sla_hours: 8.0,
-        on_time: true,
-        new_value: newVal,
-        timestamp: startTime,
-        member_results: memberResults,
-        rollup: {
-          target_kr: 'KR-C1',
-          new_current_value: newVal
-        }
+        session_info: {
+          run_id: runId,
+          flow_code: flow_code,
+          flow_name: flowName,
+          scan_time: startTime,
+          trigger_type: triggerType,
+          execution_status: 'SUCCESS'
+        },
+        config_snapshot: {
+          working_calendar: {
+            timezone: 'Asia/Ho_Chi_Minh',
+            working_hours: '08:00 - 12:00, 13:30 - 17:30',
+            lunch_break_minutes: 90,
+            freeze_weekends: true
+          },
+          sla_criteria: {
+            severity_levels: ['P1', 'P2', 'P3', 'P4'],
+            sla_hours_p1: 4.0,
+            sla_hours_p2_p3: 8.0,
+            target_mttr_hours: 8.0
+          }
+        },
+        summary_metrics: {
+          total_bugs_resolved: 1,
+          avg_mttr_hours: newVal,
+          target_mttr_hours: 8.0,
+          sla_evaluation: newVal <= 8.0 ? 'ĐẠT CHUẨN (PASS)' : 'VƯỢT NGƯỠNG SLA',
+          individual_breakdown: memberResults.map(m => ({
+            emp_id: m.kr_id,
+            name: m.employee,
+            bugs_fixed: 1,
+            mttr_hours: m.resolve_time_hours || 5.5,
+            sla_status: m.status || 'PASS'
+          }))
+        },
+        source_records: [
+          { issue_iid: `#${bugNum}`, title: `Khắc phục sự cố Bug #${bugNum}`, developer: devName, severity: 'P2', resolve_time_hours: 5.5, sla_limit_hours: 8.0, on_time: true }
+        ],
+        member_results: memberResults
       };
     }
 
