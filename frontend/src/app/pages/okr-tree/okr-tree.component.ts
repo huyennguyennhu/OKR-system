@@ -505,7 +505,7 @@ interface TreeNode {
         </div>
 
         <!-- Body: Scrollable Content -->
-        <div class="kr-drawer-body p-3 flex-grow-1 overflow-auto">
+        <div class="kr-drawer-body p-3 flex-grow-1" style="overflow-y: auto; flex: 1 1 0%; min-height: 0;">
           
           <!-- Status Badge -->
           <div class="mb-2">
@@ -655,7 +655,7 @@ interface TreeNode {
           </div>
 
           <!-- ================= TAB GROUP 2: Comments, Check in, History ================= -->
-          <div class="kr-drawer-tab-nav d-flex align-items-center justify-content-between border-bottom mb-3 mt-4 position-relative w-100">
+          <div class="kr-drawer-tab-nav kr-drawer-tab-nav-sticky d-flex align-items-center justify-content-between border-bottom mb-3 mt-4 w-100">
             <div class="d-flex align-items-center">
               <button class="drawer-tab-link-box" [class.active]="activeTab2 === 'comments'" (click)="activeTab2 = 'comments'">
                 Comments
@@ -1834,6 +1834,46 @@ interface TreeNode {
 
     .kr-drawer-header {
       background: #ffffff;
+      flex-shrink: 0;
+    }
+
+    .kr-drawer-body {
+      flex: 1 1 0%;
+      min-height: 0;
+      overflow-y: auto !important;
+      overflow-x: hidden;
+    }
+
+    .kr-drawer-tab-nav-sticky {
+      position: sticky;
+      top: -1rem;
+      background: #ffffff;
+      z-index: 10;
+      padding-top: 0.75rem;
+      margin-top: 1rem !important;
+    }
+
+    .comments-list,
+    .checkin-feed-list,
+    .history-feed-list {
+      padding-bottom: 2.5rem;
+    }
+
+    .kr-drawer-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .kr-drawer-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .kr-drawer-body::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+
+    .kr-drawer-body::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
     }
 
     .breadcrumb-chip {

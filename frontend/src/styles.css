@@ -1504,3 +1504,14 @@ pre {
 
 .rounded-circle { border-radius: 50% !important; }
 
+
+/* Overflow Utilities */
+.overflow-auto {
+  overflow: auto !important;
+}
+.overflow-y-auto {
+  overflow-y: auto !important;
+}
+.overflow-x-hidden {
+  overflow-x: hidden !important;
+}
