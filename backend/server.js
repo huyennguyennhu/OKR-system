@@ -1019,9 +1019,19 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
           ? 'https://ui-avatars.com/api/?name=bot&background=6366f1&color=fff&rounded=true'
           : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`;
 
+    let logSource = options.source;
+    let logReason = options.reason;
+    if (isWf) {
+      logSource = logSource || (options.flow_code ? `Activepieces Flow ${options.flow_code} (${options.run_id || 'RUN_AUTO'})` : 'Activepieces Flow (Syrix Task)');
+      logReason = logReason || 'Tự động tính toán và đồng bộ từ GitLab & Google Sheets';
+    } else {
+      logSource = logSource || 'Admin cập nhật tay';
+      logReason = logReason || 'Cập nhật tiến độ chỉ số';
+    }
+
     await run(`
-      INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `, [
       krId,
       kr.objective_id,
@@ -1029,7 +1039,9 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
       auditAvatar,
       'Current value',
       `${oldVal} ${kr.unit || '%'}`,
-      `${val} ${kr.unit || '%'}`
+      `${val} ${kr.unit || '%'}`,
+      logSource,
+      logReason
     ]);
   }
 
@@ -1404,8 +1416,8 @@ const saveMeasurementRuleHandler = async (req, res) => {
     // Record system change to AuditLogs
     try {
       await run(`
-        INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `, [
         kr_id,
         objective_id,
@@ -1413,7 +1425,9 @@ const saveMeasurementRuleHandler = async (req, res) => {
         'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true',
         'Measurement Rule',
         'Quy tắc hiện tại',
-        `Cập nhật [${flow_code}]: SLA ${sla_value}h, Ngưỡng ${threshold_percent}%`
+        `Cập nhật [${flow_code}]: SLA ${sla_value}h, Ngưỡng ${threshold_percent}%`,
+        'Admin cập nhật tay',
+        'Cấu hình quy tắc đo lường & luật xử lý thời gian ngoài giờ'
       ]);
     } catch (e) {}
 
@@ -1827,6 +1841,8 @@ app.get('/api/audit-logs', async (req, res) => {
         al.old_value,
         al.new_value,
         al.new_value_avatar,
+        al.source,
+        al.reason,
         al.created_at
       FROM AuditLogs al
       LEFT JOIN KeyResults kr ON al.kr_id = kr.kr_id
@@ -2737,21 +2753,21 @@ app.put('/api/key-results/:id', async (req, res) => {
     if (oldKr) {
       if (title && oldKr.title !== title) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Task Name', oldKr.title, title]);
+          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Task Name', oldKr.title, title, 'Admin cập nhật tay', 'Đổi tên Key Result']);
       }
       if (expected_value !== undefined && expected_value !== null && Number(oldKr.expected_value) !== Number(expected_value)) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`]);
+          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`, 'Admin cập nhật tay', 'Cập nhật mục tiêu chỉ số (Target)']);
       }
       if (description !== undefined && description !== null && oldKr.description !== description) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Description', oldKr.description || 'None', description]);
+          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Description', oldKr.description || 'None', description, 'Admin cập nhật tay', 'Cập nhật mô tả chỉ số']);
       }
     }
 

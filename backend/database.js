@@ -379,10 +379,14 @@ async function initDatabase() {
       old_value TEXT,
       new_value TEXT,
       new_value_avatar TEXT,
+      source TEXT,
+      reason TEXT,
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     )
   `);
   try {
+    await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS source TEXT');
+    await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS reason TEXT');
     await run('CREATE INDEX IF NOT EXISTS idx_auditlogs_kr ON AuditLogs(kr_id)');
   } catch (e) {}
 

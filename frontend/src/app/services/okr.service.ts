@@ -185,6 +185,8 @@ export interface SystemChangeLog {
   old_value?: string;
   new_value?: string;
   new_value_avatar?: string;
+  source?: string;
+  reason?: string;
   created_at: string;
 }
 
