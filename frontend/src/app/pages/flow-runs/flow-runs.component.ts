@@ -42,9 +42,10 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
               type="button" 
               class="btn-all-flows" 
               [class.active]="selectedFlowCode === 'all'"
-              (click)="selectFlow('all')">
+              (click)="selectFlow('all')"
+              title="Xem lịch sử chạy của tất cả các flow">
               <i class="fa-solid fa-layer-group me-1"></i>
-              <span>Tất cả Flows ({{ allRuns.length }})</span>
+              <span>Tất cả lần chạy ({{ allRuns.length }})</span>
             </button>
           </div>
         </div>
