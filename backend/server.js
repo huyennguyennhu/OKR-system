@@ -1108,11 +1108,13 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   }
   const targetField = options.target_field || 'Current';
   const note = options.note !== undefined ? options.note : (options.comment || options.reason || null);
+  const runId = options.run_id || null;
+  const flowCode = options.flow_code || null;
 
   await run(
-    `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, author, target_field, note, calculated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'activepieces_synced', ?, ?, ?, CURRENT_TIMESTAMP)`,
-    [krId, period, numerator, denominator, val, clampedProgress, author, targetField, note]
+    `INSERT INTO MetricResults (kr_id, period, numerator, denominator, current_value, progress, status, author, target_field, note, run_id, flow_code, calculated_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'activepieces_synced', ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`,
+    [krId, period, numerator, denominator, val, clampedProgress, author, targetField, note, runId, flowCode]
   );
 
   // Traceability: Log event assignment if event_key is provided
@@ -1632,7 +1634,7 @@ app.put('/api/holidays/:id', async (req, res) => {
 const handleKrMetricUpdate = async (req, res) => {
   try {
     const krId = req.params.id;
-    const { current_value, currentValue, period, event_key, actor_id, reason, source, numerator, denominator, on_time, duration_minutes, comment, note, author } = req.body;
+    const { current_value, currentValue, period, event_key, actor_id, reason, source, numerator, denominator, on_time, duration_minutes, comment, note, author, run_id, flow_code } = req.body;
     
     const targetValue = current_value !== undefined ? current_value : currentValue;
     if (targetValue === undefined || targetValue === null || isNaN(parseFloat(targetValue))) {
@@ -1651,7 +1653,9 @@ const handleKrMetricUpdate = async (req, res) => {
       duration_minutes,
       comment,
       note,
-      author
+      author,
+      run_id,
+      flow_code
     });
 
     res.json({
@@ -2023,16 +2027,56 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       
       const krA1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-A1'");
       let newVal = krA1 ? Math.min(98, parseFloat((krA1.current_value + (Math.random() > 0.5 ? 0.3 : -0.2)).toFixed(1))) : 92.0;
-      await recalculateOkrProgress('KR-A1', newVal);
 
-      dataCreated = `Quét 15 issues GitLab, tính tỷ lệ hoàn thành đúng hạn của 5 thành viên (Ni/Di). Cập nhật KR-A1 đạt ${newVal}%.`;
+      dataCreated = `Quét 15 issues GitLab, tính tỷ lệ hoàn thành đúng hạn của 5 thành viên (Ni/Di). Cập nhật Team KR-A1 đạt ${newVal}%.`;
+
+      // Update Team KR-A1
+      await recalculateOkrProgress('KR-A1', newVal, {
+        author: 'bot',
+        source: 'activepieces',
+        run_id: runId,
+        flow_code: flow_code,
+        note: dataCreated
+      });
+
+      // Update 5 child personal KRs under KR-A1
+      const childKrsA1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-A1'");
+      const memberResults = [];
+      for (const ckr of childKrsA1) {
+        let childVal = Math.min(98, Math.max(85, parseFloat((ckr.current_value + (Math.random() > 0.5 ? 0.3 : -0.2)).toFixed(1))));
+        const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+        const memberNote = `Kịch bản ${flow_code} quét Issue GitLab: Thành viên ${empName} đạt tỷ lệ đúng hạn ${childVal}%.`;
+        await recalculateOkrProgress(ckr.kr_id, childVal, {
+          author: 'bot',
+          source: 'activepieces',
+          run_id: runId,
+          flow_code: flow_code,
+          note: memberNote
+        });
+        memberResults.push({
+          kr_id: ckr.kr_id,
+          employee: empName,
+          assignee_id: ckr.assignee_id,
+          Ni: Math.floor(childVal * 0.25),
+          Di: 25,
+          IC_i: childVal,
+          status: 'ON_TIME'
+        });
+      }
+
       payload = {
         run_id: runId,
-        source: 'GitLab Issues API',
+        source: 'GitLab Issues API (Project: 86650434)',
         issues_scanned: 15,
         target_kr: 'KR-A1',
         new_value: newVal,
-        timestamp: startTime
+        timestamp: startTime,
+        member_results: memberResults,
+        rollup: {
+          target_kr: 'KR-A1',
+          new_current_value: newVal,
+          status: 'ACHIEVED'
+        }
       };
     } else if (flow_code === 'FLOW-KR-B1') {
       flowName = 'Activepieces MR Review SLA Tracker (KR-B1)';
@@ -2042,18 +2086,61 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
 
       const krB1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-B1'");
       let newVal = krB1 ? Math.min(99, parseFloat((krB1.current_value + (Math.random() > 0.5 ? 0.2 : -0.1)).toFixed(1))) : 94.5;
-      await recalculateOkrProgress('KR-B1', newVal);
-
       const mrNum = Math.floor(Math.random() * 40) + 50;
-      dataCreated = `Xử lý MR !${mrNum} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Ghi nhận EventAssignment. Cập nhật KR-B1 đạt ${newVal}%.`;
+
+      const childKrsB1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-B1'");
+      const memberResults = [];
+      let reviewerName = 'Huyền Nguyễn Như';
+
+      if (childKrsB1.length > 0) {
+        for (const ckr of childKrsB1) {
+          let childVal = Math.min(99, Math.max(88, parseFloat((ckr.current_value + (Math.random() > 0.5 ? 0.2 : -0.1)).toFixed(1))));
+          const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+          const memberNote = `Kịch bản ${flow_code}: Rà soát MR !${mrNum} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Tỷ lệ phản hồi đúng hạn của ${empName} đạt ${childVal}%.`;
+          await recalculateOkrProgress(ckr.kr_id, childVal, {
+            author: 'bot',
+            source: 'activepieces',
+            run_id: runId,
+            flow_code: flow_code,
+            note: memberNote
+          });
+          memberResults.push({
+            kr_id: ckr.kr_id,
+            employee: empName,
+            working_hours_spent: 2.2,
+            sla_limit_hours: 4.0,
+            new_value: childVal,
+            status: 'ON_TIME'
+          });
+        }
+        reviewerName = memberResults[0].employee;
+      }
+
+      dataCreated = `Xử lý MR !${mrNum} do ${reviewerName} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Ghi nhận EventAssignment. Cập nhật KR-B1 đạt ${newVal}%.`;
+
+      await recalculateOkrProgress('KR-B1', newVal, {
+        author: 'bot',
+        source: 'activepieces',
+        run_id: runId,
+        flow_code: flow_code,
+        note: dataCreated
+      });
+
       payload = {
         run_id: runId,
         trigger: 'reviewer_assigned',
         mr_iid: `!${mrNum}`,
+        reviewer: reviewerName,
         response_time_hours: 2.2,
         sla_hours: 4.0,
         on_time: true,
-        new_value: newVal
+        new_value: newVal,
+        timestamp: startTime,
+        member_results: memberResults,
+        rollup: {
+          target_kr: 'KR-B1',
+          new_current_value: newVal
+        }
       };
     } else {
       flowName = 'Activepieces MTTR Bug Resolution Tracker (KR-C1)';
@@ -2063,19 +2150,62 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
 
       const krC1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-C1'");
       let newVal = krC1 ? Math.max(4.0, parseFloat((krC1.current_value + (Math.random() > 0.5 ? -0.1 : 0.1)).toFixed(1))) : 6.2;
-      await recalculateOkrProgress('KR-C1', newVal);
-
       const bugNum = Math.floor(Math.random() * 50) + 100;
-      dataCreated = `Khắc phục Bug P2 #${bugNum} trong 5.5h làm việc (Đạt SLA 8.0h). Cập nhật MTTR KR-C1 đạt ${newVal} giờ.`;
+
+      const childKrsC1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-C1'");
+      const memberResults = [];
+      let devName = 'Tran Than';
+
+      if (childKrsC1.length > 0) {
+        for (const ckr of childKrsC1) {
+          let childVal = Math.max(3.8, parseFloat((ckr.current_value + (Math.random() > 0.5 ? -0.1 : 0.1)).toFixed(1)));
+          const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+          const memberNote = `Kịch bản ${flow_code}: Khắc phục sự cố Bug #${bugNum} trong 5.5h làm việc (Đạt SLA 8.0h). MTTR của ${empName} đạt ${childVal} giờ.`;
+          await recalculateOkrProgress(ckr.kr_id, childVal, {
+            author: 'bot',
+            source: 'activepieces',
+            run_id: runId,
+            flow_code: flow_code,
+            note: memberNote
+          });
+          memberResults.push({
+            kr_id: ckr.kr_id,
+            employee: empName,
+            resolve_time_hours: 5.5,
+            sla_hours: 8.0,
+            new_value: childVal,
+            status: 'ON_TIME'
+          });
+        }
+        devName = memberResults[0].employee;
+      }
+
+      dataCreated = `Khắc phục Bug P2 #${bugNum} do ${devName} xử lý trong 5.5h làm việc (Đạt SLA 8.0h). Cập nhật MTTR KR-C1 đạt ${newVal} giờ.`;
+
+      await recalculateOkrProgress('KR-C1', newVal, {
+        author: 'bot',
+        source: 'activepieces',
+        run_id: runId,
+        flow_code: flow_code,
+        note: dataCreated
+      });
+
       payload = {
         run_id: runId,
         trigger: 'issue_closed',
         issue_iid: `#${bugNum}`,
+        developer: devName,
         severity: 'P2',
         resolve_time_hours: 5.5,
         sla_hours: 8.0,
         on_time: true,
-        new_value: newVal
+        new_value: newVal,
+        timestamp: startTime,
+        member_results: memberResults,
+        rollup: {
+          target_kr: 'KR-C1',
+          new_current_value: newVal
+        }
       };
     }
 

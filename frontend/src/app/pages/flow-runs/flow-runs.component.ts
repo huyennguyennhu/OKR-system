@@ -392,6 +392,35 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
         </div>
 
         <div class="modal-body">
+          <!-- Member Trace Highlight Card (Nếu mở từ nút Truy vết trong cây OKR) -->
+          <div class="trace-target-card mb-3 p-3 rounded border border-primary bg-primary-subtle" *ngIf="pendingTraceMember">
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+              <div class="d-flex align-items-center gap-2">
+                <div class="trace-icon-circle">
+                  <i class="fa-solid fa-crosshairs text-primary"></i>
+                </div>
+                <div>
+                  <span class="text-muted" style="font-size: 11px; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Thành viên đang truy vết</span>
+                  <h4 class="mb-0 text-primary" style="font-size: 14.5px; font-weight: 700;">{{ pendingTraceMember }}</h4>
+                </div>
+              </div>
+              <span class="badge bg-primary text-white px-2 py-1" style="font-size: 11px;">
+                <i class="fa-solid fa-check me-1"></i>Khớp bản ghi Check-in
+              </span>
+            </div>
+            <!-- Member metrics from payload if present -->
+            <div class="member-trace-metrics mt-2 pt-2 border-top border-primary-subtle" *ngIf="getMemberTraceDetails(selectedRunForModal, pendingTraceMember) as m">
+              <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 12.5px;">
+                <span *ngIf="m.IC_i !== undefined">Chỉ số đúng hạn (IC_i): <strong class="text-primary">{{ m.IC_i }}%</strong></span>
+                <span *ngIf="m.Ni !== undefined">Số Issue đạt (Ni/Di): <strong class="text-dark">{{ m.Ni }}/{{ m.Di }}</strong></span>
+                <span *ngIf="m.new_value !== undefined">Tiến độ cập nhật: <strong class="text-primary">{{ m.new_value }}%</strong></span>
+                <span *ngIf="m.working_hours_spent">Thời gian review: <strong class="text-primary">{{ m.working_hours_spent }}h</strong> (SLA: {{ m.sla_limit_hours }}h)</span>
+                <span *ngIf="m.resolve_time_hours">Thời gian giải quyết: <strong class="text-primary">{{ m.resolve_time_hours }}h</strong> (SLA: {{ m.sla_limit_hours }}h)</span>
+                <span *ngIf="m.status" class="badge badge-success"><i class="fa-solid fa-check me-1"></i>{{ m.status }}</span>
+              </div>
+            </div>
+          </div>
+
           <div class="run-summary-box mb-3">
             <div class="summary-item">
               <span class="label">Flow thực thi:</span>
@@ -1215,6 +1244,26 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       color: #1e293b;
     }
 
+    .trace-target-card {
+      background: #eff6ff !important;
+      border: 1px solid #bfdbfe !important;
+      border-radius: 8px;
+    }
+    .trace-icon-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: #dbeafe;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+    .member-trace-metrics {
+      font-size: 12.5px;
+    }
+
     .run-summary-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
@@ -1478,6 +1527,11 @@ export class FlowRunsComponent implements OnInit {
   // 3-dot action menu
   activeActionMenu: string | null = null;
 
+  // Trace state from OKR Tree Check-in
+  pendingTraceRunId: string | null = null;
+  pendingTraceMember: string | null = null;
+  pendingTraceDate: string | null = null;
+
   // Modal 1: Payload detail
   selectedRunForModal: FlowRun | null = null;
   isCopied = false;
@@ -1508,6 +1562,35 @@ export class FlowRunsComponent implements OnInit {
       this.filterRuns();
     });
 
+    // Lắng nghe queryParams để hỗ trợ Truy vết từ cây OKR Check-in
+    this.route.queryParamMap.subscribe(qp => {
+      const flow = qp.get('flow');
+      const runId = qp.get('runId');
+      const author = qp.get('author') || qp.get('member');
+      const search = qp.get('search');
+      const date = qp.get('date');
+
+      if (flow) {
+        this.selectedFlowCode = flow;
+        this.viewMode = 'detail';
+      }
+
+      this.pendingTraceRunId = runId || null;
+      this.pendingTraceMember = author || null;
+      this.pendingTraceDate = date || null;
+
+      if (runId) {
+        this.searchQuery = runId;
+      } else if (search) {
+        this.searchQuery = search;
+      } else if (author) {
+        this.searchQuery = author;
+      }
+
+      this.filterRuns();
+      this.checkAndApplyPendingTrace();
+    });
+
     this.loadData();
   }
 
@@ -1532,6 +1615,7 @@ export class FlowRunsComponent implements OnInit {
         this.flows = res.flows || [];
         this.allRuns = res.runs || [];
         this.filterRuns();
+        this.checkAndApplyPendingTrace();
         this.loading = false;
       },
       error: (err) => {
@@ -1539,6 +1623,67 @@ export class FlowRunsComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+
+  // Tự động tìm và mở popup lần chạy cần truy vết theo thành viên & ngày giờ
+  checkAndApplyPendingTrace(): void {
+    if (!this.allRuns || this.allRuns.length === 0) return;
+    if (!this.pendingTraceRunId && !this.pendingTraceMember && !this.pendingTraceDate) return;
+
+    let targetRun: FlowRun | undefined;
+
+    // 1. Tìm theo runId chính xác
+    if (this.pendingTraceRunId) {
+      targetRun = this.allRuns.find(r => r.run_id === this.pendingTraceRunId);
+    }
+
+    // 2. Tìm theo Thành viên & Ngày giờ chạy
+    if (!targetRun && this.pendingTraceMember) {
+      const member = this.pendingTraceMember.toLowerCase();
+      if (this.pendingTraceDate) {
+        targetRun = this.allRuns.find(r => 
+          r.start_time.startsWith(this.pendingTraceDate!) &&
+          ((r.data_created && r.data_created.toLowerCase().includes(member)) ||
+           (r.payload_json && r.payload_json.toLowerCase().includes(member)))
+        );
+      }
+      if (!targetRun) {
+        targetRun = this.allRuns.find(r => 
+          (r.data_created && r.data_created.toLowerCase().includes(member)) ||
+          (r.payload_json && r.payload_json.toLowerCase().includes(member))
+        );
+      }
+    }
+
+    if (targetRun) {
+      this.selectedFlowCode = targetRun.flow_code;
+      this.viewMode = 'detail';
+      // Lọc bảng chỉ hiện đúng lần chạy đó
+      this.searchQuery = targetRun.run_id;
+      this.filterRuns();
+      // Tự động mở modal Payload JSON và hiển thị chỉ số của thành viên
+      this.openPayloadModal(targetRun);
+    }
+  }
+
+  getMemberTraceDetails(run: FlowRun | null, memberName: string | null): any {
+    if (!run || !memberName) return null;
+    try {
+      const payload = typeof run.payload_json === 'string' ? JSON.parse(run.payload_json) : run.payload_json;
+      if (payload && Array.isArray(payload.member_results)) {
+        const found = payload.member_results.find((m: any) => 
+          (m.employee && m.employee.toLowerCase().includes(memberName.toLowerCase())) ||
+          (memberName.toLowerCase().includes((m.employee || '').toLowerCase()))
+        );
+        if (found) return found;
+      }
+      if (payload && (payload.author === memberName || payload.reviewer === memberName || payload.developer === memberName)) {
+        return payload;
+      }
+    } catch {
+      return null;
+    }
+    return null;
   }
 
   // Mở trang chi tiết bảng lần chạy cho flow được chọn
@@ -1582,6 +1727,7 @@ export class FlowRunsComponent implements OnInit {
         (r.flow_code && r.flow_code.toLowerCase().includes(q)) ||
         (r.flow_name && r.flow_name.toLowerCase().includes(q)) ||
         (r.data_created && r.data_created.toLowerCase().includes(q)) ||
+        (r.payload_json && r.payload_json.toLowerCase().includes(q)) ||
         (r.trigger_type && r.trigger_type.toLowerCase().includes(q)) ||
         (r.status && r.status.toLowerCase().includes(q))
       );

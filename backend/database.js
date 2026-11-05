@@ -305,6 +305,11 @@ async function initDatabase() {
       progress REAL NOT NULL,
       status TEXT DEFAULT 'calculated',
       calculated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      note TEXT,
+      author TEXT,
+      target_field TEXT,
+      run_id TEXT,
+      flow_code TEXT,
       FOREIGN KEY (kr_id) REFERENCES KeyResults(kr_id)
     )
   `);

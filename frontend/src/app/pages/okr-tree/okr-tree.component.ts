@@ -764,7 +764,9 @@ interface TreeNode {
                   <div class="d-flex align-items-center gap-2 mb-1">
                     <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ formatAuthorName(c.author, c.source) }}</span>
                     <span class="text-muted" style="font-size: 12px;">{{ formatCommentDate(c.created_at || c.time) }}</span>
-                    <i class="fa-solid fa-link text-muted cursor-pointer" style="font-size: 11px;" title="Sao chép link"></i>
+                    <button type="button" class="btn-trace-link-sm" (click)="traceFlowRun(c)" title="Truy vết lần chạy Flow trên Flow Runs">
+                      <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Truy vết
+                    </button>
                     <button class="btn btn-link text-muted p-0 ms-auto" title="Xóa" (click)="deleteKrComment(c.comment_id)" *ngIf="c.comment_id">
                       <i class="fa-regular fa-trash-can" style="font-size: 11px;"></i>
                     </button>
@@ -826,20 +828,47 @@ interface TreeNode {
 
                 <!-- Checkin Content -->
                 <div class="checkin-body flex-grow-1" style="min-width: 0;">
-                  <!-- Line 1: Author updated the [field] value to [value] [relative time] -->
-                  <div class="checkin-headline text-dark mb-1" style="font-size: 13.5px; line-height: 1.45;">
-                    <strong class="fw-bold">{{ formatAuthorName(ck.author) }}</strong>
-                    <span> updated the {{ ck.target_field || 'Current' }} value to </span>
-                    <strong class="fw-bold">{{ ck.current_value }}</strong>
-                    <span class="text-muted ms-2" style="font-size: 12.5px;">{{ formatRelativeTime(ck.calculated_at) }}</span>
+                  <!-- Line 1: Author updated the [field] value to [value] [relative time] + Trace Button -->
+                  <div class="checkin-headline d-flex align-items-center justify-content-between flex-wrap gap-2 text-dark mb-1" style="font-size: 13px; line-height: 1.45;">
+                    <div>
+                      <strong class="fw-bold">{{ formatAuthorName(ck.author) }}</strong>
+                      <span> updated the {{ ck.target_field || 'Current' }} value to </span>
+                      <strong class="fw-bold">{{ ck.current_value }}</strong>
+                      <span class="text-muted ms-2" style="font-size: 12px;">{{ formatRelativeTime(ck.calculated_at) }}</span>
+                    </div>
+                    <!-- Nút Truy vết lần chạy Flow -->
+                    <button type="button" class="btn-trace-link" (click)="traceFlowRun(ck)" title="Truy vết lần chạy Flow trên Flow Runs (Mở tab Flow và bản ghi cụ thể)">
+                      <i class="fa-solid fa-arrow-up-right-from-square me-1"></i> Truy vết
+                    </button>
                   </div>
 
-                  <!-- Line 2: Note: [note text or None] -->
-                  <div class="checkin-note text-dark" style="font-size: 13px; line-height: 1.55;">
-                    <strong class="fw-semibold">Note:</strong>
-                    <span class="ms-1" [style.color]="(!ck.note || ck.note.trim() === 'None') ? '#94a3b8' : '#1e293b'">
-                      {{ ck.note || 'None' }}
-                    </span>
+                  <!-- Line 2: Khung nội dung ghi nhận từ Flow (Comment-like Box - Khóa không thể sửa) -->
+                  <div class="checkin-content-box mt-2">
+                    <div class="content-box-header d-flex align-items-center justify-content-between mb-1">
+                      <div class="d-flex align-items-center gap-1 content-box-title">
+                        <i class="fa-solid fa-robot text-primary" *ngIf="isBotAuthor(ck.author)" style="font-size: 11.5px;"></i>
+                        <i class="fa-solid fa-comment-dots text-primary" *ngIf="!isBotAuthor(ck.author)" style="font-size: 11.5px;"></i>
+                        <span style="font-size: 12px; font-weight: 600; color: #334155;">
+                          {{ isBotAuthor(ck.author) ? 'Nội dung ghi nhận từ Flow' : 'Nội dung Check-in' }}
+                        </span>
+                      </div>
+                      <span class="badge-readonly" title="Bản ghi check-in đã khóa và có giá trị pháp lý, không được phép chỉnh sửa">
+                        <i class="fa-solid fa-lock me-1"></i>Không thể sửa
+                      </span>
+                    </div>
+                    <div class="content-box-text">
+                      {{ ck.note || 'Giá trị C được cập nhật tự động từ Activepieces Flow.' }}
+                    </div>
+                    <!-- Metadata row if flow/run linked -->
+                    <div class="content-box-meta mt-2 pt-1 border-top d-flex align-items-center justify-content-between text-muted" *ngIf="ck.flow_code || ck.run_id" style="font-size: 11px;">
+                      <span>
+                        <i class="fa-solid fa-diagram-project me-1 text-primary"></i>
+                        Flow: <strong class="text-dark">{{ ck.flow_code || getFlowCodeForKr(selectedKrNode?.id) }}</strong>
+                      </span>
+                      <span *ngIf="ck.run_id">
+                        Mã lần chạy: <code class="text-primary fw-bold">{{ ck.run_id }}</code>
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2120,6 +2149,86 @@ interface TreeNode {
     .border-success-subtle { border-color: #bbf7d0 !important; }
     .bg-danger-subtle { background-color: #fef2f2 !important; }
     .border-danger-subtle { border-color: #fecaca !important; }
+
+    /* Trace Link Button */
+    .btn-trace-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 8px;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #2563eb;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease-in-out;
+      margin-left: auto;
+    }
+    .btn-trace-link:hover {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+    .btn-trace-link-sm {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 1px 6px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #2563eb;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .btn-trace-link-sm:hover {
+      background: #2563eb;
+      color: #ffffff;
+      border-color: #2563eb;
+    }
+
+    /* Checkin Content Box (Comment-like & Immutable) */
+    .checkin-content-box {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 10px 12px;
+      margin-top: 6px;
+    }
+    .content-box-title {
+      color: #334155;
+      font-weight: 600;
+      font-size: 12px;
+    }
+    .badge-readonly {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10.5px;
+      font-weight: 600;
+      color: #64748b;
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      padding: 1px 6px;
+      border-radius: 4px;
+      letter-spacing: 0.2px;
+    }
+    .content-box-text {
+      font-size: 13px;
+      color: #1e293b;
+      line-height: 1.5;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .content-box-meta {
+      font-size: 11px;
+      color: #64748b;
+    }
   `]
 })
 export class OkrTreeComponent implements OnInit {
@@ -3079,6 +3188,62 @@ export class OkrTreeComponent implements OnInit {
         alert('Lỗi cập nhật check-in: ' + (err.error?.error || err.message));
       }
     });
+  }
+
+  // Phương thức Truy vết lần chạy Flow từ bản ghi Check-in sang Flow Runs
+  traceFlowRun(ck: any): void {
+    const krId = this.selectedKrNode?.id || ck?.kr_id || '';
+    const flowCode = ck?.flow_code || this.getFlowCodeForKr(krId);
+    const runId = ck?.run_id || '';
+
+    // Lấy tên thành viên nếu là Personal KR hoặc có phân công
+    let memberName = '';
+    if (this.selectedKrNode) {
+      if (this.selectedKrNode.title && this.selectedKrNode.title.includes(' - ')) {
+        const parts = this.selectedKrNode.title.split(' - ');
+        memberName = parts[parts.length - 1].trim();
+      } else if (this.selectedKrNode.assignTo && this.selectedKrNode.assignTo !== 'Team dev') {
+        memberName = this.selectedKrNode.assignTo;
+      }
+    }
+    if (!memberName && ck?.author && ck?.author !== 'bot') {
+      memberName = ck.author;
+    }
+
+    // Lấy ngày chạy từ calculated_at
+    let dateStr = '';
+    if (ck?.calculated_at) {
+      dateStr = ck.calculated_at.substring(0, 10);
+    }
+
+    const queryParams: any = {
+      flow: flowCode
+    };
+    if (runId) {
+      queryParams.runId = runId;
+      queryParams.search = runId;
+    } else if (memberName) {
+      queryParams.member = memberName;
+      queryParams.search = memberName;
+    }
+    if (memberName) {
+      queryParams.author = memberName;
+    }
+    if (dateStr) {
+      queryParams.date = dateStr;
+    }
+
+    // Mở trang Flow Runs vào đúng flow và lọc đúng lần chạy của thành viên
+    this.router.navigate(['/flow-runs', flowCode], { queryParams });
+  }
+
+  getFlowCodeForKr(krId?: string): string {
+    if (!krId) return 'FLOW-KR-A1';
+    const upper = krId.toUpperCase();
+    if (upper.includes('KR-A1') || upper.includes('M11-A1') || upper.includes('M12-A1')) return 'FLOW-KR-A1';
+    if (upper.includes('KR-B1') || upper.includes('M11-B1') || upper.includes('M12-B1')) return 'FLOW-KR-B1';
+    if (upper.includes('KR-C1') || upper.includes('M11-C1') || upper.includes('M12-C1')) return 'FLOW-KR-C1';
+    return 'FLOW-KR-A1';
   }
 
   loadKrHistory(krId: string): void {
