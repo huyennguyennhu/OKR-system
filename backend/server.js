@@ -1337,23 +1337,37 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
 const saveMeasurementRuleHandler = async (req, res) => {
   try {
     const body = req.body;
-    const rule_id = body.rule_id || body.ruleId || (body.objectiveId ? `RULE-${body.objectiveId}` : (body.objective_id ? `RULE-${body.objective_id}` : `RULE-${Date.now()}`));
-    const kr_id = body.kr_id || body.krId || 'KR-MR-SLA';
-    const objective_id = body.objective_id || body.objectiveId || null;
-    const flow_code = body.flow_code || body.flowCode || `FLOW-${objective_id || rule_id}`;
-    const flow_name = body.flow_name || body.flowName || `GitLab SLA Webhook Flow - ${flow_code}`;
-    const flow_url = body.flow_url || body.flowUrl || `https://cloud.activepieces.com/flows/${flow_code.toLowerCase()}`;
-    const event_type = body.event_type || body.type || 'merge_request';
-    const filters = typeof body.filters === 'string' ? body.filters : (body.filterCriteria ? body.filterCriteria : JSON.stringify(body.filters || {}));
-    const start_event = body.start_event || body.startTrigger || 'reviewer_assigned';
-    const end_event = body.end_event || body.endTrigger || 'approved';
-    const sla_value = parseFloat(body.sla_value !== undefined ? body.sla_value : (body.slaHours !== undefined ? body.slaHours : 4.0));
-    const formula = body.formula || body.businessLogicNote || 'Số MR approved <= SLA / Tổng MR * 100%';
-    const threshold_percent = parseFloat(body.threshold_percent !== undefined ? body.threshold_percent : (body.thresholdPercent !== undefined ? body.thresholdPercent : 90));
-    const overtime_handling = body.overtime_handling || body.overtimeHandling || '';
-    const lunch_break_rule = body.lunch_break_rule || body.lunchBreakRule || '';
-    const weekend_holiday_rule = body.weekend_holiday_rule || body.weekendHolidayRule || '';
-    const version = body.version || 'v1.0';
+    const paramId = req.params.id;
+
+    // Resolve existing rule by rule_id or kr_id to ensure updates target the correct row
+    let existingRule = null;
+    if (body.rule_id || body.ruleId) {
+      existingRule = await get('SELECT * FROM MeasurementRules WHERE rule_id = ?', [body.rule_id || body.ruleId]);
+    }
+    if (!existingRule && (body.kr_id || body.krId)) {
+      existingRule = await get('SELECT * FROM MeasurementRules WHERE kr_id = ?', [body.kr_id || body.krId]);
+    }
+    if (!existingRule && paramId) {
+      existingRule = await get('SELECT * FROM MeasurementRules WHERE rule_id = ? OR kr_id = ? OR objective_id = ?', [paramId, paramId, paramId]);
+    }
+
+    const kr_id = body.kr_id || body.krId || (existingRule ? existingRule.kr_id : 'KR-MR-SLA');
+    const rule_id = existingRule ? existingRule.rule_id : (body.rule_id || body.ruleId || (paramId && paramId.startsWith('RULE-') ? paramId : `RULE-${kr_id}`));
+    const objective_id = body.objective_id || body.objectiveId || (existingRule ? existingRule.objective_id : null);
+    const flow_code = body.flow_code || body.flowCode || (existingRule ? existingRule.flow_code : `FLOW-${kr_id}`);
+    const flow_name = body.flow_name || body.flowName || (existingRule ? existingRule.flow_name : `Activepieces Flow (${kr_id})`);
+    const flow_url = body.flow_url || body.flowUrl || (existingRule ? existingRule.flow_url : `https://cloud.activepieces.com/flows/${flow_code.toLowerCase()}`);
+    const event_type = body.event_type || body.type || (existingRule ? existingRule.event_type : 'merge_request');
+    const filters = typeof body.filters === 'string' ? body.filters : (body.filterCriteria ? body.filterCriteria : JSON.stringify(body.filters || (existingRule ? existingRule.filters : {})));
+    const start_event = body.start_event || body.startTrigger || (existingRule ? existingRule.start_event : 'reviewer_assigned');
+    const end_event = body.end_event || body.endTrigger || (existingRule ? existingRule.end_event : 'approved');
+    const sla_value = parseFloat(body.sla_value !== undefined ? body.sla_value : (body.slaHours !== undefined ? body.slaHours : (existingRule ? existingRule.sla_value : 4.0)));
+    const formula = body.formula || body.businessLogicNote || (existingRule ? existingRule.formula : 'Số MR approved <= SLA / Tổng MR * 100%');
+    const threshold_percent = parseFloat(body.threshold_percent !== undefined ? body.threshold_percent : (body.thresholdPercent !== undefined ? body.thresholdPercent : (existingRule ? existingRule.threshold_percent : 90)));
+    const overtime_handling = body.overtime_handling || body.overtimeHandling || (existingRule ? existingRule.overtime_handling : '');
+    const lunch_break_rule = body.lunch_break_rule || body.lunchBreakRule || (existingRule ? existingRule.lunch_break_rule : '');
+    const weekend_holiday_rule = body.weekend_holiday_rule || body.weekendHolidayRule || (existingRule ? existingRule.weekend_holiday_rule : '');
+    const version = body.version || (existingRule ? existingRule.version : 'v1.0');
 
     await run(`
       INSERT INTO MeasurementRules (
@@ -1832,33 +1846,51 @@ app.get('/api/flow-runs', async (req, res) => {
   try {
     const { flow_code } = req.query;
     
-    // 1. Defined Flow Specs
-    const flowSpecs = [
-      {
-        flow_code: 'FLOW-KR-A1',
-        flow_name: 'Activepieces SLA Issue Tracker (KR-A1)',
-        kr_id: 'KR-A1',
-        kr_title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%',
-        trigger_type: 'Schedule (09:00 hàng ngày T2-T6)',
-        description: 'Tự động quét Issue từ GitLab API, đối chiếu Due Date theo lịch làm việc Việt Nam và tính toán tỷ lệ IC_i cho từng thành viên.'
-      },
-      {
-        flow_code: 'FLOW-KR-B1',
-        flow_name: 'Activepieces MR Review SLA Tracker (KR-B1)',
-        kr_id: 'KR-B1',
-        kr_title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90%',
-        trigger_type: 'GitLab Webhook (MR Assigned/Approved)',
-        description: 'Lắng nghe sự kiện reviewer_assigned, tính thời gian phản hồi thực tế (trừ giờ nghỉ trưa & cuối tuần) theo cam kết SLA 4h.'
-      },
-      {
-        flow_code: 'FLOW-KR-C1',
-        flow_name: 'Activepieces MTTR Bug Resolution Tracker (KR-C1)',
-        kr_id: 'KR-C1',
-        kr_title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc',
-        trigger_type: 'GitLab Webhook (Issue Bug Closed)',
-        description: 'Theo dõi sự cố Bug từ mở đến đóng, tính toán thời gian giải quyết trung bình (MTTR) đạt dưới 8.0 giờ làm việc.'
-      }
-    ];
+    // 1. Dynamically fetch Flow Specs from MeasurementRules joined with KeyResults (Team level KRs)
+    const teamKrs = await all(`
+      SELECT 
+        k.kr_id,
+        k.title as kr_title,
+        k.objective_id,
+        o.title as objective_title,
+        r.rule_id,
+        COALESCE(r.flow_code, 'FLOW-' || k.kr_id) as flow_code,
+        COALESCE(r.flow_name, 'Activepieces Flow (' || k.kr_id || ')') as flow_name,
+        COALESCE(r.flow_url, 'https://cloud.activepieces.com/flows/' || LOWER(COALESCE(r.flow_code, k.kr_id))) as flow_url,
+        COALESCE(r.event_type, 'GitLab Event') as event_type,
+        r.sla_value,
+        r.formula
+      FROM KeyResults k
+      JOIN Objectives o ON k.objective_id = o.objective_id
+      LEFT JOIN MeasurementRules r ON (r.kr_id = k.kr_id)
+      WHERE k.parent_kr_id IS NULL AND (UPPER(o.level) = 'TEAM' OR o.level IS NULL)
+      ORDER BY k.kr_id ASC
+    `);
+
+    // Target the core team KRs (KR-A1, KR-B1, KR-C1)
+    const activeTeamKrs = teamKrs.filter(tk => tk.kr_id === 'KR-A1' || tk.kr_id === 'KR-B1' || tk.kr_id === 'KR-C1');
+    const targetSpecs = activeTeamKrs.length > 0 ? activeTeamKrs : teamKrs.slice(0, 3);
+
+    const flowSpecs = targetSpecs.map(tk => {
+      let triggerType = 'Schedule (09:00 hàng ngày T2-T6)';
+      if (tk.kr_id === 'KR-B1') triggerType = 'GitLab Webhook (MR Assigned/Approved)';
+      if (tk.kr_id === 'KR-C1') triggerType = 'GitLab Webhook (Issue Bug Closed)';
+
+      // Normalize flow_code to match FlowRuns table (e.g. FLOW-KR-A1)
+      let canonicalFlowCode = tk.flow_code;
+      if (canonicalFlowCode.includes('-M10')) canonicalFlowCode = canonicalFlowCode.replace('-M10', '');
+      if (canonicalFlowCode.includes('-M11')) canonicalFlowCode = canonicalFlowCode.replace('-M11', '');
+      if (canonicalFlowCode.includes('-M12')) canonicalFlowCode = canonicalFlowCode.replace('-M12', '');
+
+      return {
+        flow_code: canonicalFlowCode,
+        flow_name: tk.flow_name,
+        kr_id: tk.kr_id,
+        kr_title: tk.kr_title,
+        trigger_type: triggerType,
+        description: tk.formula || `Quy tắc đo lường tự động qua Activepieces cho ${tk.kr_id}`
+      };
+    });
 
     // 2. Fetch all runs
     const allRuns = await all('SELECT * FROM FlowRuns ORDER BY start_time DESC');
@@ -1971,6 +2003,12 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
     const endTime = new Date(now.getTime() + 1850).toISOString().replace('T', ' ').substring(0, 19);
 
     let flowName = 'Activepieces Automation Flow';
+    // Dynamic flow_name from MeasurementRules
+    const targetRule = await get('SELECT flow_name FROM MeasurementRules WHERE flow_code = ? OR flow_code LIKE ? OR kr_id = ?', [flow_code, `${flow_code}%`, flow_code.replace('FLOW-', '')]);
+    if (targetRule && targetRule.flow_name) {
+      flowName = targetRule.flow_name;
+    }
+
     let triggerType = 'Schedule';
     let inputCount = 10;
     let outputCount = 5;

@@ -21,33 +21,33 @@
       <h3 class="card-title mb-0" style="font-size: 16px; font-weight: 700;">Measurement Rule</h3>
     </div>
     <p class="subtitle mb-0" style="font-size: 13px; color: #64748b;">
-      Cấu hình chi tiết các kịch bản đo lường tự động đồng bộ giữa GitLab webhook và chỉ số Key Results.
+      Cấu hình chi tiết các kịch bản đo lường tự động đồng bộ giữa GitLab webhook và từng Key Result cấp Team.
     </p>
   </div>
 
-  <!-- DYNAMIC TABS: Tự động tạo theo từng Objective cấp Team -->
+  <!-- DYNAMIC TABS: Tự động tạo theo từng Key Result cấp Team -->
   <nav class="nav-tabs mb-4" *ngIf="flowTabs.length > 0">
     <a class="nav-link cursor-pointer" 
        *ngFor="let tab of flowTabs" 
        [class.active]="activeTabKey === tab.tabKey" 
        (click)="selectTab(tab.tabKey)">
       <i [class]="tab.icon" class="me-2"></i>
-      <span>{{ tab.tabTitle }}</span>
+      <span>{{ tab.tabTitle }} ({{ tab.flowCode }})</span>
     </a>
   </nav>
 
-  <!-- Empty State when no team objectives exist yet -->
+  <!-- Empty State when no team KRs exist yet -->
   <div class="card p-5 text-center my-4 border shadow-sm" *ngIf="!loading && flowTabs.length === 0">
     <div class="empty-icon-circle mx-auto mb-3" style="width: 56px; height: 56px; border-radius: 50%; background: #eff6ff; display: flex; align-items: center; justify-content: center;">
       <i class="fa-solid fa-layer-group text-primary" style="font-size: 24px;"></i>
     </div>
-    <h4 class="fw-bold mb-2">Chưa có Objective cấp Team nào</h4>
+    <h4 class="fw-bold mb-2">Chưa có Key Result cấp Team nào</h4>
     <p class="text-muted mx-auto mb-4" style="max-width: 520px; font-size: 13.5px;">
-      Trang Measurement Rule sẽ tự động tạo một kịch bản tab con quy tắc đo lường tương ứng khi bạn tạo một Objective cấp Team.
+      Trang Measurement Rule sẽ tự động tạo một kịch bản quy tắc đo lường tương ứng khi bạn tạo một Key Result cấp Team.
     </p>
     <div>
       <a routerLink="/okr-settings" class="btn btn-primary px-4">
-        <i class="fa-solid fa-plus me-1"></i> Tạo Objective cấp Team
+        <i class="fa-solid fa-plus me-1"></i> Quản lý OKR Setting
       </a>
     </div>
   </div>
@@ -61,30 +61,29 @@
       </button>
     </div>
 
-    <!-- KHỐI 1: THÔNG TIN OBJECTIVE & FLOW -->
+    <!-- KHỐI 1: THÔNG TIN KEY RESULT & KỊCH BẢN FLOW -->
     <div class="card p-4 shadow-sm border mb-4 bg-white" style="border-radius: 10px;">
       <div class="pb-3 mb-3 border-bottom">
-        <h4 class="mb-0 fw-bold" style="font-size: 15px; color: #1e293b;">Thông tin Objective & Kịch bản Flow</h4>
-        <small class="text-muted" style="font-size: 12px;">Mã và Tên Objective được đồng bộ từ mục tiêu; Tên và Link flow có thể tùy chỉnh</small>
+        <h4 class="mb-0 fw-bold" style="font-size: 15px; color: #1e293b;">Thông tin Key Result & Kịch bản Flow</h4>
+        <small class="text-muted" style="font-size: 12px;">Quy tắc đo lường được gắn liền với từng Key Result cấp Team; Tên Flow và Link Flow có thể tùy chỉnh</small>
       </div>
 
       <form class="flow-info-form" (submit)="$event.preventDefault()">
-        <!-- HÀNG 1: Mã obj, Tên obj, Xem obj -->
+        <!-- HÀNG 1: Key Result cấp Team & Objective cha -->
         <div class="flow-info-row-1">
-          <div class="form-group">
-            <label>Mã Objective</label>
-            <input type="text" class="form-control" [value]="currentFlow.objectiveId" readonly title="Mã Objective (không được sửa, chỉ sửa từ Objective)">
+          <div class="form-group" style="flex: 0 0 160px;">
+            <label>Mã Key Result (Team)</label>
+            <input type="text" class="form-control fw-bold text-primary" [value]="currentFlow.krId" readonly title="Mã Key Result cấp Team">
           </div>
 
-          <div class="form-group">
-            <label>Tên Objective</label>
-            <input type="text" class="form-control" [value]="currentFlow.objectiveTitle" readonly title="Tên Objective (không được sửa, chỉ sửa từ Objective)">
+          <div class="form-group" style="flex: 2;">
+            <label>Tên Key Result</label>
+            <input type="text" class="form-control" [value]="currentFlow.krTitle" readonly title="Tên Key Result cấp Team">
           </div>
 
-          <div class="form-group">
-            <a [routerLink]="['/objectives', currentFlow.objectiveId]" class="btn-view-obj" title="Xem chi tiết Objective trên hệ thống">
-              <i class="fa-solid fa-arrow-up-right-from-square"></i> Xem Objective
-            </a>
+          <div class="form-group" style="flex: 1.5;">
+            <label>Objective cha</label>
+            <input type="text" class="form-control text-muted" [value]="'[' + currentFlow.objectiveId + '] ' + currentFlow.objectiveTitle" readonly title="Objective cấp Team liên kết">
           </div>
         </div>
 
