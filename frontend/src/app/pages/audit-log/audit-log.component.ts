@@ -18,7 +18,7 @@ import { OkrService, AuditAssignment, SystemChangeLog } from '../../services/okr
           Audit Log
         </h3>
         <p class="subtitle mb-0">
-          Ghi lại minh bạch toàn bộ sự thay đổi của hệ thống (giá trị C, quy tắc đo lường, cấu hình) và giải trình truy vết sự kiện SLA (RQ1 & RQ4).
+          Ghi lại minh bạch toàn bộ sự thay đổi của hệ thống.
         </p>
       </div>
 
