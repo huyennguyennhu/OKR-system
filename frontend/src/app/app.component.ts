@@ -49,16 +49,18 @@ import { ConfirmDialogService } from './services/confirm-dialog.service';
                 <i class="fa-solid fa-ruler-combined fa-fw"></i>
                 <span>Measurement Rule</span>
               </a>
-              <a routerLink="/audit-log" routerLinkActive="active" class="nav-item" title="Audit Log (Nhật ký giải trình & Truy vết SLA 1 bảng duy nhất)">
-                <i class="fa-solid fa-shield-halved fa-fw"></i>
-                <span>Audit Log</span>
-              </a>
               <a routerLink="/flow-runs" routerLinkActive="active" class="nav-item" title="Flow Runs (Nhật ký thực thi & Kết quả tự động hóa Activepieces)">
                 <i class="fa-solid fa-play fa-fw"></i>
                 <span>Flow Runs</span>
               </a>
             </div>
           </div>
+
+          <!-- TAB CHA: AUDIT LOG -->
+          <a routerLink="/audit-log" routerLinkActive="active" class="nav-item parent-nav-item" title="Audit Log (Nhật ký giải trình & Truy vết SLA 1 bảng duy nhất)">
+            <i class="fa-solid fa-shield-halved fa-fw"></i>
+            <span>Audit Log</span>
+          </a>
 
           <!-- NHÓM 2: CALENDAR -->
           <div class="sidebar-group">
@@ -165,7 +167,6 @@ export class AppComponent implements OnInit {
              url.includes('/okr-tree') || 
              url.includes('/okr-settings') || 
              url.includes('/measurement-rules') || 
-             url.includes('/audit-log') || 
              url.includes('/flow-runs') || 
              url.includes('/gitlab-data') || 
              url.includes('/objectives');

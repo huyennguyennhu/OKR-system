@@ -1362,6 +1362,63 @@ pre {
   display: none !important;
 }
 
+/* Tab cha độc lập trên Sidebar (Parent Nav Item without sub-items) */
+.parent-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.6rem 0.75rem;
+  margin-bottom: 0.25rem;
+  color: #8C9BBF;
+  text-decoration: none;
+  border-radius: var(--radius);
+  font-weight: 600;
+  font-size: 13px !important;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.parent-nav-item i {
+  color: #7892E7;
+  font-size: 14px;
+  transition: color 0.2s ease;
+}
+
+.parent-nav-item:hover {
+  background-color: rgba(255, 255, 255, 0.08);
+  color: #FFFFFF;
+}
+
+.parent-nav-item:hover i {
+  color: #FFFFFF;
+}
+
+.parent-nav-item.active {
+  background-color: var(--primary) !important; /* #3157D5 */
+  color: #FFFFFF !important;
+  box-shadow: 0 4px 12px rgba(49, 87, 213, 0.35);
+  font-weight: 600;
+}
+
+.parent-nav-item.active i {
+  color: #FFFFFF !important;
+}
+
+/* Collapsed sidebar mode for parent-nav-item */
+.sidebar.collapsed .parent-nav-item {
+  justify-content: center !important;
+  padding: 0.75rem 0 !important;
+}
+
+.sidebar.collapsed .parent-nav-item span {
+  display: none !important;
+}
+
+.sidebar.collapsed .parent-nav-item i {
+  font-size: 16px !important;
+  color: inherit;
+}
+
 /* ========================================================
    GLOBAL SPACING & PADDING UTILITIES
    ======================================================== */

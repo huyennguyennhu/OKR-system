@@ -14,8 +14,8 @@ import { OkrService, AuditAssignment, SystemChangeLog } from '../../services/okr
     <div class="audit-log-page">
       <!-- Tên trang + Subtitle -->
       <div class="page-top-bar mb-4">
-        <h3 class="card-title mb-1" style="font-size: 18px; font-weight: 700;">
-          AuditLog
+        <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
+          Audit Log
         </h3>
         <p class="subtitle mb-0">
           Ghi lại minh bạch toàn bộ sự thay đổi của hệ thống (giá trị C, quy tắc đo lường, cấu hình) và giải trình truy vết sự kiện SLA (RQ1 & RQ4).
