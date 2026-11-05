@@ -79,12 +79,12 @@ import { OkrService, SystemChangeLog } from '../../services/okr.service';
 
                 <!-- 2. Đối tượng tác động (target_entity / kr_id) -->
                 <td>
-                  <div class="target-entity-cell">
-                    <span class="badge badge-target-code me-1" *ngIf="item.kr_id || item.objective_id">
-                      [{{ item.kr_id || item.objective_id }}]
+                  <div class="target-entity-cell" [title]="getFullTargetDisplay(item)">
+                    <span class="badge badge-target-code me-1" *ngIf="getTargetCode(item)">
+                      [{{ getTargetCode(item) }}]
                     </span>
-                    <span class="target-title-text" [title]="getTargetTitle(item)">
-                      {{ getTargetTitle(item) }}
+                    <span class="target-title-text">
+                      {{ getTargetName(item) }}
                     </span>
                   </div>
                 </td>
@@ -93,19 +93,19 @@ import { OkrService, SystemChangeLog } from '../../services/okr.service';
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <!-- Syrix Avatar logo xoay với robot pupil -->
-                    <div *ngIf="isSyrixAuthor(item.author)" class="syrix-avatar-ring" title="Tác tử tự động Syrix">
+                    <div *ngIf="isSyrixAuthor(item.author, item.actor)" class="syrix-avatar-ring" title="Tác tử tự động Syrix">
                       <div class="syrix-avatar-pupil"></div>
                     </div>
                     <!-- User Avatar -->
-                    <img *ngIf="!isSyrixAuthor(item.author)" 
-                         [src]="item.author_avatar || getAvatarUrl(item.author)" 
+                    <img *ngIf="!isSyrixAuthor(item.author, item.actor)" 
+                         [src]="item.author_avatar || getAvatarUrl(item.actor || item.author)" 
                          class="author-avatar" 
                          alt="Avatar">
                     
                     <div class="d-flex flex-column author-info">
-                      <span class="author-name">{{ getAuthorName(item.author) }}</span>
-                      <span class="author-role-subtext" [ngClass]="isSyrixAuthor(item.author) ? 'text-primary' : 'text-muted'">
-                        {{ isSyrixAuthor(item.author) ? 'Tác tử tự động' : 'Quản trị viên' }}
+                      <span class="author-name">{{ getAuthorName(item) }}</span>
+                      <span class="author-role-subtext" [ngClass]="isSyrixAuthor(item.author, item.actor) ? 'text-primary' : 'text-muted'">
+                        {{ isSyrixAuthor(item.author, item.actor) ? 'Tác tử tự động' : 'Quản trị viên' }}
                       </span>
                     </div>
                   </div>
@@ -477,8 +477,9 @@ export class AuditLogComponent implements OnInit {
     return this.systemChanges.filter(item => {
       const q = this.systemSearchQuery.toLowerCase().trim();
       if (!q) return true;
-      const targetTitle = this.getTargetTitle(item).toLowerCase();
-      const authorName = this.getAuthorName(item.author).toLowerCase();
+      const targetEntity = (item.target_entity || this.getFullTargetDisplay(item)).toLowerCase();
+      const actorName = this.getAuthorName(item).toLowerCase();
+      const author = (item.author || '').toLowerCase();
       const source = this.getSource(item).toLowerCase();
       const reason = this.getReason(item).toLowerCase();
       const timeStr = this.formatDate(item.created_at).toLowerCase();
@@ -487,8 +488,9 @@ export class AuditLogComponent implements OnInit {
         timeStr.includes(q) ||
         (item.kr_id && item.kr_id.toLowerCase().includes(q)) ||
         (item.objective_id && item.objective_id.toLowerCase().includes(q)) ||
-        targetTitle.includes(q) ||
-        authorName.includes(q) ||
+        targetEntity.includes(q) ||
+        actorName.includes(q) ||
+        author.includes(q) ||
         (item.field_name && item.field_name.toLowerCase().includes(q)) ||
         (item.old_value && item.old_value.toLowerCase().includes(q)) ||
         (item.new_value && item.new_value.toLowerCase().includes(q)) ||
@@ -519,30 +521,50 @@ export class AuditLogComponent implements OnInit {
     }
   }
 
-  // 2. Định danh và tên đối tượng tác động
-  getTargetTitle(item: SystemChangeLog): string {
+  // 2. Định danh và tên đối tượng tác động (target_entity / kr_id)
+  getTargetCode(item: SystemChangeLog): string {
+    if (item.kr_id) return item.kr_id;
+    if (item.objective_id) return item.objective_id;
+    if (item.target_entity) {
+      const match = item.target_entity.match(/^\[(.*?)\]/);
+      if (match) return match[1];
+    }
+    return '';
+  }
+
+  getTargetName(item: SystemChangeLog): string {
+    if (item.target_entity) {
+      return item.target_entity.replace(/^\[.*?\]\s*/, '');
+    }
     if (item.kr_title) return item.kr_title;
     if (item.objective_title) return item.objective_title;
     if (item.field_name === 'Measurement Rule') return 'Cấu hình quy tắc đo lường';
     if (item.field_name === 'Working Calendar') return 'Lịch làm việc & ngày lễ chuẩn';
-    return item.kr_id || item.objective_id || '-';
+    return item.kr_id || item.objective_id || 'Hệ thống';
+  }
+
+  getFullTargetDisplay(item: SystemChangeLog): string {
+    if (item.target_entity) return item.target_entity;
+    const code = this.getTargetCode(item);
+    const name = this.getTargetName(item);
+    return code ? `[${code}] ${name}` : name;
   }
 
   // 3. Nhận diện tác tử Syrix Task hoặc Người dùng Quản trị
-  isSyrixAuthor(author?: string): boolean {
-    if (!author) return true;
-    const a = author.toLowerCase();
-    return a === 'bot' || a.includes('bot') || a.includes('syrix') || a.includes('activepieces');
+  isSyrixAuthor(author?: string, actor?: string): boolean {
+    const text = (actor || author || '').toLowerCase();
+    return text === 'bot' || text.includes('bot') || text.includes('syrix') || text.includes('activepieces');
   }
 
-  getAuthorName(author?: string): string {
-    if (this.isSyrixAuthor(author)) {
+  getAuthorName(item: SystemChangeLog): string {
+    if (item.actor) return item.actor;
+    if (this.isSyrixAuthor(item.author, item.actor)) {
       return 'Syrix Task';
     }
-    if (!author || author.toLowerCase().includes('huyen') || author.toLowerCase().includes('huyền')) {
+    if (!item.author || item.author.toLowerCase().includes('huyen') || item.author.toLowerCase().includes('huyền')) {
       return 'Huyền Nguyễn Như';
     }
-    return author;
+    return item.author;
   }
 
   getAvatarUrl(author?: string): string {
@@ -567,7 +589,7 @@ export class AuditLogComponent implements OnInit {
   // 7. Căn cứ nguồn phát sinh
   getSource(item: SystemChangeLog): string {
     if (item.source) return item.source;
-    if (this.isSyrixAuthor(item.author)) {
+    if (this.isSyrixAuthor(item.author, item.actor)) {
       if (item.kr_id) {
         if (item.kr_id.includes('A1')) return 'Activepieces Flow KR-A1 (RUN_20261104_A1_2775)';
         if (item.kr_id.includes('B1')) return 'Activepieces Flow KR-B1 (RUN_20261104_B1_3192)';

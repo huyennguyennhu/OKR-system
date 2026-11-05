@@ -175,10 +175,12 @@ export interface AuditAssignment {
 
 export interface SystemChangeLog {
   log_id: number;
+  target_entity?: string;
   kr_id?: string;
   kr_title?: string;
   objective_id?: string;
   objective_title?: string;
+  actor?: string;
   author: string;
   author_avatar?: string;
   field_name: string;

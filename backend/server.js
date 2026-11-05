@@ -1029,12 +1029,17 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
       logReason = logReason || 'Cập nhật tiến độ chỉ số';
     }
 
+    const targetEntity = `[${krId}] ${kr.title || 'Chỉ số then chốt'}`;
+    const actorName = isWf ? 'Syrix Task' : (auditAuthor || 'Huyền Nguyễn Như');
+
     await run(`
-      INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+      INSERT INTO AuditLogs (target_entity, kr_id, objective_id, actor, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
     `, [
+      targetEntity,
       krId,
       kr.objective_id,
+      actorName,
       auditAuthor,
       auditAvatar,
       'Current value',
@@ -1415,12 +1420,15 @@ const saveMeasurementRuleHandler = async (req, res) => {
 
     // Record system change to AuditLogs
     try {
+      const targetEntity = kr_id ? `[${kr_id}] Cấu hình quy tắc đo lường` : `[${flow_code}] Cấu hình quy tắc đo lường`;
       await run(`
-        INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        INSERT INTO AuditLogs (target_entity, kr_id, objective_id, actor, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
       `, [
+        targetEntity,
         kr_id,
         objective_id,
+        'Huyền Nguyễn Như',
         'Huyền Nguyễn Như',
         'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true',
         'Measurement Rule',
@@ -1831,10 +1839,12 @@ app.get('/api/audit-logs', async (req, res) => {
     const systemChanges = await all(`
       SELECT 
         al.log_id,
+        COALESCE(al.target_entity, CASE WHEN al.kr_id IS NOT NULL THEN '[' || al.kr_id || '] ' || COALESCE(kr.title, '') ELSE COALESCE(obj.title, '') END) as target_entity,
         al.kr_id,
         kr.title as kr_title,
         al.objective_id,
         obj.title as objective_title,
+        COALESCE(al.actor, CASE WHEN al.author = 'bot' THEN 'Syrix Task' ELSE al.author END) as actor,
         al.author,
         al.author_avatar,
         al.field_name,
@@ -2751,23 +2761,24 @@ app.put('/api/key-results/:id', async (req, res) => {
 
     // Record audit log if title, expected_value, or description changed
     if (oldKr) {
+      const targetEntity = `[${req.params.id}] ${oldKr.title}`;
       if (title && oldKr.title !== title) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Task Name', oldKr.title, title, 'Admin cập nhật tay', 'Đổi tên Key Result']);
+          INSERT INTO AuditLogs (target_entity, kr_id, actor, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [targetEntity, req.params.id, 'Huyền Nguyễn Như', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Task Name', oldKr.title, title, 'Admin cập nhật tay', 'Đổi tên Key Result']);
       }
       if (expected_value !== undefined && expected_value !== null && Number(oldKr.expected_value) !== Number(expected_value)) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`, 'Admin cập nhật tay', 'Cập nhật mục tiêu chỉ số (Target)']);
+          INSERT INTO AuditLogs (target_entity, kr_id, actor, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [targetEntity, req.params.id, 'Huyền Nguyễn Như', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Expected value', `${oldKr.expected_value} ${oldKr.unit || '%'}`, `${expected_value} ${oldKr.unit || '%'}`, 'Admin cập nhật tay', 'Cập nhật mục tiêu chỉ số (Target)']);
       }
       if (description !== undefined && description !== null && oldKr.description !== description) {
         await run(`
-          INSERT INTO AuditLogs (kr_id, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-        `, [req.params.id, 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Description', oldKr.description || 'None', description, 'Admin cập nhật tay', 'Cập nhật mô tả chỉ số']);
+          INSERT INTO AuditLogs (target_entity, kr_id, actor, author, author_avatar, field_name, old_value, new_value, source, reason, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        `, [targetEntity, req.params.id, 'Huyền Nguyễn Như', 'Huyền Nguyễn Như', 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true', 'Description', oldKr.description || 'None', description, 'Admin cập nhật tay', 'Cập nhật mô tả chỉ số']);
       }
     }
 

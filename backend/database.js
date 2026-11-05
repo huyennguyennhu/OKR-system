@@ -371,8 +371,10 @@ async function initDatabase() {
   await run(`
     CREATE TABLE IF NOT EXISTS AuditLogs (
       log_id SERIAL PRIMARY KEY,
+      target_entity TEXT,
       kr_id TEXT,
       objective_id TEXT,
+      actor TEXT,
       author TEXT NOT NULL DEFAULT 'Y Nguyen',
       author_avatar TEXT,
       field_name TEXT NOT NULL,
@@ -385,6 +387,8 @@ async function initDatabase() {
     )
   `);
   try {
+    await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS target_entity TEXT');
+    await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS actor TEXT');
     await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS source TEXT');
     await run('ALTER TABLE AuditLogs ADD COLUMN IF NOT EXISTS reason TEXT');
     await run('CREATE INDEX IF NOT EXISTS idx_auditlogs_kr ON AuditLogs(kr_id)');
