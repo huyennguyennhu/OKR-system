@@ -24,7 +24,8 @@ export const routes: Routes = [
   { path: 'okr-settings', component: OkrSettingsComponent, title: 'OKR Setting - Cấu hình' },
   { path: 'measurement-rules', component: MeasurementRulesComponent, title: 'Measurement Rule - Quy tắc Đo lường' },
   { path: 'audit-log', component: AuditLogComponent, title: 'Audit Log - Nhật ký & Truy vết SLA' },
-  { path: 'flow-runs', component: FlowRunsComponent, title: 'Flow Runs - Nhật ký Thực thi Activepieces' },
+  { path: 'flow-runs', component: FlowRunsComponent, title: 'Flow Runs - Danh sách Activepieces Flows' },
+  { path: 'flow-runs/:flowCode', component: FlowRunsComponent, title: 'Flow Runs - Chi tiết Lần chạy' },
   
   // Group Calendar
   { path: 'working-time', component: WorkingTimeComponent, title: 'Working Time - Lịch Làm Việc Chuẩn' },

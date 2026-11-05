@@ -1,287 +1,377 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router, ActivatedRoute, RouterModule } from '@angular/router';
 import { OkrService, FlowSummary, FlowRun, FlowRunsResponse } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
 @Component({
   selector: 'app-flow-runs',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterModule],
   template: `
     <!-- Lớp phủ khóa trang trong suốt (không làm mờ, chặn tương tác khi đang tải) -->
     <div class="page-loading-overlay" *ngIf="loading"></div>
 
     <div class="flow-runs-page">
-      <!-- Page Top Bar -->
-      <div class="page-top-bar mb-4">
-        <div class="top-bar-left">
-          <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
-            Flow Runs
-          </h3>
-          <p class="subtitle mb-0">
-            Nhật ký thực thi các kịch bản Activepieces tự động đo lường từ GitLab và ghi dữ liệu cập nhật chỉ số Key Results (KR).
-          </p>
-        </div>
-        <div class="top-bar-right">
-          <button type="button" class="btn btn-primary" (click)="openSimulateModal()">
-            <i class="fa-solid fa-play"></i>
-            <span>Chạy mô phỏng Flow</span>
-          </button>
-        </div>
-      </div>
 
-      <!-- Flow Cards Section (Mỗi Flow là 1 Card) -->
-      <div class="flow-cards-section mb-4">
-        <div class="flow-cards-header mb-2">
-          <div class="d-flex align-items-center justify-content-between">
-            <span class="cards-section-label">
-              <strong>Danh sách Activepieces Flows</strong> (Nhấn vào card để xem bảng lần chạy tương ứng):
-            </span>
+      <!-- ========================================================================= -->
+      <!-- VIEW 1: OVERVIEW CARDS VIEW (Màn hình tổng quan danh sách Flow) -->
+      <!-- ========================================================================= -->
+      <div class="flow-runs-overview-view" *ngIf="viewMode === 'cards'">
+        <!-- Page Top Bar -->
+        <div class="page-top-bar mb-4">
+          <div class="top-bar-left">
+            <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
+              Flow Runs
+            </h3>
+            <p class="subtitle mb-0">
+              Nhật ký thực thi các kịch bản Activepieces tự động đo lường từ GitLab và ghi dữ liệu cập nhật chỉ số Key Results (KR).
+            </p>
+          </div>
+          <div class="top-bar-right d-flex align-items-center gap-2">
             <button 
               type="button" 
-              class="btn-all-flows" 
-              [class.active]="selectedFlowCode === 'all'"
-              (click)="selectFlow('all')"
-              title="Xem lịch sử chạy của tất cả các flow">
-              <i class="fa-solid fa-layer-group me-1"></i>
+              class="btn btn-outline-secondary" 
+              (click)="openFlowDetail('all')"
+              title="Xem bảng lịch sử của toàn bộ các Flow">
+              <i class="fa-solid fa-list-check me-1"></i>
               <span>Tất cả lần chạy ({{ allRuns.length }})</span>
+            </button>
+            <button type="button" class="btn btn-primary" (click)="openSimulateModal()">
+              <i class="fa-solid fa-play me-1"></i>
+              <span>Chạy mô phỏng Flow</span>
             </button>
           </div>
         </div>
 
-        <div class="flow-cards-grid">
-          <div 
-            *ngFor="let flow of flows" 
-            class="flow-card"
-            [class.selected]="selectedFlowCode === flow.flow_code"
-            (click)="selectFlow(flow.flow_code)">
-            
-            <div class="card-header-line">
-              <div class="d-flex align-items-center gap-2">
-                <span class="badge badge-code">{{ flow.flow_code }}</span>
-                <span class="badge badge-active">
-                  <i class="fa-solid fa-circle-check me-1"></i>Hoạt động
+        <!-- Flow Cards Section -->
+        <div class="flow-cards-section mb-4">
+          <div class="flow-cards-header mb-3">
+            <div class="d-flex align-items-center justify-content-between">
+              <span class="cards-section-label">
+                <strong>Danh sách Activepieces Flows ({{ flows.length }})</strong> — <em>Nhấn vào từng card để mở trang chi tiết bảng lịch sử lần chạy:</em>
+              </span>
+            </div>
+          </div>
+
+          <!-- Cards Grid -->
+          <div class="flow-cards-grid">
+            <div 
+              *ngFor="let flow of flows" 
+              class="flow-card clickable-card"
+              (click)="openFlowDetail(flow.flow_code)"
+              title="Nhấn để mở trang bảng lần chạy của {{ flow.flow_code }}">
+              
+              <div class="card-header-line">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="badge badge-code">{{ flow.flow_code }}</span>
+                  <span class="badge badge-active">
+                    <i class="fa-solid fa-circle-check me-1"></i>Hoạt động
+                  </span>
+                </div>
+                <span class="card-action-hint text-primary">
+                  Xem bảng lần chạy <i class="fa-solid fa-arrow-right ms-1"></i>
                 </span>
               </div>
-              <span class="selection-indicator" *ngIf="selectedFlowCode === flow.flow_code">
-                <i class="fa-solid fa-circle-dot text-primary"></i> Đang xem
-              </span>
-            </div>
 
-            <h4 class="flow-card-title">{{ flow.flow_name }}</h4>
+              <h4 class="flow-card-title">{{ flow.flow_name }}</h4>
 
-            <div class="flow-card-kr">
-              <i class="fa-solid fa-bullseye me-1 text-primary"></i>
-              <span class="kr-badge">{{ flow.kr_id }}</span>
-              <span class="kr-title-text">{{ flow.kr_title }}</span>
-            </div>
-
-            <div class="flow-card-trigger">
-              <i class="fa-solid fa-bolt me-1 text-warning"></i>
-              <span>{{ flow.trigger_type }}</span>
-            </div>
-
-            <div class="card-metrics-row">
-              <div class="metric-box">
-                <span class="metric-label">Lần chạy</span>
-                <span class="metric-value">{{ flow.total_runs }}</span>
+              <div class="flow-card-kr">
+                <i class="fa-solid fa-bullseye me-1 text-primary"></i>
+                <span class="kr-badge">{{ flow.kr_id }}</span>
+                <span class="kr-title-text">{{ flow.kr_title }}</span>
               </div>
-              <div class="metric-box">
-                <span class="metric-label">Thành công</span>
-                <span class="metric-value text-success">{{ flow.success_rate }}%</span>
+
+              <div class="flow-card-trigger">
+                <i class="fa-solid fa-bolt me-1 text-warning"></i>
+                <span>{{ flow.trigger_type }}</span>
               </div>
-              <div class="metric-box flex-2">
-                <span class="metric-label">Lần chạy gần nhất</span>
-                <span class="metric-value time-val">{{ flow.last_run_time || 'Chưa chạy' }}</span>
-              </div>
-            </div>
 
-            <div class="card-impact-box">
-              <span class="impact-label"><i class="fa-solid fa-chart-line text-primary me-1"></i>Tác động gần nhất:</span>
-              <span class="impact-content" [title]="flow.last_impact">{{ flow.last_impact }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Filter Bar -->
-      <div class="filter-bar mb-3">
-        <div class="filter-search-wrapper">
-          <i class="fa-solid fa-magnifying-glass search-icon"></i>
-          <input 
-            type="text" 
-            class="form-control filter-input" 
-            placeholder="Tìm theo mã run, flow, tác động, trạng thái..." 
-            [(ngModel)]="searchQuery" 
-            (input)="filterRuns()">
-          <button 
-            type="button" 
-            class="clear-search-btn" 
-            *ngIf="searchQuery" 
-            (click)="searchQuery=''; filterRuns()" 
-            title="Xóa tìm kiếm">
-            <i class="fa-solid fa-circle-xmark"></i>
-          </button>
-        </div>
-
-        <!-- Custom Dropdown Status Filter -->
-        <div class="custom-select-wrapper">
-          <button 
-            type="button" 
-            class="custom-select-trigger" 
-            (click)="toggleStatusDropdown($event)" 
-            [class.active]="isStatusDropdownOpen">
-            <span class="d-flex align-items-center gap-2">
-              <i class="fa-solid fa-filter text-muted" *ngIf="selectedStatus === 'all'"></i>
-              <i class="fa-solid fa-circle-check text-success" *ngIf="selectedStatus === 'SUCCESS'"></i>
-              <i class="fa-solid fa-triangle-exclamation text-warning" *ngIf="selectedStatus === 'PARTIAL'"></i>
-              <i class="fa-solid fa-circle-xmark text-danger" *ngIf="selectedStatus === 'FAILED'"></i>
-              <span>{{ getSelectedStatusLabel() }}</span>
-            </span>
-            <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isStatusDropdownOpen"></i>
-          </button>
-          <div class="custom-select-menu" *ngIf="isStatusDropdownOpen">
-            <div class="custom-select-option" [class.selected]="selectedStatus === 'all'" (click)="selectStatus('all')">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-layer-group text-muted" style="width: 16px;"></i>
-                <span>Tất cả trạng thái</span>
-              </span>
-              <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'all'"></i>
-            </div>
-            <div class="custom-select-option" [class.selected]="selectedStatus === 'SUCCESS'" (click)="selectStatus('SUCCESS')">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-circle-check text-success" style="width: 16px;"></i>
-                <span>SUCCESS (Thành công 100%)</span>
-              </span>
-              <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'SUCCESS'"></i>
-            </div>
-            <div class="custom-select-option" [class.selected]="selectedStatus === 'PARTIAL'" (click)="selectStatus('PARTIAL')">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-triangle-exclamation text-warning" style="width: 16px;"></i>
-                <span>PARTIAL (Hoàn tất 1 phần)</span>
-              </span>
-              <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'PARTIAL'"></i>
-            </div>
-            <div class="custom-select-option" [class.selected]="selectedStatus === 'FAILED'" (click)="selectStatus('FAILED')">
-              <span class="d-flex align-items-center gap-2">
-                <i class="fa-solid fa-circle-xmark text-danger" style="width: 16px;"></i>
-                <span>FAILED (Thất bại / Lỗi kết nối)</span>
-              </span>
-              <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'FAILED'"></i>
-            </div>
-          </div>
-        </div>
-
-        <div class="filter-count-badge ms-auto">
-          <span>Hiển thị <strong>{{ filteredRuns.length }}</strong> / {{ totalRunsCount }} lần chạy</span>
-        </div>
-      </div>
-
-      <!-- Runs Table Section -->
-      <div class="table-container">
-        <table class="table table-hover">
-          <thead>
-            <tr>
-              <th style="width: 180px;">Mã lần chạy</th>
-              <th style="width: 130px;">Flow liên kết</th>
-              <th style="width: 170px;">Thời gian chạy</th>
-              <th style="width: 100px;">Thời lượng</th>
-              <th style="width: 140px;">Kiểu kích hoạt</th>
-              <th style="width: 110px;" class="text-center">Trạng thái</th>
-              <th style="width: 130px;" class="text-center">Quét GitLab</th>
-              <th>Dữ liệu tạo ra / Tác động OKR</th>
-              <th style="width: 110px;" class="text-center">Payload</th>
-              <th style="width: 48px; text-align: center;"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- Center Table Loading -->
-            <tr *ngIf="loading">
-              <td colspan="10" class="table-loading-cell">
-                <div class="table-loading-content">
-                  <div class="loading-spinner-circle"></div>
-                  <span>Đang tải danh sách lần chạy flow...</span>
+              <div class="card-metrics-row">
+                <div class="metric-box">
+                  <span class="metric-label">Lần chạy</span>
+                  <span class="metric-value">{{ flow.total_runs }}</span>
                 </div>
-              </td>
-            </tr>
+                <div class="metric-box">
+                  <span class="metric-label">Thành công</span>
+                  <span class="metric-value text-success">{{ flow.success_rate }}%</span>
+                </div>
+                <div class="metric-box flex-2">
+                  <span class="metric-label">Lần chạy gần nhất</span>
+                  <span class="metric-value time-val">{{ flow.last_run_time || 'Chưa chạy' }}</span>
+                </div>
+              </div>
 
-            <!-- Table Rows & Empty State strictly wrapped in !loading -->
-            <ng-container *ngIf="!loading">
-              <tr *ngFor="let run of filteredRuns">
-                <td>
-                  <code class="run-id">{{ run.run_id }}</code>
-                </td>
-                <td>
-                  <span class="badge badge-code" [title]="run.flow_name">{{ run.flow_code }}</span>
-                </td>
-                <td>
-                  <div class="time-col">
-                    <span class="start-time">{{ run.start_time }}</span>
-                  </div>
-                </td>
-                <td>
-                  <span class="duration-text">{{ formatDuration(run.duration_ms) }}</span>
-                </td>
-                <td>
-                  <span class="badge" [ngClass]="run.trigger_type.includes('Schedule') ? 'badge-schedule' : 'badge-webhook'">
-                    <i class="fa-solid me-1" [ngClass]="run.trigger_type.includes('Schedule') ? 'fa-clock' : 'fa-bolt'"></i>
-                    {{ run.trigger_type.includes('Schedule') ? 'Schedule' : 'GitLab Webhook' }}
-                  </span>
-                </td>
-                <td class="text-center">
-                  <span class="badge" [ngClass]="getStatusBadgeClass(run.status)">
-                    <i class="fa-solid me-1" [ngClass]="getStatusIconClass(run.status)"></i>
-                    {{ run.status }}
-                  </span>
-                </td>
-                <td class="text-center">
-                  <span class="badge badge-input" [title]="'Đã đọc ' + run.input_count + ' bản ghi sự kiện từ GitLab'">
-                    <i class="fa-brands fa-gitlab me-1"></i>{{ run.input_count }} mục
-                  </span>
-                </td>
-                <td>
-                  <div class="impact-cell" [title]="run.data_created">
-                    <i class="fa-solid fa-arrow-right text-primary me-1"></i>
-                    <span>{{ run.data_created }}</span>
-                  </div>
-                </td>
-                <td class="text-center">
-                  <button type="button" class="btn btn-sm btn-payload" (click)="openPayloadModal(run)" title="Xem chi tiết dữ liệu JSON">
-                    <i class="fa-solid fa-code me-1"></i>Chi tiết
-                  </button>
-                </td>
-                <!-- 3-Dot Action Column -->
-                <td style="width: 48px; text-align: center; position: relative;">
-                  <button 
-                    type="button" 
-                    class="btn-action-trigger" 
-                    [class.active]="activeActionMenu === run.run_id"
-                    (click)="toggleActionMenu(run.run_id, $event)"
-                    title="Thao tác">
-                    <i class="fa-solid fa-ellipsis-vertical"></i>
-                  </button>
-                  <div class="action-dropdown" *ngIf="activeActionMenu === run.run_id" (click)="$event.stopPropagation()">
-                    <button class="action-dropdown-item" (click)="openPayloadModal(run); closeDropdown()">
-                      <i class="fa-solid fa-code"></i> Xem Payload JSON
-                    </button>
-                    <button class="action-dropdown-item text-danger" (click)="deleteRun(run); closeDropdown()">
-                      <i class="fa-solid fa-trash-can"></i> Xóa lần chạy
-                    </button>
-                  </div>
-                </td>
-              </tr>
-
-              <!-- Standard Empty State -->
-              <tr *ngIf="filteredRuns.length === 0">
-                <td colspan="10" class="text-center text-muted py-4">
-                  {{ (searchQuery || selectedStatus !== 'all' || selectedFlowCode !== 'all') ? 'Không tìm thấy lần chạy nào phù hợp bộ lọc.' : 'Chưa có lần chạy nào. Hãy kích hoạt chạy flow!' }}
-                </td>
-              </tr>
-            </ng-container>
-          </tbody>
-        </table>
+              <div class="card-impact-box">
+                <span class="impact-label"><i class="fa-solid fa-chart-line text-primary me-1"></i>Tác động gần nhất:</span>
+                <span class="impact-content" [title]="flow.last_impact">{{ flow.last_impact }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      <!-- ========================================================================= -->
+      <!-- VIEW 2: FLOW DETAIL VIEW (Trang chi tiết Flow với Bảng và Filter Bar) -->
+      <!-- ========================================================================= -->
+      <div class="flow-runs-detail-view" *ngIf="viewMode === 'detail'">
+        <!-- Back Navigation & Header Bar -->
+        <div class="page-top-bar mb-3">
+          <div class="top-bar-left">
+            <!-- Breadcrumb Navigation -->
+            <div class="d-flex align-items-center gap-2 mb-2">
+              <button 
+                type="button" 
+                class="btn btn-sm btn-outline-secondary d-inline-flex align-items-center gap-1 btn-back"
+                (click)="goBackToCards()">
+                <i class="fa-solid fa-arrow-left"></i>
+                <span>Quay lại danh sách Flows</span>
+              </button>
+              <span class="text-muted">/</span>
+              <span class="badge badge-code" style="font-size: 12.5px;">{{ selectedFlowCode === 'all' ? 'TẤT CẢ LẦN CHẠY' : selectedFlowCode }}</span>
+            </div>
+
+            <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
+              {{ selectedFlowCode === 'all' ? 'Nhật ký toàn bộ lần chạy Flow' : (currentFlowSummary?.flow_name || selectedFlowCode) }}
+            </h3>
+            <p class="subtitle mb-0" *ngIf="selectedFlowCode !== 'all' && currentFlowSummary">
+              Liên kết KR: <strong class="text-primary">{{ currentFlowSummary.kr_id }}</strong> - {{ currentFlowSummary.kr_title }} &bull; Kiểu kích hoạt: {{ currentFlowSummary.trigger_type }}
+            </p>
+            <p class="subtitle mb-0" *ngIf="selectedFlowCode === 'all'">
+              Tổng hợp toàn bộ lịch sử thực thi và kết quả tự động đo lường SLA của tất cả các kịch bản Activepieces.
+            </p>
+          </div>
+
+          <div class="top-bar-right d-flex align-items-center gap-2 flex-wrap">
+            <!-- Flow Switcher Pills -->
+            <div class="flow-switcher-group d-flex align-items-center gap-1 bg-light p-1 rounded border">
+              <button 
+                *ngFor="let f of flows" 
+                type="button" 
+                class="btn-flow-switch" 
+                [class.active]="selectedFlowCode === f.flow_code"
+                (click)="openFlowDetail(f.flow_code)"
+                [title]="f.flow_name">
+                {{ f.flow_code }} ({{ f.total_runs }})
+              </button>
+              <button 
+                type="button" 
+                class="btn-flow-switch"
+                [class.active]="selectedFlowCode === 'all'"
+                (click)="openFlowDetail('all')"
+                title="Xem tất cả lần chạy">
+                Tất cả ({{ allRuns.length }})
+              </button>
+            </div>
+
+            <button type="button" class="btn btn-primary" (click)="openSimulateModal(selectedFlowCode)">
+              <i class="fa-solid fa-play me-1"></i>
+              <span>Chạy mô phỏng</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Flow Summary Box (Hiển thị tóm tắt thông số Flow khi xem flow cụ thể) -->
+        <div class="flow-detail-summary-card p-3 mb-3 bg-white border rounded" *ngIf="selectedFlowCode !== 'all' && currentFlowSummary">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge badge-code">{{ currentFlowSummary.flow_code }}</span>
+              <span class="badge badge-active"><i class="fa-solid fa-circle-check me-1"></i>Hoạt động</span>
+              <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ currentFlowSummary.flow_name }}</span>
+            </div>
+            <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 12.5px;">
+              <div>Tổng lần chạy: <strong class="text-dark">{{ currentFlowSummary.total_runs }}</strong></div>
+              <div>Tỷ lệ thành công: <strong class="text-success">{{ currentFlowSummary.success_rate }}%</strong></div>
+              <div>Gần nhất: <strong class="text-dark">{{ currentFlowSummary.last_run_time || 'Chưa chạy' }}</strong></div>
+            </div>
+          </div>
+          <div class="mt-2 pt-2 border-top text-muted d-flex align-items-center gap-2" style="font-size: 12.5px;">
+            <i class="fa-solid fa-chart-line text-primary"></i>
+            <span class="fw-semibold text-dark">Tác động gần nhất:</span>
+            <span class="text-dark">{{ currentFlowSummary.last_impact }}</span>
+          </div>
+        </div>
+
+        <!-- Filter Bar -->
+        <div class="filter-bar mb-3">
+          <div class="filter-search-wrapper">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input 
+              type="text" 
+              class="form-control filter-input" 
+              placeholder="Tìm theo mã run, flow, tác động, trạng thái..." 
+              [(ngModel)]="searchQuery" 
+              (input)="filterRuns()">
+            <button 
+              type="button" 
+              class="clear-search-btn" 
+              *ngIf="searchQuery" 
+              (click)="searchQuery=''; filterRuns()" 
+              title="Xóa tìm kiếm">
+              <i class="fa-solid fa-circle-xmark"></i>
+            </button>
+          </div>
+
+          <!-- Custom Dropdown Status Filter -->
+          <div class="custom-select-wrapper">
+            <button 
+              type="button" 
+              class="custom-select-trigger" 
+              (click)="toggleStatusDropdown($event)" 
+              [class.active]="isStatusDropdownOpen">
+              <span class="d-flex align-items-center gap-2">
+                <i class="fa-solid fa-filter text-muted" *ngIf="selectedStatus === 'all'"></i>
+                <i class="fa-solid fa-circle-check text-success" *ngIf="selectedStatus === 'SUCCESS'"></i>
+                <i class="fa-solid fa-triangle-exclamation text-warning" *ngIf="selectedStatus === 'PARTIAL'"></i>
+                <i class="fa-solid fa-circle-xmark text-danger" *ngIf="selectedStatus === 'FAILED'"></i>
+                <span>{{ getSelectedStatusLabel() }}</span>
+              </span>
+              <i class="fa-solid fa-chevron-down chevron-icon" [class.rotate]="isStatusDropdownOpen"></i>
+            </button>
+            <div class="custom-select-menu" *ngIf="isStatusDropdownOpen">
+              <div class="custom-select-option" [class.selected]="selectedStatus === 'all'" (click)="selectStatus('all')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-layer-group text-muted" style="width: 16px;"></i>
+                  <span>Tất cả trạng thái</span>
+                </span>
+                <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'all'"></i>
+              </div>
+              <div class="custom-select-option" [class.selected]="selectedStatus === 'SUCCESS'" (click)="selectStatus('SUCCESS')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-circle-check text-success" style="width: 16px;"></i>
+                  <span>SUCCESS (Thành công 100%)</span>
+                </span>
+                <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'SUCCESS'"></i>
+              </div>
+              <div class="custom-select-option" [class.selected]="selectedStatus === 'PARTIAL'" (click)="selectStatus('PARTIAL')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-triangle-exclamation text-warning" style="width: 16px;"></i>
+                  <span>PARTIAL (Hoàn tất 1 phần)</span>
+                </span>
+                <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'PARTIAL'"></i>
+              </div>
+              <div class="custom-select-option" [class.selected]="selectedStatus === 'FAILED'" (click)="selectStatus('FAILED')">
+                <span class="d-flex align-items-center gap-2">
+                  <i class="fa-solid fa-circle-xmark text-danger" style="width: 16px;"></i>
+                  <span>FAILED (Thất bại / Lỗi kết nối)</span>
+                </span>
+                <i class="fa-solid fa-check check-icon" *ngIf="selectedStatus === 'FAILED'"></i>
+              </div>
+            </div>
+          </div>
+
+          <div class="filter-count-badge ms-auto">
+            <span>Hiển thị <strong>{{ filteredRuns.length }}</strong> / {{ totalRunsCount }} lần chạy</span>
+          </div>
+        </div>
+
+        <!-- Runs Table Section -->
+        <div class="table-container">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th style="width: 180px;">Mã lần chạy</th>
+                <th style="width: 130px;">Flow liên kết</th>
+                <th style="width: 170px;">Thời gian chạy</th>
+                <th style="width: 100px;">Thời lượng</th>
+                <th style="width: 140px;">Kiểu kích hoạt</th>
+                <th style="width: 110px;" class="text-center">Trạng thái</th>
+                <th style="width: 130px;" class="text-center">Quét GitLab</th>
+                <th>Dữ liệu tạo ra / Tác động OKR</th>
+                <th style="width: 110px;" class="text-center">Payload</th>
+                <th style="width: 48px; text-align: center;"></th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Center Table Loading -->
+              <tr *ngIf="loading">
+                <td colspan="10" class="table-loading-cell">
+                  <div class="table-loading-content">
+                    <div class="loading-spinner-circle"></div>
+                    <span>Đang tải danh sách lần chạy flow...</span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- Table Rows & Empty State strictly wrapped in !loading -->
+              <ng-container *ngIf="!loading">
+                <tr *ngFor="let run of filteredRuns">
+                  <td>
+                    <code class="run-id">{{ run.run_id }}</code>
+                  </td>
+                  <td>
+                    <span class="badge badge-code" [title]="run.flow_name">{{ run.flow_code }}</span>
+                  </td>
+                  <td>
+                    <div class="time-col">
+                      <span class="start-time">{{ run.start_time }}</span>
+                    </div>
+                  </td>
+                  <td>
+                    <span class="duration-text">{{ formatDuration(run.duration_ms) }}</span>
+                  </td>
+                  <td>
+                    <span class="badge" [ngClass]="run.trigger_type.includes('Schedule') ? 'badge-schedule' : 'badge-webhook'">
+                      <i class="fa-solid me-1" [ngClass]="run.trigger_type.includes('Schedule') ? 'fa-clock' : 'fa-bolt'"></i>
+                      {{ run.trigger_type.includes('Schedule') ? 'Schedule' : 'GitLab Webhook' }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge" [ngClass]="getStatusBadgeClass(run.status)">
+                      <i class="fa-solid me-1" [ngClass]="getStatusIconClass(run.status)"></i>
+                      {{ run.status }}
+                    </span>
+                  </td>
+                  <td class="text-center">
+                    <span class="badge badge-input" [title]="'Đã đọc ' + run.input_count + ' bản ghi sự kiện từ GitLab'">
+                      <i class="fa-brands fa-gitlab me-1"></i>{{ run.input_count }} mục
+                    </span>
+                  </td>
+                  <td>
+                    <div class="impact-cell" [title]="run.data_created">
+                      <i class="fa-solid fa-arrow-right text-primary me-1"></i>
+                      <span>{{ run.data_created }}</span>
+                    </div>
+                  </td>
+                  <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-payload" (click)="openPayloadModal(run)" title="Xem chi tiết dữ liệu JSON">
+                      <i class="fa-solid fa-code me-1"></i>Chi tiết
+                    </button>
+                  </td>
+                  <!-- 3-Dot Action Column -->
+                  <td style="width: 48px; text-align: center; position: relative;">
+                    <button 
+                      type="button" 
+                      class="btn-action-trigger" 
+                      [class.active]="activeActionMenu === run.run_id"
+                      (click)="toggleActionMenu(run.run_id, $event)"
+                      title="Thao tác">
+                      <i class="fa-solid fa-ellipsis-vertical"></i>
+                    </button>
+                    <div class="action-dropdown" *ngIf="activeActionMenu === run.run_id" (click)="$event.stopPropagation()">
+                      <button class="action-dropdown-item" (click)="openPayloadModal(run); closeDropdown()">
+                        <i class="fa-solid fa-code"></i> Xem Payload JSON
+                      </button>
+                      <button class="action-dropdown-item text-danger" (click)="deleteRun(run); closeDropdown()">
+                        <i class="fa-solid fa-trash-can"></i> Xóa lần chạy
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+
+                <!-- Standard Empty State -->
+                <tr *ngIf="filteredRuns.length === 0">
+                  <td colspan="10" class="text-center text-muted py-4">
+                    {{ (searchQuery || selectedStatus !== 'all' || selectedFlowCode !== 'all') ? 'Không tìm thấy lần chạy nào phù hợp bộ lọc.' : 'Chưa có lần chạy nào cho Flow này. Hãy kích hoạt chạy flow!' }}
+                  </td>
+                </tr>
+              </ng-container>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
 
     <!-- Modal 1: Chi tiết Payload JSON -->
@@ -420,69 +510,64 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       font-size: 13px;
     }
 
+    /* Back button */
+    .btn-back {
+      font-size: 12.5px;
+      font-weight: 500;
+      padding: 0.35rem 0.75rem;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #334155;
+      border: 1px solid #cbd5e1;
+      transition: all 0.15s ease;
+    }
+    .btn-back:hover {
+      background: #f1f5f9;
+      color: #0f172a;
+      border-color: #94a3b8;
+    }
+
     /* Flow Cards Section */
     .flow-cards-section {
       width: 100%;
     }
 
     .cards-section-label {
-      font-size: 13px;
+      font-size: 13.5px;
       color: #334155;
-    }
-
-    .btn-all-flows {
-      background: #f1f5f9;
-      border: 1px solid #cbd5e1;
-      border-radius: 6px;
-      padding: 0.35rem 0.75rem;
-      font-size: 13px;
-      font-weight: 500;
-      color: #475569;
-      cursor: pointer;
-      transition: all 0.2s ease;
-    }
-
-    .btn-all-flows:hover {
-      background: #e2e8f0;
-      color: #1e293b;
-    }
-
-    .btn-all-flows.active {
-      background: #e0e7ff;
-      border-color: #3157D5;
-      color: #3157D5;
-      font-weight: 600;
     }
 
     .flow-cards-grid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
-      gap: 1rem;
+      gap: 1.25rem;
     }
 
     .flow-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 10px;
-      padding: 1.15rem;
-      cursor: pointer;
-      transition: all 0.2s ease;
+      padding: 1.25rem;
       position: relative;
       display: flex;
       flex-direction: column;
-      gap: 0.6rem;
+      gap: 0.65rem;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .flow-card:hover {
-      border-color: #94a3b8;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-      transform: translateY(-1px);
+    .clickable-card {
+      cursor: pointer;
     }
 
-    .flow-card.selected {
-      border: 2px solid #3157D5;
-      background: #fcfdff;
-      box-shadow: 0 4px 14px rgba(49, 87, 213, 0.12);
+    .clickable-card:hover {
+      border-color: #3157D5;
+      box-shadow: 0 8px 20px rgba(49, 87, 213, 0.1);
+      transform: translateY(-2px);
+    }
+
+    .clickable-card:hover .card-action-hint {
+      color: #1d4ed8 !important;
+      text-decoration: underline;
     }
 
     .card-header-line {
@@ -491,10 +576,10 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       justify-content: space-between;
     }
 
-    .selection-indicator {
-      font-size: 13px;
+    .card-action-hint {
+      font-size: 12px;
       font-weight: 600;
-      color: #3157D5;
+      transition: color 0.15s ease;
     }
 
     .flow-card-title {
@@ -558,12 +643,12 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
     }
 
     .metric-label {
-      font-size: 13px;
+      font-size: 12px;
       color: #64748b;
     }
 
     .metric-value {
-      font-size: 13px;
+      font-size: 13.5px;
       font-weight: 700;
       color: #1e293b;
     }
@@ -571,11 +656,11 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
     .time-val {
       font-weight: 500;
       color: #475569;
-      font-size: 13px;
+      font-size: 12.5px;
     }
 
     .card-impact-box {
-      font-size: 13px;
+      font-size: 12.5px;
       background: #f0fdf4;
       border: 1px solid #bbf7d0;
       border-radius: 6px;
@@ -588,122 +673,330 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
     .impact-label {
       color: #166534;
       font-weight: 600;
-      font-size: 13px;
+      font-size: 12px;
     }
 
     .impact-content {
       color: #15803d;
-      font-size: 13px;
+      font-size: 12.5px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
+    /* Flow Switcher Group on Detail Page */
+    .btn-flow-switch {
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 4px;
+      padding: 0.25rem 0.6rem;
+      font-size: 12.5px;
+      font-weight: 500;
+      color: #475569;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-flow-switch:hover {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    .btn-flow-switch.active {
+      background: #3157D5;
+      color: #ffffff;
+      font-weight: 600;
+    }
+
+    /* Flow Detail Summary Card */
+    .flow-detail-summary-card {
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    }
+
     /* Filter Bar */
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .filter-search-wrapper {
+      position: relative;
+      flex: 1;
+      min-width: 280px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #94a3b8;
+      font-size: 13px;
+    }
+
+    .filter-input {
+      padding-left: 36px;
+      padding-right: 32px;
+      height: 38px;
+      border-radius: 6px;
+      border: 1px solid #cbd5e1;
+      font-size: 13px;
+    }
+
+    .clear-search-btn {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0;
+    }
+
+    .clear-search-btn:hover {
+      color: #475569;
+    }
+
+    /* Custom Dropdown Trigger */
+    .custom-select-wrapper {
+      position: relative;
+      min-width: 220px;
+    }
+
+    .custom-select-trigger {
+      width: 100%;
+      height: 38px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 0 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      transition: all 0.2s ease;
+    }
+
+    .custom-select-trigger:hover {
+      border-color: #94a3b8;
+    }
+
+    .custom-select-trigger.active {
+      border-color: #3157D5;
+      box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.15);
+    }
+
+    .chevron-icon {
+      font-size: 11px;
+      color: #64748b;
+      transition: transform 0.2s ease;
+    }
+
+    .chevron-icon.rotate {
+      transform: rotate(180deg);
+    }
+
+    .custom-select-menu {
+      position: absolute;
+      top: calc(100% + 4px);
+      left: 0;
+      right: 0;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 50;
+      padding: 4px;
+    }
+
+    .custom-select-option {
+      padding: 8px 12px;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-size: 13px;
+      color: #334155;
+      transition: background 0.15s ease;
+    }
+
+    .custom-select-option:hover {
+      background: #f1f5f9;
+    }
+
+    .custom-select-option.selected {
+      background: #eff6ff;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+
+    .check-icon {
+      color: #2563eb;
+      font-size: 12px;
+    }
+
     .filter-count-badge {
       font-size: 13px;
       color: #64748b;
     }
 
-    /* Badges */
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      padding: 0.25rem 0.6rem;
-      border-radius: 6px;
-      font-size: 13px;
+    /* Table Container */
+    .table-container {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .table {
+      margin-bottom: 0;
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .table th {
+      background: #f8fafc;
+      color: #475569;
+      font-size: 12.5px;
       font-weight: 600;
-      line-height: 1;
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
+    .table td {
+      padding: 0.85rem 1rem;
+      vertical-align: middle;
+      font-size: 13px;
+      color: #1e293b;
+      border-bottom: 1px solid #f1f5f9;
+    }
+
+    .run-id {
+      background: #f1f5f9;
+      color: #0f172a;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .badge-code {
       background: #f1f5f9;
-      color: #334155;
-      font-family: monospace;
-      font-size: 13px;
+      color: #475569;
       border: 1px solid #cbd5e1;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
     }
 
     .badge-active {
-      background: #dcfce7;
-      color: #166534;
-      border: 1px solid #bbf7d0;
+      background: #ecfdf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 11.5px;
+      font-weight: 600;
     }
 
     .badge-schedule {
       background: #eff6ff;
-      color: #1e40af;
+      color: #1d4ed8;
       border: 1px solid #bfdbfe;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11.5px;
     }
 
     .badge-webhook {
-      background: #fff7ed;
-      color: #c2410c;
-      border: 1px solid #fed7aa;
+      background: #fdf4ff;
+      color: #a21caf;
+      border: 1px solid #f0abfc;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11.5px;
     }
 
     .badge-success {
-      background: #dcfce7;
-      color: #166534;
-      border: 1px solid #86efac;
+      background: #ecfdf5;
+      color: #059669;
+      border: 1px solid #a7f3d0;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11.5px;
+      font-weight: 600;
     }
 
     .badge-warning {
-      background: #fef3c7;
+      background: #fffbeb;
       color: #b45309;
       border: 1px solid #fde68a;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11.5px;
+      font-weight: 600;
     }
 
     .badge-danger {
-      background: #fee2e2;
+      background: #fef2f2;
       color: #b91c1c;
-      border: 1px solid #fca5a5;
+      border: 1px solid #fecaca;
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 11.5px;
+      font-weight: 600;
     }
 
     .badge-input {
       background: #f8fafc;
       color: #475569;
-      border: 1px solid #e2e8f0;
-    }
-
-    /* Table specifics */
-    .run-id {
-      font-size: 13px;
-      font-family: monospace;
-      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
       padding: 2px 6px;
       border-radius: 4px;
-      color: #1e293b;
-      font-weight: 600;
-    }
-
-    .time-col {
-      font-size: 13px;
-      color: #334155;
+      font-size: 12px;
     }
 
     .duration-text {
-      font-size: 13px;
+      color: #64748b;
+      font-size: 12.5px;
       font-weight: 500;
-      color: #475569;
+    }
+
+    .time-col {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .start-time {
+      font-size: 13px;
+      color: #1e293b;
     }
 
     .impact-cell {
-      font-size: 13px;
-      color: #1e293b;
-      max-width: 280px;
-      white-space: nowrap;
+      max-width: 380px;
       overflow: hidden;
       text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 13px;
     }
 
     .btn-payload {
       background: #eff6ff;
+      color: #2563eb;
       border: 1px solid #bfdbfe;
-      color: #1d4ed8;
       border-radius: 4px;
-      padding: 0.25rem 0.6rem;
-      font-size: 13px;
+      padding: 3px 8px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s ease;
@@ -711,18 +1004,139 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
     .btn-payload:hover {
       background: #dbeafe;
-      color: #1e40af;
+      color: #1d4ed8;
     }
 
-    /* Modal Styling */
+    /* 3-Dot Action Button & Dropdown */
+    .btn-action-trigger {
+      background: none;
+      border: none;
+      color: #64748b;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 14px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-action-trigger:hover,
+    .btn-action-trigger.active {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .action-dropdown {
+      position: absolute;
+      right: 8px;
+      top: 100%;
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+      z-index: 50;
+      min-width: 170px;
+      padding: 4px;
+    }
+
+    .action-dropdown-item {
+      width: 100%;
+      padding: 6px 10px;
+      border: none;
+      background: none;
+      text-align: left;
+      font-size: 12.5px;
+      color: #334155;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: background 0.15s ease;
+    }
+
+    .action-dropdown-item:hover {
+      background: #f1f5f9;
+    }
+
+    .action-dropdown-item.text-danger {
+      color: #ef4444;
+    }
+
+    .action-dropdown-item.text-danger:hover {
+      background: #fef2f2;
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      animation: fadeIn 0.2s ease;
+    }
+
+    .modal-content {
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+      border: 1px solid #e2e8f0;
+      max-width: 520px;
+      width: 95%;
+      overflow: hidden;
+      animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
     .payload-modal {
-      width: 620px;
-      max-width: 95%;
+      max-width: 680px;
     }
 
     .simulate-modal {
-      width: 500px;
-      max-width: 95%;
+      max-width: 540px;
+    }
+
+    .modal-header {
+      padding: 1.15rem 1.5rem;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-close-modal {
+      background: none;
+      border: none;
+      color: #64748b;
+      font-size: 16px;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+
+    .btn-close-modal:hover {
+      background: #e2e8f0;
+      color: #ef4444;
+    }
+
+    .modal-body {
+      padding: 1.5rem;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+
+    .modal-footer {
+      padding: 1rem 1.5rem;
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 0.75rem;
     }
 
     .run-summary-box {
@@ -732,101 +1146,174 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       padding: 0.75rem 1rem;
       display: flex;
       flex-direction: column;
-      gap: 0.4rem;
+      gap: 6px;
       font-size: 13px;
     }
 
     .summary-item {
       display: flex;
-      align-items: center;
-      gap: 0.5rem;
+      align-items: baseline;
+      gap: 8px;
     }
 
     .summary-item .label {
+      width: 90px;
       color: #64748b;
-      width: 100px;
-    }
-
-    .payload-header-label {
-      font-size: 13px;
-      color: #334155;
-    }
-
-    .btn-copy-payload {
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 0.25rem 0.65rem;
-      font-size: 13px;
-      color: #475569;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      gap: 0.35rem;
-      transition: all 0.15s ease;
-    }
-
-    .btn-copy-payload:hover {
-      background: #f1f5f9;
-      color: #1e293b;
+      flex-shrink: 0;
     }
 
     .json-code-box {
       background: #0f172a;
-      color: #38bdf8;
-      border-radius: 8px;
+      color: #e2e8f0;
       padding: 1rem;
-      font-size: 13px;
-      font-family: 'Consolas', 'Courier New', monospace;
-      max-height: 280px;
-      overflow-y: auto;
+      border-radius: 8px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      max-height: 340px;
+      overflow: auto;
       margin: 0;
-      white-space: pre-wrap;
-      word-break: break-all;
+    }
+
+    .btn-copy-payload {
+      background: #f1f5f9;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 12px;
+      color: #475569;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .btn-copy-payload:hover {
+      background: #e2e8f0;
+      color: #0f172a;
     }
 
     .simulate-desc {
       font-size: 13px;
       color: #475569;
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
     .flow-preview-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 0.85rem 1rem;
+      border-radius: 6px;
+      padding: 0.75rem;
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
+      gap: 6px;
       font-size: 13px;
     }
 
     .preview-row {
       display: flex;
-      flex-direction: column;
-      gap: 2px;
+      gap: 8px;
     }
 
     .preview-label {
-      font-size: 13px;
-      font-weight: 600;
+      width: 105px;
       color: #64748b;
+      flex-shrink: 0;
     }
 
-    /* Common utilities */
-    .fw-600 { font-weight: 600; }
-    .text-primary { color: #3157D5 !important; }
-    .text-success { color: #16a34a !important; }
-    .text-warning { color: #d97706 !important; }
-    .text-danger { color: #dc2626 !important; }
-    .text-muted { color: #64748b !important; }
-    .mb-1 { margin-bottom: 0.25rem; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mb-3 { margin-bottom: 0.75rem; }
-    .mb-4 { margin-bottom: 1.5rem; }
-    .me-1 { margin-right: 0.25rem; }
-    .me-2 { margin-right: 0.5rem; }
+    /* Common Buttons */
+    .btn {
+      padding: 0.45rem 1rem;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+      transition: all 0.15s ease;
+    }
+
+    .btn-primary {
+      background: #3157D5;
+      color: #ffffff;
+      border-color: #3157D5;
+    }
+
+    .btn-primary:hover {
+      background: #2546b8;
+    }
+
+    .btn-secondary {
+      background: #f1f5f9;
+      color: #334155;
+      border-color: #cbd5e1;
+    }
+
+    .btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    .btn-outline-secondary {
+      background: #ffffff;
+      color: #475569;
+      border-color: #cbd5e1;
+    }
+
+    .btn-outline-secondary:hover {
+      background: #f8fafc;
+      color: #0f172a;
+    }
+
+    /* Center Table Loading */
+    .table-loading-cell {
+      padding: 3.5rem 1rem !important;
+      text-align: center;
+      vertical-align: middle !important;
+      background: #ffffff;
+    }
+
+    .table-loading-content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.75rem;
+      color: #475569;
+      font-size: 13px;
+    }
+
+    .loading-spinner-circle {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid rgba(49, 87, 213, 0.2);
+      border-top-color: #3157D5;
+      animation: spinnerRotate 0.75s linear infinite;
+    }
+
+    @keyframes spinnerRotate {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(16px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .page-loading-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: transparent !important;
+      pointer-events: auto;
+      cursor: wait;
+    }
+
     .ms-auto { margin-left: auto; }
     .d-flex { display: flex; }
     .align-items-center { align-items: center; }
@@ -840,8 +1327,11 @@ export class FlowRunsComponent implements OnInit {
   allRuns: FlowRun[] = [];
   filteredRuns: FlowRun[] = [];
 
-  // Selection & Filtering
+  // View state: 'cards' = Danh sách Flow Overview; 'detail' = Trang bảng lần chạy của từng Flow
+  viewMode: 'cards' | 'detail' = 'cards';
   selectedFlowCode = 'all';
+
+  // Filters
   searchQuery = '';
   selectedStatus = 'all';
   isStatusDropdownOpen = false;
@@ -860,15 +1350,40 @@ export class FlowRunsComponent implements OnInit {
 
   constructor(
     private okrService: OkrService,
-    private confirmService: ConfirmDialogService
+    private confirmService: ConfirmDialogService,
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    // Lắng nghe params trên URL nếu người dùng truy cập trực tiếp /flow-runs/:flowCode
+    this.route.paramMap.subscribe(params => {
+      const flowCode = params.get('flowCode');
+      if (flowCode) {
+        this.selectedFlowCode = flowCode;
+        this.viewMode = 'detail';
+      } else {
+        this.selectedFlowCode = 'all';
+        this.viewMode = 'cards';
+      }
+      this.filterRuns();
+    });
+
     this.loadData();
   }
 
   get totalRunsCount(): number {
     return this.allRuns.length;
+  }
+
+  get currentFlowSummary(): FlowSummary | undefined {
+    if (this.selectedFlowCode === 'all') return undefined;
+    return this.flows.find(f => f.flow_code === this.selectedFlowCode);
+  }
+
+  get currentFlowRunsCount(): number {
+    if (this.selectedFlowCode === 'all') return this.allRuns.length;
+    return this.allRuns.filter(r => r.flow_code === this.selectedFlowCode || r.flow_code.startsWith(this.selectedFlowCode)).length;
   }
 
   loadData(): void {
@@ -887,12 +1402,23 @@ export class FlowRunsComponent implements OnInit {
     });
   }
 
-  selectFlow(flowCode: string): void {
-    if (this.selectedFlowCode === flowCode && flowCode !== 'all') {
-      this.selectedFlowCode = 'all';
-    } else {
-      this.selectedFlowCode = flowCode;
-    }
+  // Mở trang chi tiết bảng lần chạy cho flow được chọn
+  openFlowDetail(flowCode: string): void {
+    this.selectedFlowCode = flowCode;
+    this.viewMode = 'detail';
+    this.searchQuery = '';
+    this.selectedStatus = 'all';
+    this.router.navigate(['/flow-runs', flowCode]);
+    this.filterRuns();
+  }
+
+  // Quay lại trang danh sách Flow Cards
+  goBackToCards(): void {
+    this.selectedFlowCode = 'all';
+    this.viewMode = 'cards';
+    this.searchQuery = '';
+    this.selectedStatus = 'all';
+    this.router.navigate(['/flow-runs']);
     this.filterRuns();
   }
 
@@ -938,9 +1464,9 @@ export class FlowRunsComponent implements OnInit {
 
   getSelectedStatusLabel(): string {
     switch (this.selectedStatus) {
-      case 'SUCCESS': return 'SUCCESS (Thành công)';
-      case 'PARTIAL': return 'PARTIAL (Một phần)';
-      case 'FAILED': return 'FAILED (Thất bại)';
+      case 'SUCCESS': return 'SUCCESS (Thành công 100%)';
+      case 'PARTIAL': return 'PARTIAL (Hoàn tất 1 phần)';
+      case 'FAILED': return 'FAILED (Thất bại / Lỗi kết nối)';
       default: return 'Tất cả trạng thái';
     }
   }
@@ -997,8 +1523,10 @@ export class FlowRunsComponent implements OnInit {
   }
 
   // Simulation modal
-  openSimulateModal(): void {
-    if (this.selectedFlowCode !== 'all') {
+  openSimulateModal(defaultFlowCode?: string): void {
+    if (defaultFlowCode && defaultFlowCode !== 'all') {
+      this.simulateFlowCode = defaultFlowCode;
+    } else if (this.selectedFlowCode !== 'all') {
       this.simulateFlowCode = this.selectedFlowCode;
     } else {
       this.simulateFlowCode = 'FLOW-KR-A1';
@@ -1081,4 +1609,3 @@ export class FlowRunsComponent implements OnInit {
     }
   }
 }
-
