@@ -751,10 +751,10 @@ interface TreeNode {
               <div class="comment-item d-flex gap-3 py-3 border-bottom" *ngFor="let c of sortedKrComments">
                 <!-- Avatar (Syrix logo or user image) -->
                 <div class="comment-avatar flex-shrink-0">
-                  <div *ngIf="c.source === 'activepieces' || (c.author && c.author.includes('Syrix'))" class="syrix-avatar-ring">
+                  <div *ngIf="isBotAuthor(c.author, c.source)" class="syrix-avatar-ring">
                     <div class="syrix-avatar-pupil"></div>
                   </div>
-                  <img *ngIf="!(c.source === 'activepieces' || (c.author && c.author.includes('Syrix')))" 
+                  <img *ngIf="!isBotAuthor(c.author, c.source)" 
                        [src]="c.author_avatar || ('https://ui-avatars.com/api/?name=' + c.author + '&background=3157D5&color=fff&rounded=true')" 
                        class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
@@ -762,7 +762,7 @@ interface TreeNode {
                 <!-- Comment Content -->
                 <div class="comment-body flex-grow-1" style="min-width: 0;">
                   <div class="d-flex align-items-center gap-2 mb-1">
-                    <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ c.author }}</span>
+                    <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ formatAuthorName(c.author, c.source) }}</span>
                     <span class="text-muted" style="font-size: 12px;">{{ formatCommentDate(c.created_at || c.time) }}</span>
                     <i class="fa-solid fa-link text-muted cursor-pointer" style="font-size: 11px;" title="Sao chép link"></i>
                     <button class="btn btn-link text-muted p-0 ms-auto" title="Xóa" (click)="deleteKrComment(c.comment_id)" *ngIf="c.comment_id">
@@ -816,10 +816,10 @@ interface TreeNode {
               <div class="checkin-feed-item d-flex gap-3 py-3 border-bottom" *ngFor="let ck of sortedKrCheckins">
                 <!-- Avatar: Syrix logo if Syrix Task/activepieces, else user avatar -->
                 <div class="checkin-avatar flex-shrink-0">
-                  <div *ngIf="isSyrixAuthor(ck.author)" class="syrix-avatar-ring">
+                  <div *ngIf="isBotAuthor(ck.author)" class="syrix-avatar-ring">
                     <div class="syrix-avatar-pupil"></div>
                   </div>
-                  <img *ngIf="!isSyrixAuthor(ck.author)" 
+                  <img *ngIf="!isBotAuthor(ck.author)" 
                        [src]="ck.author_avatar || getAvatarUrl(ck.author)" 
                        class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
@@ -828,7 +828,7 @@ interface TreeNode {
                 <div class="checkin-body flex-grow-1" style="min-width: 0;">
                   <!-- Line 1: Author updated the [field] value to [value] [relative time] -->
                   <div class="checkin-headline text-dark mb-1" style="font-size: 13.5px; line-height: 1.45;">
-                    <strong class="fw-bold">{{ ck.author || 'Syrix Task' }}</strong>
+                    <strong class="fw-bold">{{ formatAuthorName(ck.author) }}</strong>
                     <span> updated the {{ ck.target_field || 'Current' }} value to </span>
                     <strong class="fw-bold">{{ ck.current_value }}</strong>
                     <span class="text-muted ms-2" style="font-size: 12.5px;">{{ formatRelativeTime(ck.calculated_at) }}</span>
@@ -864,7 +864,11 @@ interface TreeNode {
               <div class="history-feed-item d-flex gap-3 py-3 border-bottom" *ngFor="let h of sortedKrHistory">
                 <!-- Avatar on left -->
                 <div class="history-avatar flex-shrink-0">
-                  <img [src]="h.author_avatar || getAvatarUrl(h.author)" 
+                  <div *ngIf="isBotAuthor(h.author)" class="syrix-avatar-ring">
+                    <div class="syrix-avatar-pupil"></div>
+                  </div>
+                  <img *ngIf="!isBotAuthor(h.author)" 
+                       [src]="h.author_avatar || getAvatarUrl(h.author)" 
                        class="rounded-circle" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
                 </div>
 
@@ -872,7 +876,7 @@ interface TreeNode {
                 <div class="history-body flex-grow-1" style="min-width: 0;">
                   <!-- Line 1: Author updated the [field_name]  [relative time] -->
                   <div class="history-headline text-dark mb-1" style="font-size: 13.5px; line-height: 1.45;">
-                    <strong class="fw-bold">{{ h.author || 'Y Nguyen' }}</strong>
+                    <strong class="fw-bold">{{ formatAuthorName(h.author) }}</strong>
                     <span> updated the {{ h.field_name }}</span>
                     <span class="text-muted ms-2" style="font-size: 12.5px;">{{ formatRelativeTime(h.created_at) }}</span>
                   </div>
@@ -2952,10 +2956,25 @@ export class OkrTreeComponent implements OnInit {
     this.checkinSortOrder = this.checkinSortOrder === 'newest' ? 'oldest' : 'newest';
   }
 
-  isSyrixAuthor(author?: string): boolean {
-    if (!author) return true;
+  isBotAuthor(author?: string, source?: string): boolean {
+    if (source === 'activepieces') return true;
+    if (!author) return false;
     const a = author.toLowerCase();
-    return a.includes('syrix') || a.includes('activepieces') || a.includes('bot');
+    return a === 'bot' || a.includes('bot') || a.includes('syrix') || a.includes('activepieces');
+  }
+
+  isSyrixAuthor(author?: string): boolean {
+    return this.isBotAuthor(author);
+  }
+
+  formatAuthorName(author?: string, source?: string): string {
+    if (source === 'activepieces') return 'bot';
+    if (!author) return 'bot';
+    const a = author.toLowerCase();
+    if (a === 'bot' || a.includes('bot') || a.includes('syrix') || a.includes('activepieces')) {
+      return 'bot';
+    }
+    return author;
   }
 
   getAvatarUrl(author?: string): string {

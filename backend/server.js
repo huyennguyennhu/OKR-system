@@ -85,7 +85,12 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
 
     // Direct KR update by kr_id
     if (payload.kr_id && payload.current_value !== undefined) {
-      const updated = await recalculateOkrProgress(payload.kr_id, payload.current_value, payload);
+      const wfPayload = {
+        ...payload,
+        source: payload.source || 'activepieces',
+        author: (!payload.author || payload.author.toLowerCase().includes('syrix') || payload.author.toLowerCase().includes('activepieces')) ? 'bot' : payload.author
+      };
+      const updated = await recalculateOkrProgress(payload.kr_id, payload.current_value, wfPayload);
 
       // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
       const flowRunId = payload.run_id || `RUN-${Date.now()}`;
@@ -140,7 +145,7 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
           denominator: payload.denominator,
           actor_id: payload.employee_id,
           comment: payload.comment || payload.note || payload.reason,
-          author: payload.author || payload.actor_id || payload.employee_id
+          author: (!payload.author || payload.author.toLowerCase().includes('syrix') || payload.author.toLowerCase().includes('activepieces')) ? 'bot' : payload.author
         });
 
         // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
@@ -1001,12 +1006,18 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
 
   // Record AuditLog for system change to Current value
   if (oldVal !== undefined && oldVal !== null && Number(oldVal) !== Number(val)) {
-    const auditAuthor = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Huyền Nguyễn Như');
+    let auditAuthor = options.author;
+    const isWf = options.source === 'activepieces' || options.actor_id || (!auditAuthor) || (auditAuthor && (auditAuthor.toLowerCase().includes('syrix') || auditAuthor.toLowerCase().includes('activepieces') || auditAuthor.toLowerCase() === 'bot'));
+    if (isWf) {
+      auditAuthor = 'bot';
+    } else if (!auditAuthor) {
+      auditAuthor = 'Huyền Nguyễn Như';
+    }
     const auditAvatar = (auditAuthor.includes('Huyen') || auditAuthor.includes('Huyền'))
       ? 'https://ui-avatars.com/api/?name=Huyen+Nguyen&background=3157D5&color=fff&rounded=true'
-      : ((options.source === 'activepieces' || options.actor_id) 
-          ? 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff' 
-          : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`);
+      : (auditAuthor === 'bot')
+          ? 'https://ui-avatars.com/api/?name=bot&background=6366f1&color=fff&rounded=true'
+          : `https://ui-avatars.com/api/?name=${encodeURIComponent(auditAuthor)}&background=3157D5&color=fff&rounded=true`;
 
     await run(`
       INSERT INTO AuditLogs (kr_id, objective_id, author, author_avatar, field_name, old_value, new_value, created_at)
@@ -1088,7 +1099,13 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   const period = options.period || 'Q3-2026';
   const numerator = options.numerator !== undefined ? options.numerator : Math.round(val);
   const denominator = options.denominator !== undefined ? options.denominator : 100;
-  const author = options.author || (options.source === 'activepieces' || options.actor_id ? 'Syrix Task' : 'Bạn (Quản trị viên)');
+  let author = options.author;
+  const isWfMetric = options.source === 'activepieces' || options.actor_id || (!author) || (author && (author.toLowerCase().includes('syrix') || author.toLowerCase().includes('activepieces') || author.toLowerCase() === 'bot'));
+  if (isWfMetric) {
+    author = 'bot';
+  } else if (!author) {
+    author = 'Bạn (Quản trị viên)';
+  }
   const targetField = options.target_field || 'Current';
   const note = options.note !== undefined ? options.note : (options.comment || options.reason || null);
 
@@ -1138,7 +1155,11 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
   // Record comment/check-in note into Comments table if provided
   const commentText = options.comment || options.note;
   if (commentText && typeof commentText === 'string' && commentText.trim()) {
-    const rawActor = options.author || options.actor_id || 'Activepieces Automation Bot';
+    let rawActor = options.author || options.actor_id;
+    const isWfComment = options.source === 'activepieces' || options.actor_id || (!rawActor) || (rawActor && (rawActor.toLowerCase().includes('syrix') || rawActor.toLowerCase().includes('activepieces') || rawActor.toLowerCase() === 'bot'));
+    if (isWfComment) {
+      rawActor = 'bot';
+    }
     let authorName = rawActor;
     let authorAvatar = 'https://ui-avatars.com/api/?name=Activepieces&background=6366f1&color=fff';
     const emp = await get('SELECT full_name FROM Employees WHERE employee_id = ? OR gitlab_user_id = ? OR gitlab_user_id LIKE ?', [rawActor, rawActor, `%${rawActor}%`]);
