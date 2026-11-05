@@ -379,12 +379,14 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       <div class="modal-content payload-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="d-flex align-items-center gap-2">
-            <i class="fa-solid fa-code text-primary"></i>
-            <h3 class="modal-title" style="font-size: 16px; font-weight: 700; margin: 0;">
-              Chi tiết lần chạy {{ selectedRunForModal.run_id }}
+            <div class="modal-icon-badge">
+              <i class="fa-solid fa-code"></i>
+            </div>
+            <h3 class="modal-title">
+              Chi tiết lần chạy <span class="run-id-badge">{{ selectedRunForModal.run_id }}</span>
             </h3>
           </div>
-          <button type="button" class="btn-close-modal" (click)="closePayloadModal()" aria-label="Đóng">
+          <button type="button" class="btn-close-modal" (click)="closePayloadModal()" aria-label="Đóng" title="Đóng">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -392,29 +394,42 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
         <div class="modal-body">
           <div class="run-summary-box mb-3">
             <div class="summary-item">
-              <span class="label">Flow:</span>
-              <strong>{{ selectedRunForModal.flow_name }} ({{ selectedRunForModal.flow_code }})</strong>
+              <span class="label">Flow thực thi:</span>
+              <span class="value-text">
+                <strong>{{ selectedRunForModal.flow_name }}</strong>
+                <span class="text-muted ms-1">({{ selectedRunForModal.flow_code }})</span>
+              </span>
             </div>
             <div class="summary-item">
               <span class="label">Trạng thái:</span>
-              <span class="badge" [ngClass]="getStatusBadgeClass(selectedRunForModal.status)">{{ selectedRunForModal.status }}</span>
+              <span class="badge" [ngClass]="getStatusBadgeClass(selectedRunForModal.status)">
+                <i class="fa-solid me-1" [ngClass]="getStatusIconClass(selectedRunForModal.status)"></i>
+                {{ selectedRunForModal.status }}
+              </span>
             </div>
             <div class="summary-item">
-              <span class="label">Thời gian:</span>
-              <span>{{ selectedRunForModal.start_time }} ({{ formatDuration(selectedRunForModal.duration_ms) }})</span>
+              <span class="label">Thời gian chạy:</span>
+              <span class="value-text">
+                <i class="fa-regular fa-clock text-muted me-1"></i>
+                {{ selectedRunForModal.start_time }}
+                <span class="badge bg-light text-dark border ms-1">{{ formatDuration(selectedRunForModal.duration_ms) }}</span>
+              </span>
             </div>
             <div class="summary-item">
               <span class="label">Tác động OKR:</span>
-              <span class="text-primary fw-600">{{ selectedRunForModal.data_created }}</span>
+              <span class="impact-text">
+                <i class="fa-solid fa-arrow-right text-primary me-1"></i>
+                {{ selectedRunForModal.data_created }}
+              </span>
             </div>
           </div>
 
           <div class="d-flex align-items-center justify-content-between mb-2">
             <span class="payload-header-label">
-              <i class="fa-solid fa-file-code me-1 text-muted"></i>
+              <i class="fa-solid fa-file-code me-1 text-primary"></i>
               <strong>Payload JSON đồng bộ hệ thống:</strong>
             </span>
-            <button type="button" class="btn-copy-payload" (click)="copyPayload()">
+            <button type="button" class="btn-copy-payload" (click)="copyPayload()" title="Sao chép toàn bộ dữ liệu JSON">
               <i class="fa-solid" [ngClass]="isCopied ? 'fa-check text-success' : 'fa-copy'"></i>
               <span>{{ isCopied ? 'Đã sao chép' : 'Sao chép JSON' }}</span>
             </button>
@@ -436,12 +451,14 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       <div class="modal-content simulate-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="d-flex align-items-center gap-2">
-            <i class="fa-solid fa-play text-primary"></i>
-            <h3 class="modal-title" style="font-size: 16px; font-weight: 700; margin: 0;">
+            <div class="modal-icon-badge">
+              <i class="fa-solid fa-play"></i>
+            </div>
+            <h3 class="modal-title">
               Mô phỏng chạy Flow Activepieces
             </h3>
           </div>
-          <button type="button" class="btn-close-modal" (click)="closeSimulateModal()" aria-label="Đóng">
+          <button type="button" class="btn-close-modal" (click)="closeSimulateModal()" aria-label="Đóng" title="Đóng">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
@@ -1075,14 +1092,14 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 1000;
+      z-index: 9999;
       animation: fadeIn 0.2s ease;
     }
 
     .modal-content {
       background: #ffffff;
       border-radius: 12px;
-      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
       border: 1px solid #e2e8f0;
       max-width: 520px;
       width: 95%;
@@ -1099,7 +1116,7 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
     }
 
     .modal-header {
-      padding: 1.15rem 1.5rem;
+      padding: 1.25rem 1.5rem;
       background: #f8fafc;
       border-bottom: 1px solid #e2e8f0;
       display: flex;
@@ -1107,25 +1124,66 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       justify-content: space-between;
     }
 
+    .modal-icon-badge {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      background: #eef2ff;
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .modal-title {
+      font-size: 16px !important;
+      font-weight: 700 !important;
+      color: #1e293b !important;
+      margin: 0 !important;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+
+    .run-id-badge {
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+      font-size: 13px !important;
+      font-weight: 600;
+      color: #2563eb;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
     .btn-close-modal {
-      background: none;
+      background: transparent;
       border: none;
-      color: #64748b;
+      color: #94a3b8;
       font-size: 16px;
       cursor: pointer;
-      padding: 4px 8px;
-      border-radius: 4px;
-      transition: all 0.15s ease;
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      padding: 0;
     }
 
     .btn-close-modal:hover {
-      background: #e2e8f0;
+      background: #fee2e2;
       color: #ef4444;
     }
 
     .modal-body {
       padding: 1.5rem;
-      max-height: 70vh;
+      max-height: 72vh;
       overflow-y: auto;
     }
 
@@ -1139,61 +1197,140 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       gap: 0.75rem;
     }
 
+    .modal-footer .btn-secondary {
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      color: #475569;
+      font-size: 13px !important;
+      font-weight: 500;
+      padding: 0.5rem 1.25rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .modal-footer .btn-secondary:hover {
+      background: #f1f5f9;
+      border-color: #94a3b8;
+      color: #1e293b;
+    }
+
     .run-summary-box {
       background: #f8fafc;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      padding: 0.75rem 1rem;
+      padding: 1rem 1.25rem;
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      font-size: 13px;
+      gap: 0.65rem;
+      font-size: 13px !important;
     }
 
     .summary-item {
       display: flex;
       align-items: baseline;
-      gap: 8px;
+      gap: 0.75rem;
+      font-size: 13px !important;
+      line-height: 1.5;
     }
 
     .summary-item .label {
-      width: 90px;
+      width: 105px;
       color: #64748b;
+      font-size: 13px !important;
+      font-weight: 500;
       flex-shrink: 0;
     }
 
-    .json-code-box {
-      background: #0f172a;
-      color: #e2e8f0;
-      padding: 1rem;
-      border-radius: 8px;
-      font-size: 12.5px;
+    .summary-item .value-text {
+      color: #1e293b;
+      font-size: 13px !important;
+      font-weight: 500;
       line-height: 1.5;
-      max-height: 340px;
-      overflow: auto;
-      margin: 0;
+    }
+
+    .summary-item .impact-text {
+      color: #2563eb;
+      font-size: 13px !important;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    .payload-header-label {
+      font-size: 13px !important;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .payload-header-label strong {
+      font-weight: 600;
+      color: #1e293b;
+      font-size: 13px !important;
     }
 
     .btn-copy-payload {
-      background: #f1f5f9;
+      background: #ffffff;
       border: 1px solid #cbd5e1;
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 12px;
+      border-radius: 6px;
+      padding: 0.35rem 0.75rem;
+      font-size: 13px !important;
+      font-weight: 500;
       color: #475569;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 0.4rem;
+      transition: all 0.15s ease;
     }
 
     .btn-copy-payload:hover {
-      background: #e2e8f0;
+      background: #f1f5f9;
+      border-color: #94a3b8;
       color: #0f172a;
     }
 
+    .json-code-box {
+      background: #0f172a;
+      color: #f1f5f9;
+      padding: 1.15rem 1.25rem;
+      border-radius: 8px;
+      border: 1px solid #1e293b;
+      font-family: 'Fira Code', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace !important;
+      font-size: 13px !important;
+      line-height: 1.6;
+      max-height: 320px;
+      overflow: auto;
+      margin: 0;
+    }
+
+    .json-code-box code {
+      font-family: inherit !important;
+      font-size: 13px !important;
+      color: inherit;
+      background: transparent !important;
+      padding: 0 !important;
+    }
+
+    .json-code-box::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .json-code-box::-webkit-scrollbar-track {
+      background: #1e293b;
+      border-radius: 4px;
+    }
+    .json-code-box::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+    .json-code-box::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+
     .simulate-desc {
-      font-size: 13px;
+      font-size: 13px !important;
       color: #475569;
       line-height: 1.55;
     }
@@ -1206,18 +1343,20 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       display: flex;
       flex-direction: column;
       gap: 6px;
-      font-size: 13px;
+      font-size: 13px !important;
     }
 
     .preview-row {
       display: flex;
       gap: 8px;
+      font-size: 13px !important;
     }
 
     .preview-label {
       width: 105px;
       color: #64748b;
       flex-shrink: 0;
+      font-size: 13px !important;
     }
 
     /* Common Buttons */
