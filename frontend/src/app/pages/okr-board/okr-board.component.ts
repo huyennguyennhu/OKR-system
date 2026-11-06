@@ -381,7 +381,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
         <div class="card-header bg-white py-3 border-bottom d-flex align-items-center justify-content-between flex-wrap gap-2">
           <div>
             <h4 class="card-title mb-1" style="font-size: 16px; font-weight: 700; color: #1e293b;">
-              Bảng So sánh Hiệu suất Đội ngũ (Team Performance Matrix)
+              Bảng So sánh Hiệu suất Đội ngũ
             </h4>
             <p class="subtitle mb-0">Đo lường tiến độ và mức độ tuân thủ cam kết SLA theo từng đội nhóm kỹ thuật</p>
           </div>
