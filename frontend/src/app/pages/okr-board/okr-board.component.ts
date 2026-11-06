@@ -393,7 +393,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
             <table class="table table-hover align-middle mb-0 matrix-team-table">
               <thead>
                 <tr>
-                  <th style="min-width: 180px;">Đội ngũ (Team)</th>
+                  <th style="min-width: 180px;">Đội ngũ</th>
                   <th style="min-width: 180px;">Tiến độ Bình quân</th>
                   <th class="text-center" style="width: 110px;">Đúng hạn (🟢)</th>
                   <th class="text-center" style="width: 110px;">Cần chú ý (🟡)</th>
