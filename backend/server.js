@@ -241,10 +241,17 @@ app.get('/api/objectives', async (req, res) => {
 
     let objectives;
     const baseQuery = `
-      SELECT o.*, e.full_name as assignee_name, e.display_code as assignee_code, t.name as team_name 
+      SELECT o.*, 
+        CASE 
+          WHEN UPPER(o.level) = 'COMPANY' THEN 'Ban Giám Đốc'
+          ELSE COALESCE(tm.name, e.full_name, o.assignee_id)
+        END as assignee_name, 
+        e.display_code as assignee_code, 
+        COALESCE(tm.name, e_team.name) as team_name 
       FROM Objectives o 
       LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
-      LEFT JOIN Teams t ON e.team_id = t.id
+      LEFT JOIN Teams e_team ON e.team_id = e_team.id
+      LEFT JOIN Teams tm ON (o.assignee_id = tm.id OR o.assignee_id = tm.code)
     `;
     const whereClauses = [];
     const queryParams = [];
@@ -333,10 +340,17 @@ app.get('/api/okr-tree', async (req, res) => {
 
     let objectives;
     const baseQuery = `
-      SELECT o.*, e.full_name as assignee_name, e.display_code as assignee_code, t.name as team_name 
+      SELECT o.*, 
+        CASE 
+          WHEN UPPER(o.level) = 'COMPANY' THEN 'Ban Giám Đốc'
+          ELSE COALESCE(tm.name, e.full_name, o.assignee_id)
+        END as assignee_name, 
+        e.display_code as assignee_code, 
+        COALESCE(tm.name, e_team.name) as team_name 
       FROM Objectives o 
       LEFT JOIN Employees e ON o.assignee_id = e.employee_id 
-      LEFT JOIN Teams t ON e.team_id = t.id
+      LEFT JOIN Teams e_team ON e.team_id = e_team.id
+      LEFT JOIN Teams tm ON (o.assignee_id = tm.id OR o.assignee_id = tm.code)
     `;
     const whereClauses = [];
     const queryParams = [];

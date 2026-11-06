@@ -1987,7 +1987,7 @@ export class OkrBoardComponent implements OnInit {
           atRisk: 0,
           behind: 0,
           slaRate: 0,
-          status: 'Chưa phân bổ',
+          status: 'Chưa giao KR',
           statusClass: 'chip-neutral'
         };
       }
@@ -2132,18 +2132,23 @@ export class OkrBoardComponent implements OnInit {
   }
 
   getAssigneeLabel(obj: Objective): string {
+    const lvl = (obj.level || '').toUpperCase();
+    if (lvl === 'COMPANY') return 'Ban Giám Đốc';
     if (obj.team_name) return obj.team_name;
-    if (obj.assignee_name) return obj.assignee_name;
+    if (obj.assignee_name && obj.assignee_name !== 'Chưa phân bổ') return obj.assignee_name;
     if (obj.assignee_id) {
+      if (obj.assignee_id === 'TEAM-FE' || obj.assignee_id === 'FE-Team') return 'Team Frontend';
+      if (obj.assignee_id === 'TEAM-BE' || obj.assignee_id === 'BE-Team') return 'Team Backend';
+      if (obj.assignee_id === 'TEAM-QA') return 'Team QA';
+      if (obj.assignee_id === 'Ban Giám Đốc' || obj.assignee_id === 'COMPANY') return 'Ban Giám Đốc';
       const tm = this.teams.find(t => t.id === obj.assignee_id || t.code === obj.assignee_id);
       if (tm) return tm.name;
       const emp = this.employees.find(e => e.employee_id === obj.assignee_id);
       if (emp) return emp.full_name;
       return obj.assignee_id;
     }
-    const lvl = (obj.level || '').toUpperCase();
-    if (lvl === 'COMPANY') return 'Ban Giám Đốc';
-    return 'Chưa phân bổ';
+    if (lvl === 'TEAM') return 'Đội ngũ Kỹ thuật';
+    return 'Đội ngũ Kỹ thuật';
   }
 
   getKrAssigneeLabel(kr: KeyResult): string {
