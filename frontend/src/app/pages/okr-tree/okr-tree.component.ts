@@ -854,9 +854,6 @@ interface TreeNode {
                           {{ isBotAuthor(ck.author) ? 'Nội dung ghi nhận từ Flow' : 'Nội dung Check-in' }}
                         </span>
                       </div>
-                      <span class="badge-readonly" title="Bản ghi check-in đã khóa và có giá trị pháp lý, không được phép chỉnh sửa">
-                        <i class="fa-solid fa-lock me-1"></i>Không thể sửa
-                      </span>
                     </div>
                     <div class="content-box-text">
                       {{ ck.note || 'Giá trị C được cập nhật tự động từ Activepieces Flow.' }}
