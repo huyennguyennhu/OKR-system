@@ -91,12 +91,22 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
 
     // Direct KR update by kr_id
     if (payload.kr_id && payload.current_value !== undefined) {
+      let targetKrId = payload.kr_id;
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const monthPrefix = `KR-M${currentMonth}-`;
+      if (['KR-A1', 'KR-B1', 'KR-C1'].includes(targetKrId)) {
+        const candidateId = targetKrId.replace('KR-', monthPrefix);
+        const exists = await get('SELECT kr_id FROM KeyResults WHERE kr_id = ?', [candidateId]);
+        if (exists) targetKrId = candidateId;
+      }
+
       const wfPayload = {
         ...payload,
         source: payload.source || 'activepieces',
         author: (!payload.author || payload.author.toLowerCase().includes('syrix') || payload.author.toLowerCase().includes('activepieces')) ? 'bot' : payload.author
       };
-      const updated = await recalculateOkrProgress(payload.kr_id, payload.current_value, wfPayload);
+      const updated = await recalculateOkrProgress(targetKrId, payload.current_value, wfPayload);
 
       // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
       const flowRunId = payload.run_id || `RUN-${Date.now()}`;
@@ -108,15 +118,15 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
           ON CONFLICT (run_id) DO NOTHING
         `, [
           flowRunId,
-          payload.flow_code || `FLOW-${payload.kr_id}`,
-          payload.flow_name || `Activepieces Automation Flow (${payload.kr_id})`,
+          payload.flow_code || `FLOW-${targetKrId}`,
+          payload.flow_name || `Activepieces Automation Flow (${targetKrId})`,
           payload.trigger_type || 'Webhook',
           payload.start_time || nowIso,
           payload.end_time || nowIso,
           payload.duration_ms || 1200,
           payload.input_count || 1,
           payload.output_count || 1,
-          `Đồng bộ giá trị C = ${payload.current_value} cho ${payload.kr_id}. Ghi chú: ${payload.comment || payload.note || 'None'}.`,
+          `Đồng bộ giá trị C = ${payload.current_value} cho ${targetKrId}. Ghi chú: ${payload.comment || payload.note || 'None'}.`,
           JSON.stringify(payload, null, 2)
         ]);
       } catch (flowErr) {
@@ -125,7 +135,7 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
 
       return res.status(200).json({
         success: true,
-        message: `Updated KR ${payload.kr_id} to ${payload.current_value}`,
+        message: `Updated KR ${targetKrId} to ${payload.current_value}`,
         updated
       });
     }
@@ -133,16 +143,26 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
     // Individual KR update from Activepieces Loop Piece
     if (payload.event_type === 'individual_kr_update' && payload.employee_id) {
       let targetKr = null;
+      const now = new Date();
+      const currentMonth = now.getMonth() + 1;
+      const activeTimelineId = `TL-M${currentMonth}-${now.getFullYear()}`;
+
       if (payload.kr_title) {
         targetKr = await get(
-          'SELECT * FROM KeyResults WHERE assignee_id = ? AND title LIKE ? LIMIT 1',
-          [payload.employee_id, `%${payload.kr_title}%`]
+          `SELECT k.* FROM KeyResults k
+           JOIN Objectives o ON k.objective_id = o.objective_id
+           WHERE k.assignee_id = ? AND k.title LIKE ?
+           ORDER BY CASE WHEN o.timeline_id = ? THEN 0 ELSE 1 END, k.kr_id DESC LIMIT 1`,
+          [payload.employee_id, `%${payload.kr_title}%`, activeTimelineId]
         );
       }
       if (!targetKr) {
         targetKr = await get(
-          'SELECT * FROM KeyResults WHERE assignee_id = ? AND parent_kr_id IS NOT NULL LIMIT 1',
-          [payload.employee_id]
+          `SELECT k.* FROM KeyResults k
+           JOIN Objectives o ON k.objective_id = o.objective_id
+           WHERE k.assignee_id = ? AND k.parent_kr_id IS NOT NULL
+           ORDER BY CASE WHEN o.timeline_id = ? THEN 0 ELSE 1 END, k.kr_id DESC LIMIT 1`,
+          [payload.employee_id, activeTimelineId]
         );
       }
       if (targetKr) {
