@@ -2012,7 +2012,30 @@ app.get('/api/flow-runs', async (req, res) => {
     });
 
     // 2. Fetch all runs
-    const allRuns = await all('SELECT * FROM FlowRuns ORDER BY start_time DESC');
+    const allRunsRaw = await all('SELECT * FROM FlowRuns ORDER BY start_time DESC');
+    const allRuns = allRunsRaw.map(r => {
+      if (!r.payload_json) {
+        return {
+          ...r,
+          payload_json: JSON.stringify({
+            session_info: {
+              run_id: r.run_id,
+              flow_code: r.flow_code,
+              flow_name: r.flow_name,
+              scan_time: r.start_time,
+              trigger_type: r.trigger_type,
+              execution_status: r.status
+            },
+            summary_metrics: {
+              impact: r.data_created || 'Đồng bộ kết quả đo lường tự động vào Key Results.',
+              input_count: r.input_count,
+              output_count: r.output_count
+            }
+          }, null, 2)
+        };
+      }
+      return r;
+    });
     
     // 3. Compute summaries per flow
     const flows = flowSpecs.map(spec => {

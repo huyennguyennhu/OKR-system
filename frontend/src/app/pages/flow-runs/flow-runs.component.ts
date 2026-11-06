@@ -121,11 +121,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
                 Tất cả ({{ allRuns.length }})
               </button>
             </div>
-
-            <button type="button" class="btn btn-primary" (click)="openSimulateModal(selectedFlowCode)">
-              <i class="fa-solid fa-play me-1"></i>
-              <span>Chạy mô phỏng</span>
-            </button>
           </div>
         </div>
 
@@ -1821,7 +1816,26 @@ export class FlowRunsComponent implements OnInit {
   }
 
   formatPayloadJson(raw: any): string {
-    if (!raw) return '{\n  "status": "empty"\n}';
+    if (!raw) {
+      if (this.selectedRunForModal) {
+        return JSON.stringify({
+          session_info: {
+            run_id: this.selectedRunForModal.run_id,
+            flow_code: this.selectedRunForModal.flow_code,
+            flow_name: this.selectedRunForModal.flow_name,
+            trigger_type: this.selectedRunForModal.trigger_type,
+            scan_time: this.selectedRunForModal.start_time,
+            execution_status: this.selectedRunForModal.status
+          },
+          summary_metrics: {
+            impact: this.selectedRunForModal.data_created || 'Dữ liệu đo lường đã được đồng bộ tự động vào Key Results.',
+            input_count: this.selectedRunForModal.input_count,
+            output_count: this.selectedRunForModal.output_count
+          }
+        }, null, 2);
+      }
+      return '{\n  "status": "Chưa có bản chụp JSON chi tiết"\n}';
+    }
     try {
       if (typeof raw === 'string') {
         const parsed = JSON.parse(raw);
