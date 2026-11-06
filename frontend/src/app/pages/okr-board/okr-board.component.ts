@@ -570,8 +570,168 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                 </div>
               </div>
 
-              <!-- Bảng 6 Cột Key Results Cấu Thành -->
-              <div class="table-container p-0">
+              <!-- 1. KHỐI MỤC TIÊU CẤP ĐỘI NGŨ TRỰC THUỘC (NẾU CÓ) -->
+              <div class="child-objectives-container border-top" *ngIf="getChildObjectives(obj).length > 0">
+                <div class="px-4 py-2.5 bg-light-subtle d-flex align-items-center justify-content-between border-bottom">
+                  <div class="d-flex align-items-center gap-2">
+                    <span class="badge badge-light-primary"><i class="fa-solid fa-sitemap me-1"></i> Cấp Đội ngũ</span>
+                    <strong class="text-dark" style="font-size: 13px;">
+                      Mục tiêu Cấp Đội ngũ Trực thuộc ({{ getChildObjectives(obj).length }} Mục tiêu)
+                    </strong>
+                  </div>
+                  <span class="text-muted" style="font-size: 11.5px;">Phân bổ mục tiêu chiến lược cho từng đội ngũ phụ trách</span>
+                </div>
+
+                <div class="table-responsive">
+                  <table class="table table-hover align-middle mb-0 child-team-table">
+                    <thead>
+                      <tr>
+                        <th style="width: 160px;">Mã Mục tiêu</th>
+                        <th>Mục tiêu Cấp Đội ngũ & Đội ngũ phụ trách</th>
+                        <th class="text-center" style="width: 110px;">Quy mô KR</th>
+                        <th style="width: 200px;">Tiến độ Hoàn thành</th>
+                        <th class="text-center" style="width: 140px;">Trạng thái</th>
+                        <th class="text-center" style="width: 100px;">Chi tiết</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <ng-container *ngFor="let child of getChildObjectives(obj)">
+                        <!-- Dòng thông tin Mục tiêu Đội ngũ -->
+                        <tr class="child-row-clickable" (click)="toggleChildObj(child.objective_id)">
+                          <td>
+                            <div class="d-flex align-items-center gap-1.5">
+                              <i class="fa-solid fa-chevron-right child-chevron me-1 text-primary" 
+                                 [class.rotate-90]="isChildExpanded(child.objective_id)"></i>
+                              <span class="badge badge-team-code">{{ child.objective_id }}</span>
+                            </div>
+                          </td>
+                          <td>
+                            <div class="d-flex flex-column">
+                              <strong class="text-dark" style="font-size: 13px;">{{ child.title }}</strong>
+                              <span class="text-muted d-flex align-items-center gap-1 mt-0.5" style="font-size: 11.5px;">
+                                <i class="fa-solid fa-users text-primary"></i>
+                                {{ getAssigneeLabel(child) }}
+                              </span>
+                            </div>
+                          </td>
+                          <td class="text-center">
+                            <span class="badge badge-light-secondary fw-semibold">
+                              {{ child.key_results?.length || 0 }} KRs
+                            </span>
+                          </td>
+                          <td>
+                            <div class="d-flex align-items-center gap-2">
+                              <div class="kr-progress-track flex-1">
+                                <div class="kr-progress-bar" [style.width.%]="child.progress" [ngClass]="getProgressBarColor(child.progress)"></div>
+                              </div>
+                              <span class="fw-bold" [ngClass]="getHealthTextClass(child.progress)" style="font-size: 13px; width: 45px; text-align: right;">
+                                {{ child.progress }}%
+                              </span>
+                            </div>
+                          </td>
+                          <td class="text-center">
+                            <span class="status-chip" [ngClass]="getHealthClass(child.progress)">
+                              <i class="fa-solid" [ngClass]="child.progress >= 75 ? 'fa-circle-check' : (child.progress >= 50 ? 'fa-triangle-exclamation' : 'fa-circle-xmark')"></i>
+                              {{ getHealthLabel(child.progress) }}
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            <button type="button" class="btn btn-sm btn-link p-0 text-primary text-decoration-none fw-semibold" style="font-size: 12px;">
+                              {{ isChildExpanded(child.objective_id) ? 'Thu gọn' : 'Xem KRs' }}
+                            </button>
+                          </td>
+                        </tr>
+
+                        <!-- Bảng Key Results của Mục tiêu Đội ngũ khi mở rộng -->
+                        <tr *ngIf="isChildExpanded(child.objective_id)" class="child-krs-expanded-row">
+                          <td colspan="6" class="p-0 border-0 bg-light-subtle">
+                            <div class="nested-krs-box m-3 p-3 bg-white rounded border shadow-2xs">
+                              <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 12.5px;">
+                                  <i class="fa-solid fa-list-check text-primary"></i>
+                                  Key Results cấu thành thuộc <strong>{{ child.objective_id }}</strong>
+                                </span>
+                                <span class="badge badge-light-primary" style="font-size: 11px;">
+                                  {{ child.key_results?.length || 0 }} Key Results
+                                </span>
+                              </div>
+
+                              <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0 kr-table">
+                                  <thead>
+                                    <tr>
+                                      <th style="width: 130px;">Mã KR</th>
+                                      <th>Kết quả Then chốt & PIC</th>
+                                      <th class="text-center" style="width: 170px;">Đo lường</th>
+                                      <th style="width: 220px;">Tiến độ Hoàn thành</th>
+                                      <th class="text-center" style="width: 130px;">Đạt SLA</th>
+                                      <th class="text-center" style="width: 150px;">Cơ chế Đo lường</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr *ngFor="let kr of child.key_results">
+                                      <td><span class="kr-code-badge">{{ kr.kr_id }}</span></td>
+                                      <td>
+                                        <div class="kr-title-wrapper">
+                                          <span class="kr-title-text">{{ kr.title }}</span>
+                                          <span class="kr-assignee-sub">
+                                            <i class="fa-regular fa-user me-1"></i>{{ getKrAssigneeLabel(kr) }}
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td class="text-center">
+                                        <div class="metric-val-flow">
+                                          <span class="val-start text-muted">{{ kr.start_value }}{{ kr.unit || '%' }}</span>
+                                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                          <span class="val-current fw-bold" [ngClass]="getKrProgress(kr) >= 75 ? 'text-success' : 'text-primary'">
+                                            {{ kr.current_value }}{{ kr.unit || '%' }}
+                                          </span>
+                                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                          <span class="val-target fw-semibold text-dark">{{ kr.expected_value }}{{ kr.unit || '%' }}</span>
+                                        </div>
+                                      </td>
+                                      <td>
+                                        <div class="d-flex align-items-center gap-2">
+                                          <div class="kr-progress-track flex-1">
+                                            <div class="kr-progress-bar" [style.width.%]="getKrProgress(kr)" [ngClass]="getProgressBarColor(getKrProgress(kr))"></div>
+                                          </div>
+                                          <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(kr))">
+                                            {{ getKrProgress(kr) }}%
+                                          </span>
+                                        </div>
+                                      </td>
+                                      <td class="text-center">
+                                        <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(kr)">
+                                          <i class="fa-solid" [ngClass]="getKrProgress(kr) >= 75 ? 'fa-check' : (getKrProgress(kr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                          {{ getKrSlaLabel(kr) }}
+                                        </span>
+                                      </td>
+                                      <td class="text-center">
+                                        <span class="badge-source-gitlab" *ngIf="kr.flow_code" [title]="'Kịch bản: ' + kr.flow_code">
+                                          <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
+                                        </span>
+                                        <span class="badge-source-manual" *ngIf="!kr.flow_code">
+                                          <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                                        </span>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      </ng-container>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <!-- 2. BẢNG KEY RESULTS TRỰC TIẾP (HIỂN THỊ NẾU CÓ KR TRỰC TIẾP, HOẶC KHÔNG CÓ MỤC TIÊU CON) -->
+              <div class="table-container p-0" *ngIf="(obj.key_results && obj.key_results.length > 0) || getChildObjectives(obj).length === 0">
+                <div class="px-4 py-2 bg-light border-top border-bottom d-flex align-items-center justify-content-between" *ngIf="getChildObjectives(obj).length > 0 && obj.key_results && obj.key_results.length > 0">
+                  <strong class="text-dark" style="font-size: 13px;">Key Results trực tiếp</strong>
+                </div>
                 <table class="table table-hover align-middle mb-0 kr-table">
                   <thead>
                     <tr>
@@ -644,9 +804,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                       </td>
                     </tr>
 
-                    <tr *ngIf="!obj.key_results || obj.key_results.length === 0">
+                    <tr *ngIf="getChildObjectives(obj).length === 0 && (!obj.key_results || obj.key_results.length === 0)">
                       <td colspan="6" class="text-center text-muted py-3" style="font-size: 13px;">
-                        <i class="fa-regular fa-circle-question me-1"></i> Chưa có Key Result nào gắn với mục tiêu này.
+                        <i class="fa-regular fa-circle-question me-1"></i> Chưa có Mục tiêu con hay Key Result nào gắn với mục tiêu này.
                       </td>
                     </tr>
                   </tbody>
@@ -706,7 +866,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                   </td>
                   <td class="text-center">
                     <span class="badge badge-light-primary fw-bold" style="font-size: 12px;">
-                      {{ obj.key_results?.length || 0 }} KRs
+                      {{ getAggregatedKrCount(obj) }} KRs
                     </span>
                   </td>
                   <td>
@@ -1175,6 +1335,54 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       transition: width 0.4s ease;
     }
 
+    /* Child Objectives Block */
+    .child-objectives-container {
+      background: #ffffff;
+    }
+    .child-team-table th {
+      font-size: 11.5px;
+      font-weight: 600;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      background: #f8fafc;
+      border-bottom: 1px solid #e2e8f0;
+      padding: 9px 16px;
+    }
+    .child-team-table td {
+      padding: 11px 16px;
+      font-size: 13px;
+      border-bottom: 1px solid #f1f5f9;
+    }
+    .child-row-clickable {
+      cursor: pointer;
+      transition: background 0.15s ease;
+    }
+    .child-row-clickable:hover {
+      background: #f8fafc;
+    }
+    .child-chevron {
+      transition: transform 0.2s ease;
+      display: inline-block;
+    }
+    .child-chevron.rotate-90 {
+      transform: rotate(90deg);
+    }
+    .badge-team-code {
+      font-size: 11px;
+      font-weight: 600;
+      background: #eff6ff;
+      color: #2563eb;
+      padding: 3px 8px;
+      border-radius: 4px;
+      border: 1px solid #dbeafe;
+    }
+    .nested-krs-box {
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #ffffff;
+    }
+
     /* KR Table inside Card */
     .kr-table th {
       font-size: 12px;
@@ -1466,6 +1674,27 @@ export class OkrBoardComponent implements OnInit {
   selectedLevelFilter: 'ALL' | 'COMPANY' | 'TEAM' | 'PERSONAL' = 'ALL';
   searchQuery = '';
   viewMode: 'cards' | 'table' = 'cards';
+  expandedChildObjectives: { [key: string]: boolean } = {};
+
+  getChildObjectives(parentObj: Objective): Objective[] {
+    if (!parentObj) return [];
+    return this.objectives.filter(o => o.parent_id === parentObj.objective_id);
+  }
+
+  isChildExpanded(id: string): boolean {
+    return this.expandedChildObjectives[id] !== false;
+  }
+
+  toggleChildObj(id: string, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.expandedChildObjectives[id] = !this.isChildExpanded(id);
+  }
+
+  getAggregatedKrCount(obj: Objective): number {
+    if (obj.key_results && obj.key_results.length > 0) return obj.key_results.length;
+    const children = this.getChildObjectives(obj);
+    return children.reduce((acc, c) => acc + (c.key_results ? c.key_results.length : 0), 0);
+  }
 
   isSpaceDropdownOpen = false;
   isTimelineTreeDropdownOpen = false;
