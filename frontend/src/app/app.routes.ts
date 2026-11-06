@@ -17,7 +17,7 @@ import { ObjectiveDetailComponent } from './pages/objective-detail/objective-det
 export const routes: Routes = [
   { path: '', redirectTo: 'okr-board', pathMatch: 'full' },
   // Group OKR
-  { path: 'okr-board', component: OkrBoardComponent, title: 'OKR Board - Tổng quan Tiến độ' },
+  { path: 'okr-board', component: OkrBoardComponent, title: 'OKR Dashboard - Tổng quan Tiến độ' },
   { path: 'okr-tree', component: OkrTreeComponent, title: 'OKR Tree - Sơ đồ Cây Phân cấp' },
   { path: 'objectives', component: ObjectivesListComponent, title: 'Objectives - Quản lý Mục tiêu' },
   { path: 'objectives/:id', component: ObjectiveDetailComponent, title: 'Objective Detail - Chi tiết Mục tiêu' },

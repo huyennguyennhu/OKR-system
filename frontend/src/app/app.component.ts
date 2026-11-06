@@ -33,9 +33,9 @@ import { ConfirmDialogService } from './services/confirm-dialog.service';
               <i class="fa-solid fa-chevron-right section-chevron" [class.rotated]="groupOpenState['okr']"></i>
             </div>
             <div class="group-items" *ngIf="isSidebarCollapsed || groupOpenState['okr']">
-              <a routerLink="/okr-board" routerLinkActive="active" class="nav-item" title="OKR Board (Dashboard KPI tổng quan)">
+              <a routerLink="/okr-board" routerLinkActive="active" class="nav-item" title="OKR Dashboard (Tổng quan tiến độ & KPI)">
                 <i class="fa-solid fa-chart-pie fa-fw"></i>
-                <span>OKR Board</span>
+                <span>OKR Dashboard</span>
               </a>
               <a routerLink="/okr-tree" routerLinkActive="active" class="nav-item" title="OKR Tree (Cây mục tiêu đa tầng & Tiến độ phân cấp)">
                 <i class="fa-solid fa-sitemap fa-fw"></i>

@@ -20,7 +20,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
           <div>
             <div class="d-flex align-items-center gap-2 mb-1">
-              <h3 class="page-title mb-0">OKR Executive Board</h3>
+              <h3 class="page-title mb-0">OKR Dashboard</h3>
               <span class="badge-timeline-active">
                 <i class="fa-solid fa-calendar-check text-primary me-1"></i>
                 {{ selectedTimelineTree }}
@@ -417,7 +417,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       <div class="card text-center p-5 mb-4 shadow-sm" *ngIf="loading">
         <div class="table-loading-content">
           <div class="loading-spinner-circle"></div>
-          <span class="mt-2 text-muted fw-semibold">Đang cập nhật chỉ số OKR Board...</span>
+          <span class="mt-2 text-muted fw-semibold">Đang cập nhật chỉ số OKR Dashboard...</span>
         </div>
       </div>
 

@@ -64,7 +64,7 @@
      - Toàn bộ các dòng dữ liệu (`*ngFor`) và dòng rỗng (Empty State) bắt buộc phải được bao bọc trong `<ng-container *ngIf="!loading">`.
      - Khi `loading = true`, **chỉ duy nhất dòng xoay tải dữ liệu được render**. Tuyệt đối không để dữ liệu hiển thị song song cùng lúc với dòng loading.
      - Khi `loading = false`, dòng loading lập tức biến mất hoàn toàn và các dòng dữ liệu mới được hiển thị.
-     - Đối với các trang tải nhiều nguồn API đồng thời (như OKR Settings, OKR Board): bắt buộc sử dụng `forkJoin` (kèm `catchError`) để đồng bộ thời điểm gán dữ liệu và tắt `loading = false` trong cùng 1 chu kỳ, tránh hiện tượng trang đã hiện 1 phần data nhưng vẫn còn xoay vòng.
+     - Đối với các trang tải nhiều nguồn API đồng thời (như OKR Settings, OKR Dashboard): bắt buộc sử dụng `forkJoin` (kèm `catchError`) để đồng bộ thời điểm gán dữ liệu và tắt `loading = false` trong cùng 1 chu kỳ, tránh hiện tượng trang đã hiện 1 phần data nhưng vẫn còn xoay vòng.
    - **Khóa trang Không làm mờ (Non-blurring Page Lock):**
      - Tuyệt đối **không làm mờ hay làm tối màn hình** (`background: transparent !important; backdrop-filter: none;`). Mọi thông tin hiện có trên trang vẫn sáng rõ, sắc nét, không gây nhức mắt hay che khuất giao diện.
      - Khóa hoàn toàn thao tác của người dùng bằng một lớp phủ trong suốt toàn màn hình (`position: fixed; inset: 0; z-index: 9999; pointer-events: auto; cursor: wait;`). Mọi lượt nhấp chuột (click, focus, submit) đều bị ngăn chặn an toàn.
@@ -89,7 +89,7 @@
      Mọi trang có bảng dữ liệu tuân theo cấu trúc phân tầng rõ ràng, tối giản, **không bọc trong khung viền (bỏ hoàn toàn thẻ `.card` bao ngoài)**:
      1. **Tên trang (Page Title):**
         - Thẻ `<h3>` (`.card-title mb-1`) có font-size cố định `16px`, font-weight `700`.
-        - **Lấy đúng tên tab điều hướng:** Tiêu đề trang bắt buộc phải trùng khớp chính xác 100% với tên tab hiển thị trên menu sidebar (ví dụ: `OKR Board`, `OKR Tree`, `OKR Settings`, `GitLab Data`, `AuditLog`, `Team`, `Nhân viên`, `Objectives`).
+        - **Lấy đúng tên tab điều hướng:** Tiêu đề trang bắt buộc phải trùng khớp chính xác 100% với tên tab hiển thị trên menu sidebar (ví dụ: `OKR Dashboard`, `OKR Tree`, `OKR Settings`, `GitLab Data`, `AuditLog`, `Team`, `Nhân viên`, `Objectives`).
         - **Không kèm icon:** Bỏ hoàn toàn biểu tượng icon `<i>` phía trước tiêu đề để giao diện thanh lịch, tối giản. Không dùng hậu tố chú giải hay song ngữ rườm rà.
         - **Khoảng cách lề dưới:** Thanh tiêu đề `.page-top-bar` có khoảng cách lề dưới chuẩn `margin-bottom: 1.5rem;` (tương đương class `mb-4`).
      2. **Sub title (Mô tả ngắn):** Thẻ `<p class="subtitle">` giải thích ngắn gọn mục đích và nguồn dữ liệu của trang.
