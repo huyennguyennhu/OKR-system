@@ -2273,18 +2273,23 @@ export class OkrTreeComponent implements OnInit {
   selectedFilterLevel: string = 'All';
   selectedFilterDueDate: string = 'All';
   selectedFilterIndicator: string = 'All';
+  private readonly now = new Date();
+  private readonly curMonth = this.now.getMonth() + 1;
+  private readonly curYear = this.now.getFullYear();
+
   timelines: Timeline[] = [];
-  selectedTimeline = '2026';
+  selectedTimeline = String(new Date().getFullYear());
   timelineOptions: string[] = ['2026', '2025', '2024'];
   isTimelineDropdownOpen = false;
 
-  selectedTimelineTree = 'Month 10, 2026';
-  selectedTimelineId = 'TL-M10-2026';
-  selectedTimelineNodeTitle = 'Month 8';
+  selectedTimelineTree = `Month ${new Date().getMonth() + 1}, ${new Date().getFullYear()}`;
+  selectedTimelineId = `TL-M${new Date().getMonth() + 1}-${new Date().getFullYear()}`;
+  selectedTimelineNodeTitle = `Month ${new Date().getMonth() + 1}`;
   collapsedNavNodes: { [key: string]: boolean } = {
-    'TL-Q1-2026': true,
-    'TL-Q2-2026': true,
-    'TL-Q4-2026': true
+    [`TL-Q1-${new Date().getFullYear()}`]: Math.ceil((new Date().getMonth() + 1) / 3) !== 1,
+    [`TL-Q2-${new Date().getFullYear()}`]: Math.ceil((new Date().getMonth() + 1) / 3) !== 2,
+    [`TL-Q3-${new Date().getFullYear()}`]: Math.ceil((new Date().getMonth() + 1) / 3) !== 3,
+    [`TL-Q4-${new Date().getFullYear()}`]: Math.ceil((new Date().getMonth() + 1) / 3) !== 4
   };
 
   extractTimelineNumber(str: string): number {
@@ -2527,8 +2532,9 @@ export class OkrTreeComponent implements OnInit {
           if (yearTitles.length > 0) {
             const uniqueYears = Array.from(new Set(yearTitles)).sort((a, b) => b.localeCompare(a));
             this.timelineOptions = uniqueYears;
-            if (uniqueYears.includes('2026')) {
-              this.selectedTimeline = '2026';
+            const currentYearStr = String(new Date().getFullYear());
+            if (uniqueYears.includes(currentYearStr)) {
+              this.selectedTimeline = currentYearStr;
             } else {
               this.selectedTimeline = uniqueYears[0];
             }
@@ -2537,15 +2543,29 @@ export class OkrTreeComponent implements OnInit {
             this.selectedTimeline = '2026';
           }
 
-          // Khởi tạo khớp với Month 10, 2026 nếu có trong DB
-          const defaultTl = this.timelines.find(t => t.id === 'TL-M10-2026' || (t.title && t.title.toLowerCase().includes('month 10')))
-                         || this.timelines.find(t => t.id === 'TL-M11-2026')
-                         || this.timelines.find(t => t.id === 'TL-M12-2026')
-                         || this.timelines[0];
-          if (defaultTl) {
-            this.selectedTimelineId = defaultTl.id;
-            this.selectedTimelineTree = `${defaultTl.title}, 2026`;
-            this.selectedTimelineNodeTitle = defaultTl.title;
+          // Chủ động phát hiện và hiển thị đúng tháng hiện tại
+          const currentTl = this.findCurrentMonthTimeline(this.timelines);
+          if (currentTl) {
+            const prevId = this.selectedTimelineId;
+            this.selectedTimelineId = currentTl.id;
+            const parentYear = this.getTimelineYear(currentTl, this.timelines);
+            this.selectedTimelineTree = `${currentTl.title}, ${parentYear}`;
+            this.selectedTimelineNodeTitle = currentTl.title;
+            this.selectedTimeline = parentYear;
+
+            // Tự động mở rộng Quarter chứa tháng hiện tại trong dropdown tree
+            if (currentTl.parent_id) {
+              this.collapsedNavNodes[currentTl.parent_id] = false;
+            }
+
+            // Nếu timeline id cập nhật khác giá trị mặc định, load lại dữ liệu cây
+            if (prevId !== currentTl.id && this.selectedSpaceId) {
+              this.loadTreeData();
+            }
+          } else if (this.timelines.length > 0) {
+            this.selectedTimelineId = this.timelines[0].id;
+            this.selectedTimelineTree = this.timelines[0].title;
+            this.selectedTimelineNodeTitle = this.timelines[0].title;
           }
         } else {
           this.timelineOptions = ['2026', '2025', '2024'];
@@ -2558,6 +2578,71 @@ export class OkrTreeComponent implements OnInit {
         this.selectedTimeline = '2026';
       }
     });
+  }
+
+  // Tự động nhận diện Timeline tương ứng với tháng và năm hiện tại
+  findCurrentMonthTimeline(timelines: Timeline[]): Timeline | undefined {
+    if (!timelines || timelines.length === 0) return undefined;
+    const now = new Date();
+    const curMonth = now.getMonth() + 1;
+    const curYear = now.getFullYear();
+    const nowTime = now.getTime();
+
+    // 1. Tìm theo khoảng ngày thực tế bao phủ ngày hiện tại (cấp month)
+    const activeByDate = timelines.find(t => {
+      if (!t.start_date || !t.end_date) return false;
+      const s = new Date(t.start_date).getTime();
+      const e = new Date(t.end_date).setHours(23, 59, 59, 999);
+      const isMonth = t.level === 'month' || (t.title && /month|tháng/i.test(t.title));
+      return !isNaN(s) && !isNaN(e) && s <= nowTime && nowTime <= e && isMonth;
+    });
+    if (activeByDate) return activeByDate;
+
+    // 2. Tìm theo ID hoặc Title khớp Tháng và Năm hiện tại (ví dụ: TL-M11-2026 hoặc Month 11)
+    const targetId = `TL-M${curMonth}-${curYear}`;
+    const byId = timelines.find(t => t.id === targetId || t.id === `TL-M0${curMonth}-${curYear}`);
+    if (byId) return byId;
+
+    const byMonthAndYear = timelines.find(t => {
+      const titleLower = (t.title || '').toLowerCase();
+      const isMonth = titleLower.includes(`month ${curMonth}`) || titleLower.includes(`tháng ${curMonth}`);
+      const isYear = (t.id && t.id.includes(String(curYear))) || (t.start_date && t.start_date.includes(String(curYear)));
+      return isMonth && isYear;
+    });
+    if (byMonthAndYear) return byMonthAndYear;
+
+    // 3. Tìm theo Title khớp Tháng hiện tại
+    const byMonthTitle = timelines.find(t => {
+      const titleLower = (t.title || '').toLowerCase();
+      return titleLower === `month ${curMonth}` || titleLower === `tháng ${curMonth}`;
+    });
+    if (byMonthTitle) return byMonthTitle;
+
+    return undefined;
+  }
+
+  getTimelineYear(tl: Timeline, timelines: Timeline[]): string {
+    if (tl.start_date) {
+      const match = tl.start_date.match(/\b(20\d\d)\b/);
+      if (match) return match[1];
+    }
+    if (tl.id) {
+      const match = tl.id.match(/\b(20\d\d)\b/);
+      if (match) return match[1];
+    }
+    let current: Timeline | undefined = tl;
+    while (current && current.parent_id) {
+      const parent = timelines.find(p => p.id === current!.parent_id);
+      if (parent) {
+        if (parent.level === 'year') return parent.title;
+        const match = (parent.title || '').match(/\b(20\d\d)\b/);
+        if (match) return match[1];
+        current = parent;
+      } else {
+        break;
+      }
+    }
+    return String(new Date().getFullYear());
   }
 
   toggleTimelineDropdown(event: MouseEvent): void {
