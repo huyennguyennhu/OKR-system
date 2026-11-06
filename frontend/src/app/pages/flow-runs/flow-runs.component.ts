@@ -47,14 +47,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
         <!-- Flow Cards Section -->
         <div class="flow-cards-section mb-4">
-          <div class="flow-cards-header mb-3">
-            <div class="d-flex align-items-center justify-content-between">
-              <span class="cards-section-label">
-                <strong>Danh sách Activepieces Flows ({{ flows.length }})</strong> — <em>Nhấn vào từng card để mở trang chi tiết bảng lịch sử lần chạy:</em>
-              </span>
-            </div>
-          </div>
-
           <!-- Cards Grid -->
           <div class="flow-cards-grid">
             <div 
