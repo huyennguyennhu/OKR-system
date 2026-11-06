@@ -353,16 +353,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                   <i class="fa-regular fa-user me-1"></i> Chưa có dữ liệu đóng góp cá nhân trong chu kỳ này.
                 </div>
               </div>
-
-              <div class="chart-summary-bar d-flex align-items-center justify-content-between pt-2 mt-2 border-top">
-                <span class="text-muted d-flex align-items-center gap-1" style="font-size: 11.5px;">
-                  <i class="fa-solid fa-circle-check text-success"></i>
-                  Đo lường tự động từ GitLab qua Activepieces Flow
-                </span>
-                <span class="text-primary fw-semibold" style="font-size: 11.5px;">
-                  Minh bạch 100%
-                </span>
-              </div>
             </div>
           </div>
         </div>
