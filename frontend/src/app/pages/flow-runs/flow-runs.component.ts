@@ -64,12 +64,7 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
               title="Nhấn để mở trang bảng lần chạy của {{ flow.flow_code }}">
               
               <div class="card-header-line">
-                <div class="d-flex align-items-center gap-2">
-                  <span class="badge badge-code">{{ flow.flow_code }}</span>
-                  <span class="badge badge-active">
-                    <i class="fa-solid fa-circle-check me-1"></i>Hoạt động
-                  </span>
-                </div>
+                <span class="badge badge-code">{{ flow.flow_code }}</span>
               </div>
 
               <h4 class="flow-card-title">{{ flow.flow_name }}</h4>
@@ -169,7 +164,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
           <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
             <div class="d-flex align-items-center gap-2">
               <span class="badge badge-code">{{ currentFlowSummary.flow_code }}</span>
-              <span class="badge badge-active"><i class="fa-solid fa-circle-check me-1"></i>Hoạt động</span>
               <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ currentFlowSummary.flow_name }}</span>
             </div>
             <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 12.5px;">
