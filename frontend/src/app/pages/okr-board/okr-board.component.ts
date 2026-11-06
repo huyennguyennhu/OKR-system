@@ -319,39 +319,47 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
               <span class="badge badge-light-primary"><i class="fa-solid fa-medal me-1"></i> Top Kỹ sư</span>
             </div>
 
-            <div class="chart-body py-2">
-              <div class="leaderboard-list d-flex flex-column gap-2">
-                <div class="leaderboard-item" *ngFor="let c of bestContributors">
-                  <!-- Hàng 1: Huy chương, Mã định danh, Họ tên & Tỷ lệ % tiến độ -->
-                  <div class="d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                      <span class="rank-medal" style="font-size: 16px;">{{ c.medal }}</span>
-                      <span class="badge badge-emp-code">{{ c.displayCode }}</span>
-                      <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
-                    </div>
-                    <span class="fw-bold" [ngClass]="getHealthTextClass(c.avgProgress)" style="font-size: 13.5px;">
-                      {{ c.avgProgress }}%
-                    </span>
-                  </div>
-
-                  <!-- Hàng 2: Đội ngũ và Số lượng Key Results cá nhân -->
-                  <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 11.5px;">
-                    <span class="d-flex align-items-center gap-1.5">
-                      <i class="fa-solid fa-users text-primary" style="font-size: 11px;"></i>
-                      <span>{{ c.teamName }}</span>
-                    </span>
-                    <span><strong class="text-dark">{{ c.krCount }}</strong> KRs cá nhân</span>
-                  </div>
-
-                  <!-- Hàng 3: Thanh tiến độ trải rộng toàn bộ 100% -->
-                  <div class="kr-progress-track w-100" style="height: 7px; background: #e2e8f0;">
-                    <div class="kr-progress-bar" [style.width.%]="c.avgProgress" [ngClass]="getProgressBarColor(c.avgProgress)"></div>
-                  </div>
-                </div>
-
-                <div *ngIf="bestContributors.length === 0" class="text-center py-4 text-muted" style="font-size: 13px;">
-                  <i class="fa-regular fa-user me-1"></i> Chưa có dữ liệu đóng góp cá nhân trong chu kỳ này.
-                </div>
+            <div class="chart-body p-0 mt-2">
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 leaderboard-table">
+                  <tbody>
+                    <tr *ngFor="let c of bestContributors">
+                      <td class="text-center" style="width: 44px;">
+                        <span class="rank-medal" style="font-size: 16px;">{{ c.medal }}</span>
+                      </td>
+                      <td style="width: 220px;">
+                        <div class="d-flex align-items-center gap-2">
+                          <span class="badge badge-emp-code">{{ c.displayCode }}</span>
+                          <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
+                        </div>
+                      </td>
+                      <td style="width: 180px;">
+                        <span class="d-flex align-items-center gap-1.5 text-muted">
+                          <i class="fa-solid fa-users text-primary" style="font-size: 12px;"></i>
+                          <span>{{ c.teamName }}</span>
+                        </span>
+                      </td>
+                      <td style="width: 150px;">
+                        <span class="text-muted"><strong class="text-dark">{{ c.krCount }}</strong> KRs cá nhân</span>
+                      </td>
+                      <td>
+                        <div class="d-flex align-items-center gap-2.5" style="max-width: 220px;">
+                          <div class="kr-progress-track flex-grow-1" style="height: 7px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
+                            <div class="kr-progress-bar" [style.width.%]="c.avgProgress" [ngClass]="getProgressBarColor(c.avgProgress)" style="height: 100%;"></div>
+                          </div>
+                          <span class="fw-bold" [ngClass]="getHealthTextClass(c.avgProgress)" style="min-width: 45px; text-align: right;">
+                            {{ c.avgProgress }}%
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr *ngIf="bestContributors.length === 0">
+                      <td colspan="5" class="text-center py-4 text-muted" style="font-size: 13px;">
+                        <i class="fa-regular fa-user me-1"></i> Chưa có dữ liệu đóng góp cá nhân trong chu kỳ này.
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
@@ -1182,22 +1190,23 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       color: #64748b;
     }
 
-    /* Leaderboard Item - Multi-row card style */
-    .leaderboard-item {
-      background: #f8fafc;
-      border: 1px solid #edf2f7;
-      border-radius: 8px;
-      padding: 10px 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      transition: all 0.2s ease;
+    /* Leaderboard Table */
+    .leaderboard-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
     }
-    .leaderboard-item:hover {
-      background: #f1f5f9;
-      border-color: #cbd5e1;
-      transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+    .leaderboard-table td {
+      padding: 10px 14px;
+      vertical-align: middle;
+      border-bottom: 1px solid #f1f5f9;
+      font-size: 13px;
+    }
+    .leaderboard-table tr:last-child td {
+      border-bottom: none;
+    }
+    .leaderboard-table tr:hover td {
+      background-color: #f8fafc;
     }
     .badge-emp-code {
       font-size: 11px;
