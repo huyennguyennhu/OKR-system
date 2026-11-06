@@ -1009,13 +1009,14 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
     }
     .kpi-progress-bar-bg {
       height: 6px;
-      background: #f1f5f9;
+      background: #e2e8f0;
       border-radius: 4px;
       overflow: hidden;
     }
     .kpi-progress-bar-fill {
       height: 100%;
       border-radius: 4px;
+      display: block;
       transition: width 0.4s ease;
     }
     .kpi-footer-note {
@@ -1029,7 +1030,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       height: 6px;
       border-radius: 4px;
       overflow: hidden;
-      background: #f1f5f9;
+      background: #e2e8f0;
       gap: 2px;
     }
     .segmented-bar .segment {
@@ -1352,13 +1353,14 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
     }
     .obj-progress-bar-container {
       height: 8px;
-      background: #f1f5f9;
+      background: #e2e8f0;
       border-radius: 6px;
       overflow: hidden;
     }
     .obj-progress-bar-fill {
       height: 100%;
       border-radius: 6px;
+      display: block;
       transition: width 0.4s ease;
     }
 
@@ -1462,7 +1464,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
     }
     .kr-progress-track {
       height: 6px;
-      background: #f1f5f9;
+      background: #e2e8f0;
       border-radius: 4px;
       overflow: hidden;
       min-width: 90px;
@@ -1470,6 +1472,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
     .kr-progress-bar {
       height: 100%;
       border-radius: 4px;
+      display: block;
       transition: width 0.3s ease;
     }
     .kr-pct-label {
@@ -1477,6 +1480,54 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       width: 42px;
       text-align: right;
     }
+
+    /* Core Progress & Status Colors */
+    .bg-success,
+    .kr-progress-bar.bg-success,
+    .obj-progress-bar-fill.bg-success,
+    .kpi-progress-bar-fill.bg-success,
+    .segment.bg-success,
+    .legend-dot.bg-success {
+      background-color: #10b981 !important;
+    }
+
+    .bg-warning,
+    .kr-progress-bar.bg-warning,
+    .obj-progress-bar-fill.bg-warning,
+    .kpi-progress-bar-fill.bg-warning,
+    .segment.bg-warning,
+    .legend-dot.bg-warning {
+      background-color: #f59e0b !important;
+    }
+
+    .bg-danger,
+    .kr-progress-bar.bg-danger,
+    .obj-progress-bar-fill.bg-danger,
+    .kpi-progress-bar-fill.bg-danger,
+    .segment.bg-danger,
+    .legend-dot.bg-danger {
+      background-color: #ef4444 !important;
+    }
+
+    .bg-primary,
+    .kr-progress-bar.bg-primary,
+    .obj-progress-bar-fill.bg-primary,
+    .kpi-progress-bar-fill.bg-primary,
+    .segment.bg-primary,
+    .legend-dot.bg-primary {
+      background-color: #3157D5 !important;
+    }
+
+    .bg-info {
+      background-color: #0284c7 !important;
+    }
+
+    .text-success { color: #10b981 !important; }
+    .text-warning { color: #f59e0b !important; }
+    .text-danger { color: #ef4444 !important; }
+    .text-primary { color: #3157D5 !important; }
+    .text-info { color: #0284c7 !important; }
+    .text-muted { color: #64748b !important; }
     .sla-badge {
       font-size: 11.5px;
       font-weight: 600;
