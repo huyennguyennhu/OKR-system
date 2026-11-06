@@ -270,37 +270,37 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                 </div>
               </div>
 
-              <div class="donut-legend d-flex flex-column gap-3">
+              <div class="donut-legend">
                 <div class="legend-item">
-                  <div class="legend-dot bg-success"></div>
-                  <div class="legend-info">
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                      <span class="legend-label">Đúng hạn (>=75%)</span>
-                      <strong class="legend-count text-success">{{ onTrackCount }}</strong>
-                    </div>
-                    <span class="legend-pct text-muted">{{ onTrackPct }}% tổng số</span>
+                  <div class="legend-left">
+                    <div class="legend-dot bg-success"></div>
+                    <span class="legend-label">Đúng hạn (>=75%)</span>
+                  </div>
+                  <div class="legend-right">
+                    <strong class="legend-count text-success">{{ onTrackCount }}</strong>
+                    <span class="legend-pct text-muted">({{ onTrackPct }}%)</span>
                   </div>
                 </div>
 
                 <div class="legend-item">
-                  <div class="legend-dot bg-warning"></div>
-                  <div class="legend-info">
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                      <span class="legend-label">Cần chú ý (50-74%)</span>
-                      <strong class="legend-count text-warning">{{ atRiskCount }}</strong>
-                    </div>
-                    <span class="legend-pct text-muted">{{ atRiskPct }}% tổng số</span>
+                  <div class="legend-left">
+                    <div class="legend-dot bg-warning"></div>
+                    <span class="legend-label">Cần chú ý (50-74%)</span>
+                  </div>
+                  <div class="legend-right">
+                    <strong class="legend-count text-warning">{{ atRiskCount }}</strong>
+                    <span class="legend-pct text-muted">({{ atRiskPct }}%)</span>
                   </div>
                 </div>
 
                 <div class="legend-item">
-                  <div class="legend-dot bg-danger"></div>
-                  <div class="legend-info">
-                    <div class="d-flex justify-content-between align-items-center gap-3">
-                      <span class="legend-label">Chậm tiến độ (<50%)</span>
-                      <strong class="legend-count text-danger">{{ behindCount }}</strong>
-                    </div>
-                    <span class="legend-pct text-muted">{{ behindPct }}% tổng số</span>
+                  <div class="legend-left">
+                    <div class="legend-dot bg-danger"></div>
+                    <span class="legend-label">Chậm tiến độ (&lt;50%)</span>
+                  </div>
+                  <div class="legend-right">
+                    <strong class="legend-count text-danger">{{ behindCount }}</strong>
+                    <span class="legend-pct text-muted">({{ behindPct }}%)</span>
                   </div>
                 </div>
               </div>
@@ -1136,10 +1136,34 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       margin-top: 2px;
     }
 
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1;
+      min-width: 260px;
+      max-width: 380px;
+    }
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 10px;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 12px;
+      background: #f8fafc;
+      border: 1px solid #f1f5f9;
+      border-radius: 8px;
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+    .legend-item:hover {
+      background: #f1f5f9;
+      border-color: #e2e8f0;
+    }
+    .legend-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
     }
     .legend-dot {
       width: 10px;
@@ -1147,20 +1171,25 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       border-radius: 50%;
       flex-shrink: 0;
     }
-    .legend-info {
-      display: flex;
-      flex-direction: column;
-      min-width: 160px;
-    }
     .legend-label {
-      font-size: 12.5px;
-      color: #334155;
+      font-size: 13px;
+      color: #1e293b;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .legend-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
     }
     .legend-count {
       font-size: 13px;
+      font-weight: 700;
     }
     .legend-pct {
-      font-size: 11.5px;
+      font-size: 12px;
+      color: #64748b;
     }
 
     /* Leaderboard Item - Multi-row card style */
