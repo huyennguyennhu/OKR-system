@@ -2518,6 +2518,7 @@ export class OkrTreeComponent implements OnInit {
     if (!nodes || !nodes.length) return false;
     for (const node of nodes) {
       if (node.id === targetId) {
+        node.expanded = true;
         return true;
       }
       if (node.children && node.children.length > 0) {
@@ -2532,7 +2533,7 @@ export class OkrTreeComponent implements OnInit {
   }
 
   triggerNodeHighlight(targetId: string): void {
-    setTimeout(() => {
+    const tryHighlight = (attemptsLeft: number) => {
       const el = document.getElementById('tree-node-' + targetId);
       if (el) {
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -2540,8 +2541,11 @@ export class OkrTreeComponent implements OnInit {
         setTimeout(() => {
           this.highlightedNodeId = null;
         }, 3000);
+      } else if (attemptsLeft > 0) {
+        setTimeout(() => tryHighlight(attemptsLeft - 1), 200);
       }
-    }, 350);
+    };
+    setTimeout(() => tryHighlight(3), 350);
   }
 
   loadEmployeesAndTeams(): void {
@@ -2630,8 +2634,10 @@ export class OkrTreeComponent implements OnInit {
             this.selectedTimeline = '2026';
           }
 
-          // Chủ động phát hiện và hiển thị đúng tháng hiện tại
-          const currentTl = this.findCurrentMonthTimeline(this.timelines);
+          // Ưu tiên timeline_id từ query parameters (nếu có và hợp lệ trong danh sách timelines)
+          const targetFromQuery = this.route.snapshot.queryParams['timeline_id'] || this.selectedTimelineId;
+          const queryTl = targetFromQuery ? this.timelines.find(t => t.id === targetFromQuery) : null;
+          const currentTl = queryTl || this.findCurrentMonthTimeline(this.timelines);
           if (currentTl) {
             const prevId = this.selectedTimelineId;
             this.selectedTimelineId = currentTl.id;

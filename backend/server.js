@@ -485,15 +485,17 @@ app.get('/api/okr-tree', async (req, res) => {
       const childObjs = objectives.filter(o => o.parent_id === obj.objective_id);
       const childObjNodes = childObjs.map(mapObjToNode);
 
-      let assignTo = 'Toàn công ty';
-      if (isTeam) {
+      let assignTo = 'Ban Giám Đốc';
+      if (isCompany) {
+        assignTo = 'Ban Giám Đốc';
+      } else if (isTeam) {
         if (!obj.assignee_id || obj.assignee_id === 'COMPANY' || obj.assignee_id === 'ALL' || obj.assignee_id === 'Toàn công ty') {
-          assignTo = 'Toàn công ty';
+          assignTo = 'Đội ngũ Kỹ thuật';
         } else {
           const tm = allTeams.find(t => t.id === obj.assignee_id || t.code === obj.assignee_id);
-          assignTo = tm ? (tm.name || tm.code) : (obj.assignee_id || 'Toàn công ty');
+          assignTo = tm ? (tm.name || tm.code) : (obj.assignee_id || 'Đội ngũ Kỹ thuật');
         }
-      } else if (!isCompany) {
+      } else {
         const emp = employees.find(e => e.employee_id === obj.assignee_id);
         assignTo = emp ? emp.full_name : 'Cá nhân';
       }
