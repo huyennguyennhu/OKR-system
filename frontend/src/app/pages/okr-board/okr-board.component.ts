@@ -249,9 +249,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       <!-- TẦNG 3: TRỰC QUAN HÓA CHIẾN LƯỢC & VINH DANH NHÂN SỰ      -->
       <!-- ======================================================== -->
       <div class="row g-3 mb-4">
-        <!-- Cột Trái: Biểu đồ Donut Sức khỏe Chiến lược -->
-        <div class="col-lg-6 col-md-12">
-          <div class="card h-100 chart-card shadow-sm border-0">
+        <!-- Khối 1: Biểu đồ Donut Sức khỏe Chiến lược -->
+        <div class="col-12">
+          <div class="card chart-card shadow-sm border-0">
             <div class="chart-header">
               <div>
                 <h4 class="chart-title mb-1">Sức khỏe Chiến lược</h4>
@@ -260,7 +260,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
               <span class="badge badge-light-secondary">{{ filteredObjectives.length }} OKRs</span>
             </div>
 
-            <div class="chart-body d-flex align-items-center justify-content-around flex-wrap gap-4 py-3">
+            <div class="chart-body d-flex align-items-center justify-content-center flex-wrap gap-5 py-4">
               <div class="donut-chart-container">
                 <div class="conic-donut" [style.--on-track-pct]="onTrackPct" [style.--at-risk-pct]="atRiskPct">
                   <div class="donut-center">
@@ -308,9 +308,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
           </div>
         </div>
 
-        <!-- Cột Phải: Bảng Vinh Danh Đóng Góp (Best Contributors) -->
-        <div class="col-lg-6 col-md-12">
-          <div class="card h-100 chart-card shadow-sm border-0">
+        <!-- Khối 2: Bảng Vinh Danh Đóng Góp (Best Contributors) -->
+        <div class="col-12">
+          <div class="card chart-card shadow-sm border-0">
             <div class="chart-header">
               <div>
                 <h4 class="chart-title mb-1">🏆 Bảng Vinh danh Đóng góp</h4>
