@@ -327,25 +327,31 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
             <div class="chart-body py-2">
               <div class="leaderboard-list d-flex flex-column gap-2">
-                <div class="leaderboard-item d-flex align-items-center justify-content-between p-2 rounded" *ngFor="let c of bestContributors">
-                  <div class="d-flex align-items-center gap-2" style="min-width: 220px;">
-                    <span class="rank-medal" style="font-size: 16px;">{{ c.medal }}</span>
-                    <div>
-                      <div class="d-flex align-items-center gap-1">
-                        <span class="badge badge-emp-code">{{ c.displayCode }}</span>
-                        <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
-                      </div>
-                      <span class="text-muted" style="font-size: 11.5px;">{{ c.teamName }} • {{ c.krCount }} KRs cá nhân</span>
+                <div class="leaderboard-item" *ngFor="let c of bestContributors">
+                  <!-- Hàng 1: Huy chương, Mã định danh, Họ tên & Tỷ lệ % tiến độ -->
+                  <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                      <span class="rank-medal" style="font-size: 16px;">{{ c.medal }}</span>
+                      <span class="badge badge-emp-code">{{ c.displayCode }}</span>
+                      <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
                     </div>
-                  </div>
-
-                  <div class="d-flex align-items-center gap-2 flex-grow-1 ms-3" style="max-width: 200px;">
-                    <div class="kr-progress-track flex-1">
-                      <div class="kr-progress-bar" [style.width.%]="c.avgProgress" [ngClass]="getProgressBarColor(c.avgProgress)"></div>
-                    </div>
-                    <span class="fw-bold" [ngClass]="getHealthTextClass(c.avgProgress)" style="font-size: 13px; min-width: 45px; text-align: right;">
+                    <span class="fw-bold" [ngClass]="getHealthTextClass(c.avgProgress)" style="font-size: 13.5px;">
                       {{ c.avgProgress }}%
                     </span>
+                  </div>
+
+                  <!-- Hàng 2: Đội ngũ và Số lượng Key Results cá nhân -->
+                  <div class="d-flex align-items-center justify-content-between text-muted" style="font-size: 11.5px;">
+                    <span class="d-flex align-items-center gap-1.5">
+                      <i class="fa-solid fa-users text-primary" style="font-size: 11px;"></i>
+                      <span>{{ c.teamName }}</span>
+                    </span>
+                    <span><strong class="text-dark">{{ c.krCount }}</strong> KRs cá nhân</span>
+                  </div>
+
+                  <!-- Hàng 3: Thanh tiến độ trải rộng toàn bộ 100% -->
+                  <div class="kr-progress-track w-100" style="height: 7px; background: #e2e8f0;">
+                    <div class="kr-progress-bar" [style.width.%]="c.avgProgress" [ngClass]="getProgressBarColor(c.avgProgress)"></div>
                   </div>
                 </div>
 
@@ -975,21 +981,29 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       font-size: 11.5px;
     }
 
-    /* Leaderboard Item */
+    /* Leaderboard Item - Multi-row card style */
     .leaderboard-item {
       background: #f8fafc;
-      border: 1px solid #f1f5f9;
-      transition: background 0.15s ease;
+      border: 1px solid #edf2f7;
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: all 0.2s ease;
     }
     .leaderboard-item:hover {
       background: #f1f5f9;
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
     }
     .badge-emp-code {
-      font-size: 10.5px;
+      font-size: 11px;
       font-weight: 600;
       background: #e0e7ff;
       color: #4338ca;
-      padding: 2px 6px;
+      padding: 2px 7px;
       border-radius: 4px;
     }
     .emp-name {
