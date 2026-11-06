@@ -404,9 +404,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
                   <h4 class="mb-0 text-primary" style="font-size: 14.5px; font-weight: 700;">{{ pendingTraceMember }}</h4>
                 </div>
               </div>
-              <span class="badge bg-primary text-white px-2 py-1" style="font-size: 11px;">
-                <i class="fa-solid fa-check me-1"></i>Khớp bản ghi Check-in
-              </span>
             </div>
             <!-- Member metrics from payload if present -->
             <div class="member-trace-metrics mt-2 pt-2 border-top border-primary-subtle" *ngIf="getMemberTraceDetails(selectedRunForModal, pendingTraceMember) as m">
