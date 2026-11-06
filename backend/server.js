@@ -73,6 +73,12 @@ app.post('/api/employees', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// Helper to get formatted ISO string in Vietnam Timezone (Asia/Ho_Chi_Minh - GMT+7)
+const getVnIsoString = (d = new Date()) => {
+  const vnTime = new Date(d.getTime() + 7 * 3600 * 1000);
+  return vnTime.toISOString().replace('T', ' ').substring(0, 19);
+};
+
 // 1. Webhook Endpoint for Activepieces Integration
 app.post('/api/webhooks/activepieces', async (req, res) => {
   try {
@@ -94,7 +100,7 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
 
       // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
       const flowRunId = payload.run_id || `RUN-${Date.now()}`;
-      const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+      const nowIso = getVnIsoString();
       try {
         await run(`
           INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
@@ -150,7 +156,7 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
 
         // Auto-record to FlowRuns (Lưu vết lần chạy Flow)
         const flowRunId = payload.run_id || `RUN-${Date.now()}`;
-        const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+        const nowIso = getVnIsoString();
         try {
           await run(`
             INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
@@ -2092,7 +2098,7 @@ app.post('/api/flow-runs', async (req, res) => {
     } = req.body;
 
     const id = run_id || `RUN-${Date.now()}`;
-    const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const nowIso = getVnIsoString();
 
     let finalPayloadJson = typeof payload_json === 'object' ? JSON.stringify(payload_json, null, 2) : (payload_json || null);
     if (!finalPayloadJson) {
@@ -2160,8 +2166,8 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
     const timeStr = `${now.getFullYear()}${pad(now.getMonth()+1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
     const runId = `RUN-${timeStr}`;
 
-    const startTime = now.toISOString().replace('T', ' ').substring(0, 19);
-    const endTime = new Date(now.getTime() + 1850).toISOString().replace('T', ' ').substring(0, 19);
+    const startTime = getVnIsoString(now);
+    const endTime = getVnIsoString(new Date(now.getTime() + 1850));
 
     let flowName = 'Activepieces Automation Flow';
     // Dynamic flow_name from MeasurementRules
