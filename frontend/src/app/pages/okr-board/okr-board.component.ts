@@ -609,9 +609,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                             </div>
                           </td>
                           <td>
-                            <div class="d-flex flex-column">
+                            <div class="d-flex flex-column gap-1.5">
                               <strong class="text-dark" style="font-size: 13px;">{{ child.title }}</strong>
-                              <span class="text-muted d-flex align-items-center gap-1 mt-0.5" style="font-size: 11.5px;">
+                              <span class="text-muted d-flex align-items-center gap-1.5" style="font-size: 12px;">
                                 <i class="fa-solid fa-users text-primary"></i>
                                 {{ getAssigneeLabel(child) }}
                               </span>
