@@ -454,7 +454,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                   <td>
                     <div class="d-flex align-items-center gap-2">
                       <span class="team-icon-circle bg-primary-light"><i class="fa-solid fa-building text-primary"></i></span>
-                      <strong class="text-dark">Toàn tổ chức (Total)</strong>
+                      <strong class="text-dark">Toàn tổ chức</strong>
                     </div>
                   </td>
                   <td>
