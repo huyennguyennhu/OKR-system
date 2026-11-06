@@ -70,9 +70,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
                     <i class="fa-solid fa-circle-check me-1"></i>Hoạt động
                   </span>
                 </div>
-                <span class="card-action-hint text-primary">
-                  Xem bảng lần chạy <i class="fa-solid fa-arrow-right ms-1"></i>
-                </span>
               </div>
 
               <h4 class="flow-card-title">{{ flow.flow_name }}</h4>
