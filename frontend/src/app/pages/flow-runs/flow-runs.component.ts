@@ -131,11 +131,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
             <div>Tỷ lệ thành công: <strong class="text-success">{{ currentFlowSummary.success_rate }}%</strong></div>
             <div>Gần nhất: <strong class="text-dark">{{ currentFlowSummary.last_run_time || 'Chưa chạy' }}</strong></div>
           </div>
-          <div class="mt-2 pt-2 border-top text-muted d-flex align-items-center gap-2" style="font-size: 12.5px;">
-            <i class="fa-solid fa-chart-line text-primary"></i>
-            <span class="fw-semibold text-dark">Tác động gần nhất:</span>
-            <span class="text-dark">{{ currentFlowSummary.last_impact }}</span>
-          </div>
         </div>
 
         <!-- Filter Bar -->
