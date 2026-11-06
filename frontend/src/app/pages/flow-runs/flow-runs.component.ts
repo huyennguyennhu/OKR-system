@@ -126,16 +126,10 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
         <!-- Flow Summary Box (Hiển thị tóm tắt thông số Flow khi xem flow cụ thể) -->
         <div class="flow-detail-summary-card p-3 mb-3 bg-white border rounded" *ngIf="selectedFlowCode !== 'all' && currentFlowSummary">
-          <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
-            <div class="d-flex align-items-center gap-2">
-              <span class="badge badge-code">{{ currentFlowSummary.flow_code }}</span>
-              <span class="fw-bold text-dark" style="font-size: 13.5px;">{{ currentFlowSummary.flow_name }}</span>
-            </div>
-            <div class="d-flex align-items-center gap-3 text-muted" style="font-size: 12.5px;">
-              <div>Tổng lần chạy: <strong class="text-dark">{{ currentFlowSummary.total_runs }}</strong></div>
-              <div>Tỷ lệ thành công: <strong class="text-success">{{ currentFlowSummary.success_rate }}%</strong></div>
-              <div>Gần nhất: <strong class="text-dark">{{ currentFlowSummary.last_run_time || 'Chưa chạy' }}</strong></div>
-            </div>
+          <div class="d-flex align-items-center justify-content-start flex-wrap gap-4 text-muted" style="font-size: 12.5px;">
+            <div>Tổng lần chạy: <strong class="text-dark">{{ currentFlowSummary.total_runs }}</strong></div>
+            <div>Tỷ lệ thành công: <strong class="text-success">{{ currentFlowSummary.success_rate }}%</strong></div>
+            <div>Gần nhất: <strong class="text-dark">{{ currentFlowSummary.last_run_time || 'Chưa chạy' }}</strong></div>
           </div>
           <div class="mt-2 pt-2 border-top text-muted d-flex align-items-center gap-2" style="font-size: 12.5px;">
             <i class="fa-solid fa-chart-line text-primary"></i>

@@ -2094,6 +2094,25 @@ app.post('/api/flow-runs', async (req, res) => {
     const id = run_id || `RUN-${Date.now()}`;
     const nowIso = new Date().toISOString().replace('T', ' ').substring(0, 19);
 
+    let finalPayloadJson = typeof payload_json === 'object' ? JSON.stringify(payload_json, null, 2) : (payload_json || null);
+    if (!finalPayloadJson) {
+      finalPayloadJson = JSON.stringify({
+        session_info: {
+          run_id: id,
+          flow_code: flow_code || 'FLOW-CUSTOM',
+          flow_name: flow_name || 'Activepieces Automation Flow',
+          scan_time: start_time || nowIso,
+          trigger_type: trigger_type || 'Schedule',
+          execution_status: status || 'SUCCESS'
+        },
+        summary_metrics: {
+          impact: data_created || 'Dữ liệu đo lường đã được đồng bộ tự động vào Key Results.',
+          input_count: input_count || 0,
+          output_count: output_count || 0
+        }
+      }, null, 2);
+    }
+
     await run(`
       INSERT INTO FlowRuns (
         run_id, flow_code, flow_name, trigger_type, start_time, end_time,
@@ -2107,7 +2126,7 @@ app.post('/api/flow-runs', async (req, res) => {
         input_count = EXCLUDED.input_count,
         output_count = EXCLUDED.output_count,
         data_created = EXCLUDED.data_created,
-        payload_json = EXCLUDED.payload_json,
+        payload_json = COALESCE(EXCLUDED.payload_json, FlowRuns.payload_json),
         error_message = EXCLUDED.error_message
     `, [
       id,
@@ -2121,7 +2140,7 @@ app.post('/api/flow-runs', async (req, res) => {
       input_count || 0,
       output_count || 0,
       data_created || null,
-      typeof payload_json === 'object' ? JSON.stringify(payload_json, null, 2) : (payload_json || null),
+      finalPayloadJson,
       error_message || null
     ]);
 
