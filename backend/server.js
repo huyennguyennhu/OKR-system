@@ -243,7 +243,7 @@ app.get('/api/objectives', async (req, res) => {
     const baseQuery = `
       SELECT o.*, 
         CASE 
-          WHEN UPPER(o.level) = 'COMPANY' THEN 'Ban Giám Đốc'
+          WHEN UPPER(o.level) = 'COMPANY' THEN 'Toàn công ty'
           ELSE COALESCE(tm.name, e.full_name, o.assignee_id)
         END as assignee_name, 
         e.display_code as assignee_code, 
@@ -342,7 +342,7 @@ app.get('/api/okr-tree', async (req, res) => {
     const baseQuery = `
       SELECT o.*, 
         CASE 
-          WHEN UPPER(o.level) = 'COMPANY' THEN 'Ban Giám Đốc'
+          WHEN UPPER(o.level) = 'COMPANY' THEN 'Toàn công ty'
           ELSE COALESCE(tm.name, e.full_name, o.assignee_id)
         END as assignee_name, 
         e.display_code as assignee_code, 
@@ -499,9 +499,9 @@ app.get('/api/okr-tree', async (req, res) => {
       const childObjs = objectives.filter(o => o.parent_id === obj.objective_id);
       const childObjNodes = childObjs.map(mapObjToNode);
 
-      let assignTo = 'Ban Giám Đốc';
+      let assignTo = 'Toàn công ty';
       if (isCompany) {
-        assignTo = 'Ban Giám Đốc';
+        assignTo = 'Toàn công ty';
       } else if (isTeam) {
         if (!obj.assignee_id || obj.assignee_id === 'COMPANY' || obj.assignee_id === 'ALL' || obj.assignee_id === 'Toàn công ty') {
           assignTo = 'Đội ngũ Kỹ thuật';

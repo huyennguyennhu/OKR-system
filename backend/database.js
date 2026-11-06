@@ -534,7 +534,7 @@ async function seedInitialData() {
       const t2Id = `OBJ-${m.pre}-TEAM-02`;
 
       await run(`INSERT INTO Objectives (objective_id, parent_id, level, title, description, timeline_id, progress, assignee_id, metric_id, category, start_value, expected_value, space_id)
-        VALUES (?, NULL, 'COMPANY', 'Nâng cao hiệu quả và chất lượng phát triển sản phẩm công nghệ', ?, ?, ?, 'Ban Giám Đốc', 'METRIC-01', 'Objective', 0, 100, ?)`,
+        VALUES (?, NULL, 'COMPANY', 'Nâng cao hiệu quả và chất lượng phát triển sản phẩm công nghệ', ?, ?, ?, 'Toàn công ty', 'METRIC-01', 'Objective', 0, 100, ?)`,
         [compId, `Mục tiêu chiến lược Tháng ${m.num}/2026`, m.tl, m.compP, defaultSpaceId]);
 
       await run(`INSERT INTO Objectives (objective_id, parent_id, level, title, description, timeline_id, progress, assignee_id, metric_id, category, start_value, expected_value, space_id)

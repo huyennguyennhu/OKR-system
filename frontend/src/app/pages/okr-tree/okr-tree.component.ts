@@ -367,7 +367,9 @@ interface TreeNode {
                     <td>
                       <div class="d-flex align-items-center" *ngIf="node.assignTo !== 'No Group'">
                         <img *ngIf="node.assignToAvatar" [src]="node.assignToAvatar" class="avatar me-2" alt="avatar">
-                        <span class="badge bg-light text-dark border me-2" *ngIf="!node.assignToAvatar"><i class="fa-solid fa-users"></i></span>
+                        <span class="badge bg-light text-dark border me-2" *ngIf="!node.assignToAvatar">
+                          <i class="fa-solid" [ngClass]="node.type === 'company' || node.assignTo === 'Toàn công ty' ? 'fa-building text-primary' : (node.type === 'ind_kr' || node.type === 'personal' ? 'fa-user text-success' : 'fa-users text-primary')"></i>
+                        </span>
                         <span class="assignee-text">{{ formatAssignTo(node.assignTo) }}</span>
                       </div>
                       <span class="text-muted fst-italic" style="font-size: 13px;" *ngIf="node.assignTo === 'No Group'">No Group</span>

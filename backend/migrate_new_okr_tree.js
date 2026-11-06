@@ -72,7 +72,7 @@ async function migrate() {
       const compObjId = `OBJ-${m.prefix}-COMPANY`;
       await run(`
         INSERT INTO Objectives (objective_id, parent_id, level, title, description, timeline_id, progress, assignee_id, metric_id, category, start_value, expected_value, space_id)
-        VALUES (?, NULL, 'COMPANY', ?, ?, ?, ?, 'Ban Giám Đốc', 'METRIC-01', 'Objective', 0, 100, ?)
+        VALUES (?, NULL, 'COMPANY', ?, ?, ?, ?, 'Toàn công ty', 'METRIC-01', 'Objective', 0, 100, ?)
       `, [
         compObjId,
         'Nâng cao hiệu quả và chất lượng phát triển sản phẩm công nghệ',

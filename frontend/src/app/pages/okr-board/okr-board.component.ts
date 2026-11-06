@@ -537,8 +537,8 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                   </div>
 
                   <div class="d-flex align-items-center gap-2.5">
-                    <div class="assignee-pill" title="Người / Đội ngũ phụ trách">
-                      <i class="fa-solid" [ngClass]="(obj.level || '').toUpperCase() === 'PERSONAL' ? 'fa-user text-success' : 'fa-users text-primary'"></i>
+                    <div class="assignee-pill" [title]="(obj.level || '').toUpperCase() === 'COMPANY' ? 'Phạm vi áp dụng' : 'Người / Đội ngũ phụ trách'">
+                      <i class="fa-solid" [ngClass]="(obj.level || '').toUpperCase() === 'COMPANY' ? 'fa-building text-primary' : ((obj.level || '').toUpperCase() === 'PERSONAL' ? 'fa-user text-success' : 'fa-users text-primary')"></i>
                       <span>{{ getAssigneeLabel(obj) }}</span>
                     </div>
 
@@ -877,8 +877,8 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                     <div class="text-muted" style="font-size: 11.5px;">Chu kỳ: {{ obj.timeline_id || selectedTimelineTree }}</div>
                   </td>
                   <td>
-                    <span class="assignee-pill">
-                      <i class="fa-solid" [ngClass]="(obj.level || '').toUpperCase() === 'PERSONAL' ? 'fa-user text-success' : 'fa-users text-primary'"></i>
+                    <span class="assignee-pill" [title]="(obj.level || '').toUpperCase() === 'COMPANY' ? 'Phạm vi áp dụng' : 'Người / Đội ngũ phụ trách'">
+                      <i class="fa-solid" [ngClass]="(obj.level || '').toUpperCase() === 'COMPANY' ? 'fa-building text-primary' : ((obj.level || '').toUpperCase() === 'PERSONAL' ? 'fa-user text-success' : 'fa-users text-primary')"></i>
                       <span>{{ getAssigneeLabel(obj) }}</span>
                     </span>
                   </td>
@@ -2207,14 +2207,14 @@ export class OkrBoardComponent implements OnInit {
 
   getAssigneeLabel(obj: Objective): string {
     const lvl = (obj.level || '').toUpperCase();
-    if (lvl === 'COMPANY') return 'Ban Giám Đốc';
+    if (lvl === 'COMPANY') return 'Toàn công ty';
     if (obj.team_name) return obj.team_name;
     if (obj.assignee_name && obj.assignee_name !== 'Chưa phân bổ') return obj.assignee_name;
     if (obj.assignee_id) {
       if (obj.assignee_id === 'TEAM-FE' || obj.assignee_id === 'FE-Team') return 'Team Frontend';
       if (obj.assignee_id === 'TEAM-BE' || obj.assignee_id === 'BE-Team') return 'Team Backend';
       if (obj.assignee_id === 'TEAM-QA') return 'Team QA';
-      if (obj.assignee_id === 'Ban Giám Đốc' || obj.assignee_id === 'COMPANY') return 'Ban Giám Đốc';
+      if (obj.assignee_id === 'Toàn công ty' || obj.assignee_id === 'COMPANY') return 'Toàn công ty';
       const tm = this.teams.find(t => t.id === obj.assignee_id || t.code === obj.assignee_id);
       if (tm) return tm.name;
       const emp = this.employees.find(e => e.employee_id === obj.assignee_id);
