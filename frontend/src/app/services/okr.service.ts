@@ -84,6 +84,13 @@ export interface KeyResult {
   direction: 'increase' | 'decrease';
   unit: string;
   assignee_id?: string;
+  assignee_name?: string;
+  assignee_code?: string;
+  team_name?: string;
+  team_id?: string;
+  flow_code?: string;
+  sla_value?: number;
+  threshold_percent?: number;
   parent_kr_id?: string | null;
   description?: string;
   progress?: number;

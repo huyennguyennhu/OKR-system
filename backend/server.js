@@ -277,9 +277,38 @@ app.get('/api/objectives', async (req, res) => {
       objectives = await all(`${baseQuery} ${fallbackWhere} ORDER BY o.objective_id ASC`, fallbackParams);
     }
 
-    const allKeyResults = await all('SELECT * FROM KeyResults');
+    const allKeyResults = await all(`
+      SELECT kr.*, 
+             COALESCE(e.full_name, kr.assignee_id) as assignee_name, 
+             e.display_code as assignee_code, 
+             COALESCE(t.name, e_team.name) as team_name,
+             COALESCE(t.id, e.team_id) as team_id,
+             COALESCE(mr.flow_code, mr_p.flow_code) as flow_code,
+             COALESCE(mr.sla_value, mr_p.sla_value) as sla_value,
+             COALESCE(mr.threshold_percent, mr_p.threshold_percent) as threshold_percent
+      FROM KeyResults kr
+      LEFT JOIN Employees e ON kr.assignee_id = e.employee_id
+      LEFT JOIN Teams e_team ON e.team_id = e_team.id
+      LEFT JOIN Teams t ON (kr.assignee_id = t.id OR kr.assignee_id = t.code)
+      LEFT JOIN MeasurementRules mr ON kr.kr_id = mr.kr_id
+      LEFT JOIN MeasurementRules mr_p ON kr.parent_kr_id = mr_p.kr_id
+    `);
     const objIds = new Set(objectives.map(o => o.objective_id));
-    const keyResults = allKeyResults.filter(kr => objIds.has(kr.objective_id));
+    const keyResults = allKeyResults
+      .filter(kr => objIds.has(kr.objective_id))
+      .map(kr => {
+        let progress = 0;
+        if (kr.direction === 'increase') {
+          progress = ((kr.current_value - kr.start_value) / (kr.expected_value - kr.start_value)) * 100;
+        } else {
+          progress = ((kr.start_value - kr.current_value) / (kr.start_value - kr.expected_value)) * 100;
+        }
+        progress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
+        return {
+          ...kr,
+          progress
+        };
+      });
     
     // Attach KeyResults to Objectives
     const tree = objectives.map(obj => {
@@ -340,9 +369,38 @@ app.get('/api/okr-tree', async (req, res) => {
       objectives = await all(`${baseQuery} ${fallbackWhere} ORDER BY o.objective_id ASC`, fallbackParams);
     }
 
-    const allKeyResults = await all('SELECT * FROM KeyResults');
+    const allKeyResults = await all(`
+      SELECT kr.*, 
+             COALESCE(e.full_name, kr.assignee_id) as assignee_name, 
+             e.display_code as assignee_code, 
+             COALESCE(t.name, e_team.name) as team_name,
+             COALESCE(t.id, e.team_id) as team_id,
+             COALESCE(mr.flow_code, mr_p.flow_code) as flow_code,
+             COALESCE(mr.sla_value, mr_p.sla_value) as sla_value,
+             COALESCE(mr.threshold_percent, mr_p.threshold_percent) as threshold_percent
+      FROM KeyResults kr
+      LEFT JOIN Employees e ON kr.assignee_id = e.employee_id
+      LEFT JOIN Teams e_team ON e.team_id = e_team.id
+      LEFT JOIN Teams t ON (kr.assignee_id = t.id OR kr.assignee_id = t.code)
+      LEFT JOIN MeasurementRules mr ON kr.kr_id = mr.kr_id
+      LEFT JOIN MeasurementRules mr_p ON kr.parent_kr_id = mr_p.kr_id
+    `);
     const objIds = new Set(objectives.map(o => o.objective_id));
-    const keyResults = allKeyResults.filter(kr => objIds.has(kr.objective_id));
+    const keyResults = allKeyResults
+      .filter(kr => objIds.has(kr.objective_id))
+      .map(kr => {
+        let progress = 0;
+        if (kr.direction === 'increase') {
+          progress = ((kr.current_value - kr.start_value) / (kr.expected_value - kr.start_value)) * 100;
+        } else {
+          progress = ((kr.start_value - kr.current_value) / (kr.start_value - kr.expected_value)) * 100;
+        }
+        progress = Math.min(100, Math.max(0, parseFloat(progress.toFixed(1))));
+        return {
+          ...kr,
+          progress
+        };
+      });
 
     const employees = await all('SELECT * FROM Employees');
     const allTeams = await all('SELECT * FROM Teams');
@@ -834,9 +892,24 @@ app.put('/api/objectives/:id', async (req, res) => {
 app.get('/api/key-results', async (req, res) => {
   try {
     const krs = await all(`
-      SELECT kr.*, o.title as objective_title, o.level as objective_level 
+      SELECT kr.*, 
+             o.title as objective_title, 
+             o.level as objective_level,
+             o.timeline_id,
+             COALESCE(e.full_name, kr.assignee_id) as assignee_name, 
+             e.display_code as assignee_code, 
+             COALESCE(t.name, e_team.name) as team_name,
+             COALESCE(t.id, e.team_id) as team_id,
+             COALESCE(mr.flow_code, mr_p.flow_code) as flow_code,
+             COALESCE(mr.sla_value, mr_p.sla_value) as sla_value,
+             COALESCE(mr.threshold_percent, mr_p.threshold_percent) as threshold_percent
       FROM KeyResults kr 
       JOIN Objectives o ON kr.objective_id = o.objective_id
+      LEFT JOIN Employees e ON kr.assignee_id = e.employee_id
+      LEFT JOIN Teams e_team ON e.team_id = e_team.id
+      LEFT JOIN Teams t ON (kr.assignee_id = t.id OR kr.assignee_id = t.code)
+      LEFT JOIN MeasurementRules mr ON kr.kr_id = mr.kr_id
+      LEFT JOIN MeasurementRules mr_p ON kr.parent_kr_id = mr_p.kr_id
     `);
     
     // Calculate progress for each KR
