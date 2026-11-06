@@ -139,10 +139,6 @@ async function initDatabase() {
   `);
 
   try {
-    await run('ALTER TABLE MeasurementRules DROP CONSTRAINT IF EXISTS measurementrules_kr_id_fkey');
-  } catch (e) {}
-
-  try {
     await run(`
       ALTER TABLE MeasurementRules 
       ADD COLUMN IF NOT EXISTS objective_id TEXT,
@@ -445,6 +441,41 @@ async function initDatabase() {
     }
   } catch (e) {
     console.warn('Migration warning for space_id:', e.message);
+  }
+
+  // Enforce Relational Integrity & Foreign Keys
+  const constraints = [
+    { table: 'Employees', name: 'employees_team_id_fkey', sql: 'FOREIGN KEY (team_id) REFERENCES Teams(id) ON DELETE RESTRICT' },
+    { table: 'Roles', name: 'roles_team_id_fkey', sql: 'FOREIGN KEY (team_id) REFERENCES Teams(id) ON DELETE SET NULL' },
+    { table: 'Objectives', name: 'objectives_parent_id_fkey', sql: 'FOREIGN KEY (parent_id) REFERENCES Objectives(objective_id) ON DELETE SET NULL' },
+    { table: 'Objectives', name: 'objectives_timeline_id_fkey', sql: 'FOREIGN KEY (timeline_id) REFERENCES Timelines(id) ON DELETE CASCADE' },
+    { table: 'Objectives', name: 'objectives_space_id_fkey', sql: 'FOREIGN KEY (space_id) REFERENCES Spaces(id) ON DELETE CASCADE' },
+    { table: 'Objectives', name: 'objectives_metric_id_fkey', sql: 'FOREIGN KEY (metric_id) REFERENCES Metrics(id) ON DELETE SET NULL' },
+    { table: 'KeyResults', name: 'keyresults_parent_kr_id_fkey', sql: 'FOREIGN KEY (parent_kr_id) REFERENCES KeyResults(kr_id) ON DELETE SET NULL' },
+    { table: 'KeyResults', name: 'keyresults_space_id_fkey', sql: 'FOREIGN KEY (space_id) REFERENCES Spaces(id) ON DELETE CASCADE' },
+    { table: 'KeyResults', name: 'keyresults_metric_id_fkey', sql: 'FOREIGN KEY (metric_id) REFERENCES Metrics(id) ON DELETE RESTRICT' },
+    { table: 'MeasurementRules', name: 'measurementrules_kr_id_fkey', sql: 'FOREIGN KEY (kr_id) REFERENCES KeyResults(kr_id) ON DELETE CASCADE' },
+    { table: 'MeasurementRules', name: 'measurementrules_objective_id_fkey', sql: 'FOREIGN KEY (objective_id) REFERENCES Objectives(objective_id) ON DELETE CASCADE' },
+    { table: 'Comments', name: 'comments_objective_id_fkey', sql: 'FOREIGN KEY (objective_id) REFERENCES Objectives(objective_id) ON DELETE CASCADE' },
+    { table: 'Comments', name: 'comments_kr_id_fkey', sql: 'FOREIGN KEY (kr_id) REFERENCES KeyResults(kr_id) ON DELETE CASCADE' },
+    { table: 'AuditLogs', name: 'auditlogs_kr_id_fkey', sql: 'FOREIGN KEY (kr_id) REFERENCES KeyResults(kr_id) ON DELETE SET NULL' },
+    { table: 'AuditLogs', name: 'auditlogs_objective_id_fkey', sql: 'FOREIGN KEY (objective_id) REFERENCES Objectives(objective_id) ON DELETE SET NULL' },
+    { table: 'EventAssignments', name: 'eventassignments_employee_id_fkey', sql: 'FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE' },
+    { table: 'MetricResults', name: 'metricresults_run_id_fkey', sql: 'FOREIGN KEY (run_id) REFERENCES FlowRuns(run_id) ON DELETE SET NULL' },
+    { table: 'Holidays', name: 'holidays_space_id_fkey', sql: 'FOREIGN KEY (space_id) REFERENCES Spaces(id) ON DELETE CASCADE' },
+    { table: 'WorkingHours', name: 'workinghours_space_id_fkey', sql: 'FOREIGN KEY (space_id) REFERENCES Spaces(id) ON DELETE CASCADE' },
+    { table: 'Timelines', name: 'timelines_parent_id_fkey', sql: 'FOREIGN KEY (parent_id) REFERENCES Timelines(id) ON DELETE SET NULL' },
+    { table: 'SpaceMembers', name: 'spacemembers_employee_id_fkey', sql: 'FOREIGN KEY (employee_id) REFERENCES Employees(employee_id) ON DELETE CASCADE' },
+    { table: 'ProcessingLogs', name: 'processinglogs_run_id_fkey', sql: 'FOREIGN KEY (run_id) REFERENCES FlowRuns(run_id) ON DELETE CASCADE' }
+  ];
+
+  for (const c of constraints) {
+    try {
+      await run(`ALTER TABLE "${c.table}" DROP CONSTRAINT IF EXISTS "${c.name}"`);
+      await run(`ALTER TABLE "${c.table}" ADD CONSTRAINT "${c.name}" ${c.sql}`);
+    } catch (e) {
+      // Ignore if table or constraint already structured
+    }
   }
 
   // Auto seed initial data if Objectives is empty
