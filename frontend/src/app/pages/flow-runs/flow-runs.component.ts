@@ -95,9 +95,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
             <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
               {{ getDetailTitle() }}
             </h3>
-            <p class="subtitle mb-0" *ngIf="selectedFlowCode !== 'all' && currentFlowSummary">
-              Liên kết KR: <strong class="text-primary">{{ currentFlowSummary.kr_id }}</strong> - {{ currentFlowSummary.kr_title }} &bull; Kiểu kích hoạt: {{ currentFlowSummary.trigger_type }}
-            </p>
             <p class="subtitle mb-0" *ngIf="selectedFlowCode === 'all'">
               Tổng hợp toàn bộ lịch sử thực thi và kết quả tự động đo lường SLA của tất cả các kịch bản Activepieces.
             </p>
