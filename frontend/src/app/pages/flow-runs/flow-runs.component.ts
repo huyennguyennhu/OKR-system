@@ -89,11 +89,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
                   <span class="metric-value time-val">{{ flow.last_run_time || 'Chưa chạy' }}</span>
                 </div>
               </div>
-
-              <div class="card-impact-box">
-                <span class="impact-label"><i class="fa-solid fa-chart-line text-primary me-1"></i>Tác động gần nhất:</span>
-                <span class="impact-content" [title]="flow.last_impact">{{ flow.last_impact }}</span>
-              </div>
             </div>
           </div>
         </div>
