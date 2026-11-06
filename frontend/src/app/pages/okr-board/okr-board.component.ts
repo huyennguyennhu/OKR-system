@@ -169,90 +169,84 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       <!-- ======================================================== -->
       <!-- TẦNG 2: BỘ 3 THẺ KPI CỐT LÕI VÀNG (EXECUTIVE KPI GOLDEN TRIO) -->
       <!-- ======================================================== -->
-      <div class="row g-3 mb-4">
+      <div class="kpi-golden-trio-grid mb-4">
         <!-- KPI 1: Tiến độ Bình quân -->
-        <div class="col-lg-4 col-md-6">
-          <div class="kpi-card shadow-sm h-100">
-            <div class="kpi-card-header">
-              <span class="kpi-title">Tiến độ OKR Bình quân</span>
-              <div class="kpi-icon-box bg-gradient-primary">
-                <i class="fa-solid fa-bullseye"></i>
-              </div>
+        <div class="kpi-card shadow-sm h-100">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Tiến độ OKR Bình quân</span>
+            <div class="kpi-icon-box bg-gradient-primary">
+              <i class="fa-solid fa-bullseye"></i>
             </div>
-            <div class="kpi-main-val">
-              <span class="kpi-number">{{ avgProgress }}%</span>
-              <span class="status-chip" [ngClass]="getHealthClass(avgProgress)">
-                <i class="fa-solid" [ngClass]="avgProgress >= 75 ? 'fa-arrow-trend-up' : (avgProgress >= 50 ? 'fa-minus' : 'fa-arrow-trend-down')"></i>
-                {{ getHealthLabel(avgProgress) }}
-              </span>
-            </div>
-            <div class="kpi-progress-bar-bg mt-2">
-              <div class="kpi-progress-bar-fill" [style.width.%]="avgProgress" [ngClass]="getProgressBarColor(avgProgress)"></div>
-            </div>
-            <div class="kpi-footer-note mt-2">
-              Tổng hợp từ <strong>{{ filteredObjectives.length }} mục tiêu</strong> chu kỳ
-            </div>
+          </div>
+          <div class="kpi-main-val">
+            <span class="kpi-number">{{ avgProgress }}%</span>
+            <span class="status-chip" [ngClass]="getHealthClass(avgProgress)">
+              <i class="fa-solid" [ngClass]="avgProgress >= 75 ? 'fa-arrow-trend-up' : (avgProgress >= 50 ? 'fa-minus' : 'fa-arrow-trend-down')"></i>
+              {{ getHealthLabel(avgProgress) }}
+            </span>
+          </div>
+          <div class="kpi-progress-bar-bg mt-2">
+            <div class="kpi-progress-bar-fill" [style.width.%]="avgProgress" [ngClass]="getProgressBarColor(avgProgress)"></div>
+          </div>
+          <div class="kpi-footer-note mt-2">
+            Tổng hợp từ <strong>{{ filteredObjectives.length }} mục tiêu</strong> chu kỳ
           </div>
         </div>
 
         <!-- KPI 2: Tuân thủ SLA Đo lường -->
-        <div class="col-lg-4 col-md-6">
-          <div class="kpi-card shadow-sm h-100">
-            <div class="kpi-card-header">
-              <span class="kpi-title">Tuân thủ SLA Đo lường</span>
-              <div class="kpi-icon-box bg-gradient-success">
-                <i class="fa-solid fa-shield-halved"></i>
-              </div>
+        <div class="kpi-card shadow-sm h-100">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Tuân thủ SLA Đo lường</span>
+            <div class="kpi-icon-box bg-gradient-success">
+              <i class="fa-solid fa-shield-halved"></i>
             </div>
-            <div class="kpi-main-val">
-              <span class="kpi-number">{{ slaComplianceRate }}%</span>
-              <span class="status-chip chip-success" *ngIf="slaComplianceRate >= 90">
-                <i class="fa-solid fa-circle-check"></i> Đạt chuẩn SLA
-              </span>
-              <span class="status-chip chip-warning" *ngIf="slaComplianceRate < 90">
-                <i class="fa-solid fa-triangle-exclamation"></i> Cần cải thiện
-              </span>
-            </div>
-            <div class="kpi-progress-bar-bg mt-2">
-              <div class="kpi-progress-bar-fill bg-success" [style.width.%]="slaComplianceRate"></div>
-            </div>
-            <div class="kpi-footer-note mt-2">
-              <strong>{{ achievedKrCount }} / {{ totalKrCount }}</strong> Key Results đạt SLA
-            </div>
+          </div>
+          <div class="kpi-main-val">
+            <span class="kpi-number">{{ slaComplianceRate }}%</span>
+            <span class="status-chip chip-success" *ngIf="slaComplianceRate >= 90">
+              <i class="fa-solid fa-circle-check"></i> Đạt chuẩn SLA
+            </span>
+            <span class="status-chip chip-warning" *ngIf="slaComplianceRate < 90">
+              <i class="fa-solid fa-triangle-exclamation"></i> Cần cải thiện
+            </span>
+          </div>
+          <div class="kpi-progress-bar-bg mt-2">
+            <div class="kpi-progress-bar-fill bg-success" [style.width.%]="slaComplianceRate"></div>
+          </div>
+          <div class="kpi-footer-note mt-2">
+            <strong>{{ achievedKrCount }} / {{ totalKrCount }}</strong> Key Results đạt SLA
           </div>
         </div>
 
         <!-- KPI 3: Sức khỏe Mục tiêu -->
-        <div class="col-lg-4 col-md-12">
-          <div class="kpi-card shadow-sm h-100">
-            <div class="kpi-card-header">
-              <span class="kpi-title">Sức khỏe Mục tiêu</span>
-              <div class="kpi-icon-box bg-gradient-warning">
-                <i class="fa-solid fa-heart-pulse"></i>
-              </div>
+        <div class="kpi-card shadow-sm h-100">
+          <div class="kpi-card-header">
+            <span class="kpi-title">Sức khỏe Mục tiêu</span>
+            <div class="kpi-icon-box bg-gradient-warning">
+              <i class="fa-solid fa-heart-pulse"></i>
             </div>
-            <div class="kpi-main-val">
-              <div class="d-flex align-items-baseline gap-2">
-                <span class="kpi-number text-success">{{ onTrackCount }}</span>
-                <span class="text-muted" style="font-size: 13px;">Tốt</span>
-                <span class="mx-1 text-muted">/</span>
-                <span class="kpi-number text-warning">{{ atRiskCount }}</span>
-                <span class="text-muted" style="font-size: 13px;">Chú ý</span>
-                <span class="mx-1 text-muted">/</span>
-                <span class="kpi-number text-danger">{{ behindCount }}</span>
-                <span class="text-muted" style="font-size: 13px;">Chậm</span>
-              </div>
+          </div>
+          <div class="kpi-main-val">
+            <div class="d-flex align-items-baseline gap-2">
+              <span class="kpi-number text-success">{{ onTrackCount }}</span>
+              <span class="text-muted" style="font-size: 13px;">Tốt</span>
+              <span class="mx-1 text-muted">/</span>
+              <span class="kpi-number text-warning">{{ atRiskCount }}</span>
+              <span class="text-muted" style="font-size: 13px;">Chú ý</span>
+              <span class="mx-1 text-muted">/</span>
+              <span class="kpi-number text-danger">{{ behindCount }}</span>
+              <span class="text-muted" style="font-size: 13px;">Chậm</span>
             </div>
-            <div class="segmented-bar mt-2">
-              <div class="segment bg-success" [style.width.%]="onTrackPct" title="Tốt: {{ onTrackCount }}"></div>
-              <div class="segment bg-warning" [style.width.%]="atRiskPct" title="Chú ý: {{ atRiskCount }}"></div>
-              <div class="segment bg-danger" [style.width.%]="behindPct" title="Chậm: {{ behindCount }}"></div>
-            </div>
-            <div class="kpi-footer-note mt-2 d-flex justify-content-between">
-              <span><i class="fa-solid fa-circle text-success me-1" style="font-size: 8px;"></i>{{ onTrackPct }}% Tốt</span>
-              <span><i class="fa-solid fa-circle text-warning me-1" style="font-size: 8px;"></i>{{ atRiskPct }}% Chú ý</span>
-              <span><i class="fa-solid fa-circle text-danger me-1" style="font-size: 8px;"></i>{{ behindPct }}% Chậm</span>
-            </div>
+          </div>
+          <div class="segmented-bar mt-2">
+            <div class="segment bg-success" [style.width.%]="onTrackPct" title="Tốt: {{ onTrackCount }}"></div>
+            <div class="segment bg-warning" [style.width.%]="atRiskPct" title="Chú ý: {{ atRiskCount }}"></div>
+            <div class="segment bg-danger" [style.width.%]="behindPct" title="Chậm: {{ behindCount }}"></div>
+          </div>
+          <div class="kpi-footer-note mt-2 d-flex justify-content-between">
+            <span><i class="fa-solid fa-circle text-success me-1" style="font-size: 8px;"></i>{{ onTrackPct }}% Tốt</span>
+            <span><i class="fa-solid fa-circle text-warning me-1" style="font-size: 8px;"></i>{{ atRiskPct }}% Chú ý</span>
+            <span><i class="fa-solid fa-circle text-danger me-1" style="font-size: 8px;"></i>{{ behindPct }}% Chậm</span>
           </div>
         </div>
       </div>
@@ -763,7 +757,12 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       align-items: center;
     }
 
-    /* 1. KPI Cards */
+    /* 1. KPI Golden Trio (3 Cards on 1 row) */
+    .kpi-golden-trio-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
     .kpi-card {
       background: #ffffff;
       border: 1px solid #e2e8f0;
