@@ -21,13 +21,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       <div class="board-top-bar mb-4">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-3">
           <div>
-            <div class="d-flex align-items-center gap-2 mb-1">
-              <h3 class="page-title mb-0">OKR Dashboard</h3>
-              <span class="badge-timeline-active">
-                <i class="fa-solid fa-calendar-check text-primary me-1"></i>
-                {{ selectedTimelineTree }}
-              </span>
-            </div>
+            <h3 class="page-title mb-1">OKR Dashboard</h3>
             <p class="subtitle mb-0">
               Bảng điều khiển chiến lược và theo dõi tiến độ OKR tự động từ GitLab CI/CD qua Activepieces.
             </p>
