@@ -200,10 +200,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
               </div>
             </div>
           </div>
-
-          <div class="filter-count-badge ms-auto">
-            <span>Hiển thị <strong>{{ filteredRuns.length }}</strong> / {{ totalRunsCount }} lần chạy</span>
-          </div>
         </div>
 
         <!-- Runs Table Section -->
