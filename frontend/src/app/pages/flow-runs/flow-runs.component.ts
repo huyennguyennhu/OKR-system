@@ -93,7 +93,7 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
             </div>
 
             <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
-              {{ selectedFlowCode === 'all' ? 'Nhật ký toàn bộ lần chạy Flow' : (currentFlowSummary?.flow_name || selectedFlowCode) }}
+              {{ getDetailTitle() }}
             </h3>
             <p class="subtitle mb-0" *ngIf="selectedFlowCode !== 'all' && currentFlowSummary">
               Liên kết KR: <strong class="text-primary">{{ currentFlowSummary.kr_id }}</strong> - {{ currentFlowSummary.kr_title }} &bull; Kiểu kích hoạt: {{ currentFlowSummary.trigger_type }}
@@ -1572,6 +1572,29 @@ export class FlowRunsComponent implements OnInit {
   get currentFlowSummary(): FlowSummary | undefined {
     if (this.selectedFlowCode === 'all') return undefined;
     return this.flows.find(f => f.flow_code === this.selectedFlowCode);
+  }
+
+  getDetailTitle(): string {
+    if (this.selectedFlowCode === 'all') {
+      return 'Nhật ký toàn bộ lần chạy Flow';
+    }
+    const summary = this.currentFlowSummary;
+    if (summary) {
+      if (summary.kr_id && summary.kr_title) {
+        return `Flow Runs ${summary.kr_id} - ${summary.kr_title}`;
+      }
+      return summary.flow_name || this.selectedFlowCode;
+    }
+    if (this.selectedFlowCode === 'FLOW-KR-A1' || this.selectedFlowCode === 'KR-A1') {
+      return 'Flow Runs KR-A1 - Tỷ lệ Issue hoàn thành đúng hạn ≥ 90%';
+    }
+    if (this.selectedFlowCode === 'FLOW-KR-B1' || this.selectedFlowCode === 'KR-B1') {
+      return 'Flow Runs KR-B1 - Thời gian phản hồi Merge Request (MR SLA) ≤ 4 giờ';
+    }
+    if (this.selectedFlowCode === 'FLOW-KR-C1' || this.selectedFlowCode === 'KR-C1') {
+      return 'Flow Runs KR-C1 - Thời gian giải quyết lỗi (MTTR) ≤ 8 giờ';
+    }
+    return this.selectedFlowCode;
   }
 
   get currentFlowRunsCount(): number {
