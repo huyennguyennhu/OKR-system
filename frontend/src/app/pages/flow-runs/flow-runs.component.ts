@@ -80,11 +80,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
                 <span class="kr-title-text">{{ flow.kr_title }}</span>
               </div>
 
-              <div class="flow-card-trigger">
-                <i class="fa-solid fa-bolt me-1 text-warning"></i>
-                <span>{{ flow.trigger_type }}</span>
-              </div>
-
               <div class="card-metrics-row">
                 <div class="metric-box">
                   <span class="metric-label">Lần chạy</span>
