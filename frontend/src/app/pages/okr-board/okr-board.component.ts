@@ -818,8 +818,11 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                 <span class="text-muted" style="font-size: 12px;">
                   Chu kỳ áp dụng: <strong>{{ obj.timeline_id || selectedTimelineTree }}</strong>
                 </span>
-                <a [routerLink]="['/okr-tree']" class="text-primary text-decoration-none fw-semibold" style="font-size: 12px;">
-                  Xem trên Cây Phân Cấp (Tree) <i class="fa-solid fa-arrow-right ms-1"></i>
+                <a [routerLink]="['/okr-tree']" 
+                   [queryParams]="{ highlight: obj.objective_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
+                   class="text-primary text-decoration-none fw-semibold d-inline-flex align-items-center" 
+                   style="font-size: 12px; cursor: pointer;">
+                  Xem trên OKR Tree <i class="fa-solid fa-arrow-right ms-1"></i>
                 </a>
               </div>
             </div>
@@ -885,7 +888,10 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                     </span>
                   </td>
                   <td class="text-center">
-                    <a [routerLink]="['/okr-tree']" class="btn btn-sm btn-outline-primary py-1 px-2" title="Xem trên cây">
+                    <a [routerLink]="['/okr-tree']" 
+                       [queryParams]="{ highlight: obj.objective_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
+                       class="btn btn-sm btn-outline-primary py-1 px-2" 
+                       title="Xem trên OKR Tree">
                       <i class="fa-solid fa-sitemap"></i>
                     </a>
                   </td>

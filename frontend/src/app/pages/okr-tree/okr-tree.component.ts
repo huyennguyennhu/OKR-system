@@ -1,7 +1,7 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
+import { Router, ActivatedRoute } from '@angular/router';
 import { OkrService, Space, Timeline, Employee, Team, OkrComment } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
@@ -338,7 +338,7 @@ interface TreeNode {
               <!-- Recursive Template Definition -->
               <ng-template #treeNodeTemplate let-nodes="nodes" let-depth="depth">
                 <ng-container *ngFor="let node of nodes">
-                  <tr>
+                  <tr [attr.id]="'tree-node-' + node.id" [class.highlighted-node-row]="highlightedNodeId === node.id">
                     <!-- KPI Column (Tree) -->
                     <td class="kpi-cell" [style.padding-left.rem]="depth * 1.5 + 0.5">
                       <div class="d-flex align-items-center gap-2">
@@ -1404,6 +1404,29 @@ interface TreeNode {
     }
     .okr-table tbody tr:hover { background-color: #f8fafc; }
     
+    @keyframes highlightPulse {
+      0% {
+        background-color: rgba(49, 87, 213, 0.22) !important;
+        box-shadow: inset 0 0 0 2px #3157D5, 0 4px 16px rgba(49, 87, 213, 0.4);
+      }
+      70% {
+        background-color: rgba(49, 87, 213, 0.12) !important;
+        box-shadow: inset 0 0 0 2px #3b82f6, 0 2px 8px rgba(49, 87, 213, 0.25);
+      }
+      100% {
+        background-color: transparent;
+        box-shadow: none;
+      }
+    }
+    .highlighted-node-row {
+      animation: highlightPulse 3s cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
+      position: relative;
+      z-index: 5;
+    }
+    .highlighted-node-row td {
+      background-color: transparent !important;
+    }
+    
     .cursor-pointer { cursor: pointer; }
     .kpi-cell { position: relative; }
     
@@ -2447,18 +2470,78 @@ export class OkrTreeComponent implements OnInit {
   isCloning = false;
   employeesList: Employee[] = [];
   teamsList: Team[] = [];
+  highlightedNodeId: string | null = null;
 
   constructor(
     private okrService: OkrService, 
     private router: Router,
+    private route: ActivatedRoute,
     private confirmService: ConfirmDialogService
   ) {}
 
   ngOnInit(): void {
     this.loading = true;
+    this.route.queryParams.subscribe(params => {
+      const targetId = params['highlight'];
+      const targetSpace = params['space_id'];
+      const targetTl = params['timeline_id'];
+
+      let needReload = false;
+      if (targetSpace && targetSpace !== 'all' && targetSpace !== this.selectedSpaceId) {
+        this.selectedSpaceId = targetSpace;
+        needReload = true;
+      }
+      if (targetTl && targetTl !== 'all' && targetTl !== this.selectedTimelineId) {
+        this.selectedTimelineId = targetTl;
+        needReload = true;
+      }
+
+      if (targetId) {
+        this.highlightedNodeId = targetId;
+        if (!needReload && this.treeData && this.treeData.length > 0) {
+          this.expandAncestorsOfNode(this.treeData, targetId);
+          this.triggerNodeHighlight(targetId);
+        }
+      }
+
+      if (needReload && !this.loading) {
+        this.loadTreeData();
+      }
+    });
+
     this.loadTimelines();
     this.loadSpaces();
     this.loadEmployeesAndTeams();
+  }
+
+  expandAncestorsOfNode(nodes: TreeNode[], targetId: string): boolean {
+    if (!nodes || !nodes.length) return false;
+    for (const node of nodes) {
+      if (node.id === targetId) {
+        return true;
+      }
+      if (node.children && node.children.length > 0) {
+        const found = this.expandAncestorsOfNode(node.children, targetId);
+        if (found) {
+          node.expanded = true;
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  triggerNodeHighlight(targetId: string): void {
+    setTimeout(() => {
+      const el = document.getElementById('tree-node-' + targetId);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.highlightedNodeId = targetId;
+        setTimeout(() => {
+          this.highlightedNodeId = null;
+        }, 3000);
+      }
+    }, 350);
   }
 
   loadEmployeesAndTeams(): void {
@@ -2484,6 +2567,10 @@ export class OkrTreeComponent implements OnInit {
         this.rawTreeData = data || [];
         this.onSearch();
         this.loading = false;
+        if (this.highlightedNodeId) {
+          this.expandAncestorsOfNode(this.treeData, this.highlightedNodeId);
+          this.triggerNodeHighlight(this.highlightedNodeId);
+        }
       },
       error: (err) => {
         console.error('Error loading OKR Tree:', err);
