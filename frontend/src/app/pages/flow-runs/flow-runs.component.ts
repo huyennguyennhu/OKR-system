@@ -29,20 +29,6 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
               Nhật ký thực thi các kịch bản Activepieces tự động đo lường từ GitLab và ghi dữ liệu cập nhật chỉ số Key Results (KR).
             </p>
           </div>
-          <div class="top-bar-right d-flex align-items-center gap-2">
-            <button 
-              type="button" 
-              class="btn btn-outline-secondary" 
-              (click)="openFlowDetail('all')"
-              title="Xem bảng lịch sử của toàn bộ các Flow">
-              <i class="fa-solid fa-list-check me-1"></i>
-              <span>Tất cả lần chạy ({{ allRuns.length }})</span>
-            </button>
-            <button type="button" class="btn btn-primary" (click)="openSimulateModal()">
-              <i class="fa-solid fa-play me-1"></i>
-              <span>Chạy mô phỏng Flow</span>
-            </button>
-          </div>
         </div>
 
         <!-- Flow Cards Section -->
