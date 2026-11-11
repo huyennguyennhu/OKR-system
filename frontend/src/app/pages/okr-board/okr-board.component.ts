@@ -142,7 +142,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
             <!-- Search + View Toggle -->
             <div class="d-flex align-items-center gap-2 flex-wrap">
               <div class="board-search-wrapper">
-                <i class="fa-solid fa-magnifying-glass search-icon"></i>
                 <input type="text" class="form-control form-control-sm board-search-input" placeholder="Tìm theo mục tiêu, mã KR..." [(ngModel)]="searchQuery">
                 <button class="clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''"><i class="fa-solid fa-xmark"></i></button>
               </div>
@@ -1302,18 +1301,11 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       min-width: 220px;
     }
     .board-search-input {
-      padding-left: 28px;
+      padding-left: 10px;
+      padding-right: 26px;
       border-radius: 6px;
       font-size: 13px;
       border: 1px solid #cbd5e1;
-    }
-    .board-search-wrapper .search-icon {
-      position: absolute;
-      left: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      color: #94a3b8;
-      font-size: 12px;
     }
     .board-search-wrapper .clear-btn {
       position: absolute;
