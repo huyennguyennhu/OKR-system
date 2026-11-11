@@ -611,7 +611,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                         <th class="text-center" style="width: 180px;">Đo lường</th>
                         <th style="width: 180px;">Tiến độ Hoàn thành</th>
                         <th class="text-center" style="width: 130px;">Trạng thái / SLA</th>
-                        <th class="text-center" style="width: 140px;">Cơ chế Đo lường</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -652,11 +651,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                             <span class="status-chip" [ngClass]="getHealthClass(child.progress)" style="font-size: 13px;">
                               <i class="fa-solid" [ngClass]="child.progress >= 75 ? 'fa-circle-check' : (child.progress >= 50 ? 'fa-triangle-exclamation' : 'fa-circle-xmark')"></i>
                               {{ getHealthLabel(child.progress) }}
-                            </span>
-                          </td>
-                          <td class="text-center">
-                            <span class="badge badge-light-primary" style="font-size: 13px;">
-                              <i class="fa-solid fa-layer-group me-1"></i> Roll-up
                             </span>
                           </td>
                         </tr>
@@ -718,14 +712,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   {{ getKrSlaLabel(teamKr) }}
                                 </span>
                               </td>
-                              <td class="text-center">
-                                <span class="badge-source-gitlab" *ngIf="teamKr.flow_code" [title]="'Kịch bản: ' + teamKr.flow_code" style="font-size: 13px;">
-                                  <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                                </span>
-                                <span class="badge-source-manual" *ngIf="!teamKr.flow_code" style="font-size: 13px;">
-                                  <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                                </span>
-                              </td>
                             </tr>
 
                             <!-- LEVEL 4: CÁC KEY RESULTS CẤP CÁ NHÂN KHI MỞ RỘNG TEAM KR -->
@@ -773,14 +759,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(pKr)" style="font-size: 13px;">
                                     <i class="fa-solid" [ngClass]="getKrProgress(pKr) >= 75 ? 'fa-check' : (getKrProgress(pKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
                                     {{ getKrSlaLabel(pKr) }}
-                                  </span>
-                                </td>
-                                <td class="text-center">
-                                  <span class="badge-source-gitlab" *ngIf="pKr.flow_code" [title]="'Kịch bản: ' + pKr.flow_code" style="font-size: 13px;">
-                                    <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                                  </span>
-                                  <span class="badge-source-manual" *ngIf="!pKr.flow_code" style="font-size: 13px;">
-                                    <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
                                   </span>
                                 </td>
                               </tr>
@@ -844,14 +822,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                 {{ getKrSlaLabel(teamKr) }}
                               </span>
                             </td>
-                            <td class="text-center">
-                              <span class="badge-source-gitlab" *ngIf="teamKr.flow_code" [title]="'Kịch bản: ' + teamKr.flow_code" style="font-size: 13px;">
-                                <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                              </span>
-                              <span class="badge-source-manual" *ngIf="!teamKr.flow_code" style="font-size: 13px;">
-                                <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                              </span>
-                            </td>
                           </tr>
 
                           <!-- KR Cá nhân nếu có -->
@@ -901,14 +871,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   {{ getKrSlaLabel(pKr) }}
                                 </span>
                               </td>
-                              <td class="text-center">
-                                <span class="badge-source-gitlab" *ngIf="pKr.flow_code" [title]="'Kịch bản: ' + pKr.flow_code" style="font-size: 13px;">
-                                  <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                                </span>
-                                <span class="badge-source-manual" *ngIf="!pKr.flow_code" style="font-size: 13px;">
-                                  <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                                </span>
-                              </td>
                             </tr>
                           </ng-container>
                         </ng-container>
@@ -917,7 +879,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                       <!-- TRƯỜNG HỢP 3: obj CÓ CẢ MỤC TIÊU CON VÀ CÓ KR TRỰC TIẾP CỦA CHÍNH NÓ -->
                       <ng-container *ngIf="getChildObjectives(obj).length > 0 && (obj.key_results?.length || 0) > 0">
                         <tr class="tree-row tree-row-level-2 bg-light-subtle">
-                          <td colspan="6" class="py-2 px-3 fw-bold text-dark" style="font-size: 13px;">
+                          <td colspan="5" class="py-2 px-3 fw-bold text-dark" style="font-size: 13px;">
                             <i class="fa-solid fa-bullseye text-primary me-2"></i> Key Results trực tiếp của Mục tiêu Cấp trên
                           </td>
                         </tr>
@@ -960,21 +922,13 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                 {{ getKrSlaLabel(dKr) }}
                               </span>
                             </td>
-                            <td class="text-center">
-                              <span class="badge-source-gitlab" *ngIf="dKr.flow_code" [title]="'Kịch bản: ' + dKr.flow_code" style="font-size: 13px;">
-                                <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                              </span>
-                              <span class="badge-source-manual" *ngIf="!dKr.flow_code" style="font-size: 13px;">
-                                <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                              </span>
-                            </td>
                           </tr>
                         </ng-container>
                       </ng-container>
 
                       <!-- TRƯỜNG HỢP 4: EMPTY STATE THEO QUY CHUẨN RULE 1 -->
                       <tr *ngIf="getChildObjectives(obj).length === 0 && getTeamKrs(obj).length === 0">
-                        <td colspan="6" class="text-center py-4 text-muted" style="font-size: 13px;">
+                        <td colspan="5" class="text-center py-4 text-muted" style="font-size: 13px;">
                           <i class="fa-regular fa-circle-question me-1"></i> Chưa có mục tiêu con hay kết quả then chốt nào. Hãy tạo mới!
                         </td>
                       </tr>
