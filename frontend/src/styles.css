@@ -75,6 +75,14 @@ body {
   border-radius: 50% !important;
 }
 
+/* Custom Gap Helpers */
+.gap-1\.5 {
+  gap: 0.375rem !important; /* 6px */
+}
+.gap-2\.5 {
+  gap: 0.625rem !important; /* 10px */
+}
+
 /* Layout */
 .app-container {
   display: flex;

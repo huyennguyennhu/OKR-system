@@ -333,7 +333,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                         <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
                       </td>
                       <td style="width: 180px;">
-                        <span class="d-flex align-items-center gap-1.5 text-muted">
+                        <span class="d-flex align-items-center gap-2 text-muted">
                           <i class="fa-solid fa-users text-primary" style="font-size: 12px;"></i>
                           <span>{{ c.teamName }}</span>
                         </span>
