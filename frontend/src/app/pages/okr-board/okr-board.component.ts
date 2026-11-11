@@ -556,29 +556,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
               <!-- THÂN THẺ: CÂY PHÂN CẤP MỤC TIÊU & KEY RESULTS (HIERARCHICAL TREE TABLE) -->
               <div class="okr-card-tree-wrapper border-top">
-                <!-- Toolbar điều khiển Cây Phân Cấp -->
-                <div class="tree-card-toolbar px-4 py-2.5 d-flex align-items-center justify-content-between border-bottom flex-wrap gap-2">
-                  <div class="d-flex align-items-center gap-2 flex-wrap">
-                    <span class="badge badge-light-primary" style="font-size: 13px;">
-                      <i class="fa-solid fa-sitemap me-1"></i> Cây Phân cấp OKR
-                    </span>
-                    <strong class="text-dark" style="font-size: 13px;">
-                      Cấu trúc Phân bổ Mục tiêu & Kết quả Then chốt
-                    </strong>
-                    <span class="text-muted ms-1" style="font-size: 13px;">
-                      ({{ getChildObjectives(obj).length }} Mục tiêu Đội ngũ • {{ getTeamKrCount(obj) }} KR Đội ngũ • {{ getPersonalKrCount(obj) }} KR Cá nhân)
-                    </span>
-                  </div>
-                  <div class="d-flex align-items-center gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5" style="font-size: 13px;" (click)="expandAllTree(obj)" title="Mở rộng tất cả các nhánh cây">
-                      <i class="fa-solid fa-angles-down me-1 text-primary"></i> Mở rộng tất cả
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5" style="font-size: 13px;" (click)="collapseAllTree(obj)" title="Thu gọn tất cả các nhánh cây">
-                      <i class="fa-solid fa-angles-up me-1 text-secondary"></i> Thu gọn tất cả
-                    </button>
-                  </div>
-                </div>
-
                 <!-- Bảng Cây Phân Cấp Đa Tầng -->
                 <div class="table-responsive">
                   <table class="table align-middle mb-0 okr-card-tree-table">
