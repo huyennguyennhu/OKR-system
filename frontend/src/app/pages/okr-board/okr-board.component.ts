@@ -830,12 +830,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                 <span class="text-muted" style="font-size: 13px;">
                   Chu kỳ áp dụng: <strong>{{ obj.timeline_id || selectedTimelineTree }}</strong>
                 </span>
-                <a [routerLink]="['/okr-tree']" 
-                   [queryParams]="{ highlight: obj.objective_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
-                   class="text-primary text-decoration-none fw-semibold d-inline-flex align-items-center" 
-                   style="font-size: 13px; cursor: pointer;">
-                  Xem trên OKR Tree <i class="fa-solid fa-arrow-right ms-1"></i>
-                </a>
               </div>
             </div>
           </div>
