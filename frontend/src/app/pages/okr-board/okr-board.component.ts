@@ -464,10 +464,8 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                   <td class="text-center fw-bold text-success" style="font-size: 13px;">
                     <i class="fa-solid fa-shield-check text-success me-1"></i> {{ totalTeamRow.slaRate }}%
                   </td>
-                  <td class="text-center">
-                    <span class="status-chip chip-primary fw-bold">
-                      {{ totalTeamRow.status }}
-                    </span>
+                  <td class="text-center text-muted">
+                    —
                   </td>
                 </tr>
               </tbody>
