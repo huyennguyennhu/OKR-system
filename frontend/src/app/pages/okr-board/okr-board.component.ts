@@ -2415,7 +2415,7 @@ export class OkrBoardComponent implements OnInit {
 
   getKrSlaLabel(kr: KeyResult): string {
     const p = this.getKrProgress(kr);
-    if (p >= 75) return 'Đạt SLA';
+    if (p >= 75) return 'Đạt';
     if (p >= 50) return 'Cần chú ý';
     return 'Trễ SLA';
   }
