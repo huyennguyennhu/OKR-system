@@ -563,275 +563,490 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                 <div class="obj-progress-bar-container mt-3">
                   <div class="obj-progress-bar-fill" [style.width.%]="obj.progress" [ngClass]="getProgressBarColor(obj.progress)"></div>
                 </div>
-                <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 11.5px; color: #64748b;">
+                <div class="d-flex justify-content-between align-items-center mt-1" style="font-size: 13px; color: #64748b;">
                   <span>Khởi điểm: <strong>{{ obj.start_value || 0 }}%</strong></span>
                   <span>Hiện tại: <strong [ngClass]="getHealthTextClass(obj.progress)">{{ obj.progress }}%</strong></span>
                   <span>Mục tiêu cam kết: <strong>{{ obj.expected_value || 100 }}%</strong></span>
                 </div>
               </div>
 
-              <!-- 1. KHỐI MỤC TIÊU CẤP ĐỘI NGŨ TRỰC THUỘC (NẾU CÓ) -->
-              <div class="child-objectives-container border-top" *ngIf="getChildObjectives(obj).length > 0">
-                <div class="px-4 py-2.5 bg-light-subtle d-flex align-items-center justify-content-between border-bottom">
-                  <div class="d-flex align-items-center gap-2">
-                    <span class="badge badge-light-primary"><i class="fa-solid fa-sitemap me-1"></i> Cấp Đội ngũ</span>
+              <!-- THÂN THẺ: CÂY PHÂN CẤP MỤC TIÊU & KEY RESULTS (HIERARCHICAL TREE TABLE) -->
+              <div class="okr-card-tree-wrapper border-top">
+                <!-- Toolbar điều khiển Cây Phân Cấp -->
+                <div class="tree-card-toolbar px-4 py-2.5 d-flex align-items-center justify-content-between border-bottom flex-wrap gap-2">
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <span class="badge badge-light-primary" style="font-size: 13px;">
+                      <i class="fa-solid fa-sitemap me-1"></i> Cây Phân cấp OKR
+                    </span>
                     <strong class="text-dark" style="font-size: 13px;">
-                      Mục tiêu Cấp Đội ngũ Trực thuộc ({{ getChildObjectives(obj).length }} Mục tiêu)
+                      Cấu trúc Phân bổ Mục tiêu & Kết quả Then chốt
                     </strong>
+                    <span class="text-muted ms-1" style="font-size: 13px;">
+                      ({{ getChildObjectives(obj).length }} Mục tiêu Đội ngũ • {{ getTeamKrCount(obj) }} KR Đội ngũ • {{ getPersonalKrCount(obj) }} KR Cá nhân)
+                    </span>
                   </div>
-                  <span class="text-muted" style="font-size: 11.5px;">Phân bổ mục tiêu chiến lược cho từng đội ngũ phụ trách</span>
+                  <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5" style="font-size: 13px;" (click)="expandAllTree(obj)" title="Mở rộng tất cả các nhánh cây">
+                      <i class="fa-solid fa-angles-down me-1 text-primary"></i> Mở rộng tất cả
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-1 px-2.5" style="font-size: 13px;" (click)="collapseAllTree(obj)" title="Thu gọn tất cả các nhánh cây">
+                      <i class="fa-solid fa-angles-up me-1 text-secondary"></i> Thu gọn tất cả
+                    </button>
+                  </div>
                 </div>
 
+                <!-- Bảng Cây Phân Cấp Đa Tầng -->
                 <div class="table-responsive">
-                  <table class="table table-hover align-middle mb-0 child-team-table">
+                  <table class="table align-middle mb-0 okr-card-tree-table">
                     <thead>
                       <tr>
-                        <th style="width: 160px;">Mã Mục tiêu</th>
-                        <th>Mục tiêu Cấp Đội ngũ & Đội ngũ phụ trách</th>
-                        <th class="text-center" style="width: 110px;">Quy mô KR</th>
-                        <th style="width: 200px;">Tiến độ Hoàn thành</th>
-                        <th class="text-center" style="width: 140px;">Trạng thái</th>
-                        <th class="text-center" style="width: 100px;">Chi tiết</th>
+                        <th style="min-width: 380px;">Cấu trúc Phân cấp (Mục tiêu & Key Results)</th>
+                        <th style="width: 170px;">Phụ trách</th>
+                        <th class="text-center" style="width: 180px;">Đo lường</th>
+                        <th style="width: 180px;">Tiến độ Hoàn thành</th>
+                        <th class="text-center" style="width: 130px;">Trạng thái / SLA</th>
+                        <th class="text-center" style="width: 140px;">Cơ chế Đo lường</th>
+                        <th class="text-center" style="width: 70px;">Cây OKR</th>
                       </tr>
                     </thead>
                     <tbody>
+                      <!-- TRƯỜNG HỢP 1: CÓ MỤC TIÊU ĐỘI NGŨ CON TRỰC THUỘC (LEVEL 2 -> 3 -> 4) -->
                       <ng-container *ngFor="let child of getChildObjectives(obj)">
-                        <!-- Dòng thông tin Mục tiêu Đội ngũ -->
-                        <tr class="child-row-clickable" (click)="toggleChildObj(child.objective_id)">
-                          <td>
-                            <div class="d-flex align-items-center gap-1.5">
-                              <i class="fa-solid fa-chevron-right child-chevron me-1 text-primary" 
-                                 [class.rotate-90]="isChildExpanded(child.objective_id)"></i>
-                              <span class="badge badge-team-code">{{ child.objective_id }}</span>
+                        <!-- LEVEL 2: DÒNG MỤC TIÊU ĐỘI NGŨ -->
+                        <tr class="tree-row tree-row-level-2" [class.tree-row-expanded]="isChildExpanded(child.objective_id)" (click)="toggleChildObj(child.objective_id)">
+                          <td class="tree-cell-title" style="padding-left: 1.25rem;">
+                            <div class="d-flex align-items-center">
+                              <button type="button" class="tree-toggle-btn text-primary me-2" (click)="toggleChildObj(child.objective_id, $event)" [title]="isChildExpanded(child.objective_id) ? 'Thu gọn' : 'Mở rộng'">
+                                <i class="fa-solid fa-chevron-right tree-chevron" [class.rotate-90]="isChildExpanded(child.objective_id)"></i>
+                              </button>
+                              <span class="badge badge-team-code me-2">{{ child.objective_id }}</span>
+                              <span class="level-tag-mini level-tag-team me-2"><i class="fa-solid fa-users me-1"></i>Đội ngũ</span>
+                              <strong class="text-dark" style="font-size: 13px;">{{ child.title }}</strong>
+                              <span class="badge badge-light-secondary ms-2" style="font-size: 13px;">{{ getTeamKrs(child).length }} KRs</span>
                             </div>
                           </td>
                           <td>
-                            <div class="d-flex flex-column gap-1.5">
-                              <strong class="text-dark" style="font-size: 13px;">{{ child.title }}</strong>
-                              <span class="text-muted d-flex align-items-center gap-1.5" style="font-size: 12px;">
-                                <i class="fa-solid fa-users text-primary"></i>
-                                {{ getAssigneeLabel(child) }}
-                              </span>
-                            </div>
+                            <span class="d-flex align-items-center gap-1.5 text-dark fw-semibold" style="font-size: 13px;">
+                              <i class="fa-solid fa-users text-primary"></i> {{ getAssigneeLabel(child) }}
+                            </span>
                           </td>
                           <td class="text-center">
-                            <span class="badge badge-light-secondary fw-semibold">
-                              {{ child.key_results?.length || 0 }} KRs
-                            </span>
+                            <span class="text-muted" style="font-size: 13px;">Tổng hợp KRs đội ngũ</span>
                           </td>
                           <td>
                             <div class="d-flex align-items-center gap-2">
-                              <div class="kr-progress-track flex-1">
+                              <div class="kr-progress-track flex-1" style="height: 7px;">
                                 <div class="kr-progress-bar" [style.width.%]="child.progress" [ngClass]="getProgressBarColor(child.progress)"></div>
                               </div>
-                              <span class="fw-bold" [ngClass]="getHealthTextClass(child.progress)" style="font-size: 13px; width: 45px; text-align: right;">
+                              <span class="fw-bold" [ngClass]="getHealthTextClass(child.progress)" style="font-size: 13px; min-width: 44px; text-align: right;">
                                 {{ child.progress }}%
                               </span>
                             </div>
                           </td>
                           <td class="text-center">
-                            <span class="status-chip" [ngClass]="getHealthClass(child.progress)">
+                            <span class="status-chip" [ngClass]="getHealthClass(child.progress)" style="font-size: 13px;">
                               <i class="fa-solid" [ngClass]="child.progress >= 75 ? 'fa-circle-check' : (child.progress >= 50 ? 'fa-triangle-exclamation' : 'fa-circle-xmark')"></i>
                               {{ getHealthLabel(child.progress) }}
                             </span>
                           </td>
                           <td class="text-center">
-                            <div class="d-inline-flex align-items-center gap-2">
-                              <button type="button" class="btn btn-sm btn-link p-0 text-primary text-decoration-none fw-semibold" style="font-size: 12px;">
-                                {{ isChildExpanded(child.objective_id) ? 'Thu gọn' : 'Xem KRs' }}
-                              </button>
+                            <span class="badge badge-light-primary" style="font-size: 13px;">
+                              <i class="fa-solid fa-layer-group me-1"></i> Roll-up
+                            </span>
+                          </td>
+                          <td class="text-center">
+                            <a [routerLink]="['/okr-tree']" 
+                               [queryParams]="{ highlight: child.objective_id, timeline_id: child.timeline_id || selectedTimelineId, space_id: child.space_id || selectedSpaceId }" 
+                               (click)="$event.stopPropagation()"
+                               class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                               style="font-size: 13px; border-radius: 4px;"
+                               title="Xem trên OKR Tree">
+                              <i class="fa-solid fa-sitemap"></i>
+                            </a>
+                          </td>
+                        </tr>
+
+                        <!-- KHI MỤC TIÊU ĐỘI NGŨ ĐƯỢC MỞ RỘNG: HIỂN THỊ CÁC KEY RESULTS (LEVEL 3 & 4) -->
+                        <ng-container *ngIf="isChildExpanded(child.objective_id)">
+                          <ng-container *ngFor="let teamKr of getTeamKrs(child); let isLastTeamKr = last">
+                            <!-- LEVEL 3: DÒNG KEY RESULT CẤP ĐỘI NGŨ -->
+                            <tr class="tree-row tree-row-level-3" [class.tree-row-expanded]="isKrExpanded(teamKr.kr_id)" (click)="hasPersonalKrs(child, teamKr.kr_id) && toggleKr(teamKr.kr_id, $event)">
+                              <td class="tree-cell-title" style="padding-left: 2.5rem;">
+                                <div class="d-flex align-items-center">
+                                  <span class="tree-branch-symbol text-primary me-2">{{ isLastTeamKr ? '└──' : '├──' }}</span>
+                                  <button type="button" class="tree-toggle-btn text-primary me-1.5" 
+                                          *ngIf="hasPersonalKrs(child, teamKr.kr_id)" 
+                                          (click)="toggleKr(teamKr.kr_id, $event)"
+                                          [title]="isKrExpanded(teamKr.kr_id) ? 'Thu gọn KR cá nhân' : 'Mở rộng KR cá nhân'">
+                                    <i class="fa-solid fa-chevron-right tree-chevron text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
+                                  </button>
+                                  <i class="fa-solid fa-circle-dot text-muted me-1.5" *ngIf="!hasPersonalKrs(child, teamKr.kr_id)" style="font-size: 8px; width: 20px; text-align: center;"></i>
+                                  <span class="kr-code-badge me-2">{{ teamKr.kr_id }}</span>
+                                  <span class="level-tag-mini level-tag-team-kr me-2"><i class="fa-solid fa-bullseye me-1"></i>KR Đội ngũ</span>
+                                  <span class="kr-title-text fw-medium text-dark">{{ teamKr.title }}</span>
+                                  <span class="badge badge-light-info ms-2" *ngIf="getPersonalKrs(child, teamKr.kr_id).length > 0" style="font-size: 13px;">
+                                    {{ getPersonalKrs(child, teamKr.kr_id).length }} KR cá nhân
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <span class="d-flex align-items-center gap-1.5 text-muted" style="font-size: 13px;">
+                                  <i class="fa-solid fa-users text-primary"></i> {{ teamKr.team_name || getKrAssigneeLabel(teamKr) }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <div class="metric-val-flow" style="font-size: 13px;">
+                                  <span class="val-start text-muted" title="Khởi điểm">{{ teamKr.start_value }}{{ teamKr.unit || '%' }}</span>
+                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                  <span class="val-current fw-bold" [ngClass]="getKrProgress(teamKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
+                                    {{ teamKr.current_value }}{{ teamKr.unit || '%' }}
+                                  </span>
+                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                  <span class="val-target fw-semibold text-dark" title="Mục tiêu">
+                                    {{ teamKr.expected_value }}{{ teamKr.unit || '%' }}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <div class="d-flex align-items-center gap-2">
+                                  <div class="kr-progress-track flex-1" style="height: 6px;">
+                                    <div class="kr-progress-bar" [style.width.%]="getKrProgress(teamKr)" [ngClass]="getProgressBarColor(getKrProgress(teamKr))"></div>
+                                  </div>
+                                  <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(teamKr))" style="font-size: 13px; min-width: 44px; text-align: right;">
+                                    {{ getKrProgress(teamKr) }}%
+                                  </span>
+                                </div>
+                              </td>
+                              <td class="text-center">
+                                <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(teamKr)" style="font-size: 13px;">
+                                  <i class="fa-solid" [ngClass]="getKrProgress(teamKr) >= 75 ? 'fa-check' : (getKrProgress(teamKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                  {{ getKrSlaLabel(teamKr) }}
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <span class="badge-source-gitlab" *ngIf="teamKr.flow_code" [title]="'Kịch bản: ' + teamKr.flow_code" style="font-size: 13px;">
+                                  <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
+                                </span>
+                                <span class="badge-source-manual" *ngIf="!teamKr.flow_code" style="font-size: 13px;">
+                                  <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <a [routerLink]="['/okr-tree']" 
+                                   [queryParams]="{ highlight: teamKr.kr_id, timeline_id: child.timeline_id || selectedTimelineId, space_id: child.space_id || selectedSpaceId }" 
+                                   (click)="$event.stopPropagation()"
+                                   class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                                   style="font-size: 13px; border-radius: 4px;"
+                                   title="Xem trên OKR Tree">
+                                  <i class="fa-solid fa-sitemap"></i>
+                                </a>
+                              </td>
+                            </tr>
+
+                            <!-- LEVEL 4: CÁC KEY RESULTS CẤP CÁ NHÂN KHI MỞ RỘNG TEAM KR -->
+                            <ng-container *ngIf="isKrExpanded(teamKr.kr_id)">
+                              <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(child, teamKr.kr_id); let isLastPersonalKr = last">
+                                <td class="tree-cell-title" style="padding-left: 4.25rem;">
+                                  <div class="d-flex align-items-center">
+                                    <span class="tree-branch-symbol text-muted me-2">{{ isLastPersonalKr ? '└──' : '├──' }}</span>
+                                    <i class="fa-solid fa-user text-muted me-1.5" style="font-size: 11px; width: 14px; text-align: center;"></i>
+                                    <span class="kr-code-badge-sub me-2">{{ pKr.kr_id }}</span>
+                                    <span class="level-tag-mini level-tag-personal-kr me-2">Cá nhân</span>
+                                    <span class="kr-title-text text-secondary" style="font-size: 13px;">{{ pKr.title }}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div class="d-flex align-items-center gap-1.5" style="font-size: 13px;">
+                                    <span class="badge badge-emp-code" *ngIf="getKrAssigneeCode(pKr)">{{ getKrAssigneeCode(pKr) }}</span>
+                                    <span class="emp-name fw-medium text-dark">{{ getKrAssigneeLabel(pKr) }}</span>
+                                  </div>
+                                </td>
+                                <td class="text-center">
+                                  <div class="metric-val-flow" style="font-size: 13px;">
+                                    <span class="val-start text-muted" title="Khởi điểm">{{ pKr.start_value }}{{ pKr.unit || '%' }}</span>
+                                    <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                    <span class="val-current fw-bold" [ngClass]="getKrProgress(pKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
+                                      {{ pKr.current_value }}{{ pKr.unit || '%' }}
+                                    </span>
+                                    <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                    <span class="val-target fw-semibold text-dark" title="Mục tiêu">
+                                      {{ pKr.expected_value }}{{ pKr.unit || '%' }}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <div class="d-flex align-items-center gap-2">
+                                    <div class="kr-progress-track flex-1" style="height: 6px;">
+                                      <div class="kr-progress-bar" [style.width.%]="getKrProgress(pKr)" [ngClass]="getProgressBarColor(getKrProgress(pKr))"></div>
+                                    </div>
+                                    <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(pKr))" style="font-size: 13px; min-width: 44px; text-align: right;">
+                                      {{ getKrProgress(pKr) }}%
+                                    </span>
+                                  </div>
+                                </td>
+                                <td class="text-center">
+                                  <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(pKr)" style="font-size: 13px;">
+                                    <i class="fa-solid" [ngClass]="getKrProgress(pKr) >= 75 ? 'fa-check' : (getKrProgress(pKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                    {{ getKrSlaLabel(pKr) }}
+                                  </span>
+                                </td>
+                                <td class="text-center">
+                                  <span class="badge-source-gitlab" *ngIf="pKr.flow_code" [title]="'Kịch bản: ' + pKr.flow_code" style="font-size: 13px;">
+                                    <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
+                                  </span>
+                                  <span class="badge-source-manual" *ngIf="!pKr.flow_code" style="font-size: 13px;">
+                                    <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                                  </span>
+                                </td>
+                                <td class="text-center">
+                                  <a [routerLink]="['/okr-tree']" 
+                                     [queryParams]="{ highlight: pKr.kr_id, timeline_id: child.timeline_id || selectedTimelineId, space_id: child.space_id || selectedSpaceId }" 
+                                     (click)="$event.stopPropagation()"
+                                     class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                                     style="font-size: 13px; border-radius: 4px;"
+                                     title="Xem trên OKR Tree">
+                                    <i class="fa-solid fa-sitemap"></i>
+                                  </a>
+                                </td>
+                              </tr>
+                            </ng-container>
+                          </ng-container>
+                        </ng-container>
+                      </ng-container>
+
+                      <!-- TRƯỜNG HỢP 2: KHÔNG CÓ MỤC TIÊU ĐỘI NGŨ CON (VÍ DỤ ĐANG LỌC CẤP TEAM HOẶC PERSONAL) -->
+                      <ng-container *ngIf="getChildObjectives(obj).length === 0">
+                        <ng-container *ngFor="let teamKr of getTeamKrs(obj); let isLastTeamKr = last">
+                          <tr class="tree-row tree-row-level-3" [class.tree-row-expanded]="isKrExpanded(teamKr.kr_id)" (click)="hasPersonalKrs(obj, teamKr.kr_id) && toggleKr(teamKr.kr_id, $event)">
+                            <td class="tree-cell-title" style="padding-left: 1.25rem;">
+                              <div class="d-flex align-items-center">
+                                <button type="button" class="tree-toggle-btn text-primary me-1.5" 
+                                        *ngIf="hasPersonalKrs(obj, teamKr.kr_id)" 
+                                        (click)="toggleKr(teamKr.kr_id, $event)"
+                                        [title]="isKrExpanded(teamKr.kr_id) ? 'Thu gọn KR cá nhân' : 'Mở rộng KR cá nhân'">
+                                  <i class="fa-solid fa-chevron-right tree-chevron text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
+                                </button>
+                                <i class="fa-solid fa-circle-dot text-muted me-1.5" *ngIf="!hasPersonalKrs(obj, teamKr.kr_id)" style="font-size: 8px; width: 20px; text-align: center;"></i>
+                                <span class="kr-code-badge me-2">{{ teamKr.kr_id }}</span>
+                                <span class="level-tag-mini level-tag-team-kr me-2"><i class="fa-solid fa-bullseye me-1"></i>KR Đội ngũ</span>
+                                <span class="kr-title-text fw-medium text-dark">{{ teamKr.title }}</span>
+                                <span class="badge badge-light-info ms-2" *ngIf="getPersonalKrs(obj, teamKr.kr_id).length > 0" style="font-size: 13px;">
+                                  {{ getPersonalKrs(obj, teamKr.kr_id).length }} KR cá nhân
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <span class="d-flex align-items-center gap-1.5 text-muted" style="font-size: 13px;">
+                                <i class="fa-solid fa-users text-primary"></i> {{ teamKr.team_name || getKrAssigneeLabel(teamKr) }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <div class="metric-val-flow" style="font-size: 13px;">
+                                <span class="val-start text-muted" title="Khởi điểm">{{ teamKr.start_value }}{{ teamKr.unit || '%' }}</span>
+                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                <span class="val-current fw-bold" [ngClass]="getKrProgress(teamKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
+                                  {{ teamKr.current_value }}{{ teamKr.unit || '%' }}
+                                </span>
+                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                <span class="val-target fw-semibold text-dark" title="Mục tiêu">
+                                  {{ teamKr.expected_value }}{{ teamKr.unit || '%' }}
+                                </span>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="d-flex align-items-center gap-2">
+                                <div class="kr-progress-track flex-1" style="height: 6px;">
+                                  <div class="kr-progress-bar" [style.width.%]="getKrProgress(teamKr)" [ngClass]="getProgressBarColor(getKrProgress(teamKr))"></div>
+                                </div>
+                                <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(teamKr))" style="font-size: 13px; min-width: 44px; text-align: right;">
+                                  {{ getKrProgress(teamKr) }}%
+                                </span>
+                              </div>
+                            </td>
+                            <td class="text-center">
+                              <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(teamKr)" style="font-size: 13px;">
+                                <i class="fa-solid" [ngClass]="getKrProgress(teamKr) >= 75 ? 'fa-check' : (getKrProgress(teamKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                {{ getKrSlaLabel(teamKr) }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <span class="badge-source-gitlab" *ngIf="teamKr.flow_code" [title]="'Kịch bản: ' + teamKr.flow_code" style="font-size: 13px;">
+                                <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
+                              </span>
+                              <span class="badge-source-manual" *ngIf="!teamKr.flow_code" style="font-size: 13px;">
+                                <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                              </span>
+                            </td>
+                            <td class="text-center">
                               <a [routerLink]="['/okr-tree']" 
-                                 [queryParams]="{ highlight: child.objective_id, timeline_id: child.timeline_id || selectedTimelineId, space_id: child.space_id || selectedSpaceId }" 
+                                 [queryParams]="{ highlight: teamKr.kr_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
                                  (click)="$event.stopPropagation()"
-                                 class="btn btn-sm btn-outline-primary py-0.5 px-1.5" 
-                                 style="font-size: 11px; border-radius: 4px;"
+                                 class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                                 style="font-size: 13px; border-radius: 4px;"
                                  title="Xem trên OKR Tree">
                                 <i class="fa-solid fa-sitemap"></i>
                               </a>
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                          </tr>
 
-                        <!-- Bảng Key Results của Mục tiêu Đội ngũ khi mở rộng -->
-                        <tr *ngIf="isChildExpanded(child.objective_id)" class="child-krs-expanded-row">
-                          <td colspan="6" class="p-0 border-0 bg-light-subtle">
-                            <div class="nested-krs-box m-3 p-3 bg-white rounded border shadow-2xs">
-                              <div class="d-flex align-items-center justify-content-between mb-2">
-                                <span class="fw-bold text-dark d-flex align-items-center gap-2" style="font-size: 12.5px;">
-                                  <i class="fa-solid fa-list-check text-primary"></i>
-                                  Key Results cấu thành thuộc <strong>{{ child.objective_id }}</strong>
+                          <!-- KR Cá nhân nếu có -->
+                          <ng-container *ngIf="isKrExpanded(teamKr.kr_id)">
+                            <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(obj, teamKr.kr_id); let isLastPersonalKr = last">
+                              <td class="tree-cell-title" style="padding-left: 2.75rem;">
+                                <div class="d-flex align-items-center">
+                                  <span class="tree-branch-symbol text-muted me-2">{{ isLastPersonalKr ? '└──' : '├──' }}</span>
+                                  <i class="fa-solid fa-user text-muted me-1.5" style="font-size: 11px; width: 14px; text-align: center;"></i>
+                                  <span class="kr-code-badge-sub me-2">{{ pKr.kr_id }}</span>
+                                  <span class="level-tag-mini level-tag-personal-kr me-2">Cá nhân</span>
+                                  <span class="kr-title-text text-secondary" style="font-size: 13px;">{{ pKr.title }}</span>
+                                </div>
+                              </td>
+                              <td>
+                                <div class="d-flex align-items-center gap-1.5" style="font-size: 13px;">
+                                  <span class="badge badge-emp-code" *ngIf="getKrAssigneeCode(pKr)">{{ getKrAssigneeCode(pKr) }}</span>
+                                  <span class="emp-name fw-medium text-dark">{{ getKrAssigneeLabel(pKr) }}</span>
+                                </div>
+                              </td>
+                              <td class="text-center">
+                                <div class="metric-val-flow" style="font-size: 13px;">
+                                  <span class="val-start text-muted" title="Khởi điểm">{{ pKr.start_value }}{{ pKr.unit || '%' }}</span>
+                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                  <span class="val-current fw-bold" [ngClass]="getKrProgress(pKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
+                                    {{ pKr.current_value }}{{ pKr.unit || '%' }}
+                                  </span>
+                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                  <span class="val-target fw-semibold text-dark" title="Mục tiêu">
+                                    {{ pKr.expected_value }}{{ pKr.unit || '%' }}
+                                  </span>
+                                </div>
+                              </td>
+                              <td>
+                                <div class="d-flex align-items-center gap-2">
+                                  <div class="kr-progress-track flex-1" style="height: 6px;">
+                                    <div class="kr-progress-bar" [style.width.%]="getKrProgress(pKr)" [ngClass]="getProgressBarColor(getKrProgress(pKr))"></div>
+                                  </div>
+                                  <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(pKr))" style="font-size: 13px; min-width: 44px; text-align: right;">
+                                    {{ getKrProgress(pKr) }}%
+                                  </span>
+                                </div>
+                              </td>
+                              <td class="text-center">
+                                <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(pKr)" style="font-size: 13px;">
+                                  <i class="fa-solid" [ngClass]="getKrProgress(pKr) >= 75 ? 'fa-check' : (getKrProgress(pKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                  {{ getKrSlaLabel(pKr) }}
                                 </span>
-                                <span class="badge badge-light-primary" style="font-size: 11px;">
-                                  {{ child.key_results?.length || 0 }} Key Results
+                              </td>
+                              <td class="text-center">
+                                <span class="badge-source-gitlab" *ngIf="pKr.flow_code" [title]="'Kịch bản: ' + pKr.flow_code" style="font-size: 13px;">
+                                  <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
                                 </span>
-                              </div>
-
-                              <div class="table-responsive">
-                                <table class="table table-hover align-middle mb-0 kr-table">
-                                  <thead>
-                                    <tr>
-                                      <th style="width: 130px;">Mã KR</th>
-                                      <th>Kết quả Then chốt & PIC</th>
-                                      <th class="text-center" style="width: 170px;">Đo lường</th>
-                                      <th style="width: 220px;">Tiến độ Hoàn thành</th>
-                                      <th class="text-center" style="width: 130px;">Đạt SLA</th>
-                                      <th class="text-center" style="width: 150px;">Cơ chế Đo lường</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr *ngFor="let kr of child.key_results">
-                                      <td><span class="kr-code-badge">{{ kr.kr_id }}</span></td>
-                                      <td>
-                                        <div class="kr-title-wrapper">
-                                          <span class="kr-title-text">{{ kr.title }}</span>
-                                          <span class="kr-assignee-sub">
-                                            <i class="fa-regular fa-user me-1"></i>{{ getKrAssigneeLabel(kr) }}
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td class="text-center">
-                                        <div class="metric-val-flow">
-                                          <span class="val-start text-muted">{{ kr.start_value }}{{ kr.unit || '%' }}</span>
-                                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                          <span class="val-current fw-bold" [ngClass]="getKrProgress(kr) >= 75 ? 'text-success' : 'text-primary'">
-                                            {{ kr.current_value }}{{ kr.unit || '%' }}
-                                          </span>
-                                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                          <span class="val-target fw-semibold text-dark">{{ kr.expected_value }}{{ kr.unit || '%' }}</span>
-                                        </div>
-                                      </td>
-                                      <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                          <div class="kr-progress-track flex-1">
-                                            <div class="kr-progress-bar" [style.width.%]="getKrProgress(kr)" [ngClass]="getProgressBarColor(getKrProgress(kr))"></div>
-                                          </div>
-                                          <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(kr))">
-                                            {{ getKrProgress(kr) }}%
-                                          </span>
-                                        </div>
-                                      </td>
-                                      <td class="text-center">
-                                        <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(kr)">
-                                          <i class="fa-solid" [ngClass]="getKrProgress(kr) >= 75 ? 'fa-check' : (getKrProgress(kr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
-                                          {{ getKrSlaLabel(kr) }}
-                                        </span>
-                                      </td>
-                                      <td class="text-center">
-                                        <span class="badge-source-gitlab" *ngIf="kr.flow_code" [title]="'Kịch bản: ' + kr.flow_code">
-                                          <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                                        </span>
-                                        <span class="badge-source-manual" *ngIf="!kr.flow_code">
-                                          <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                                        </span>
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
+                                <span class="badge-source-manual" *ngIf="!pKr.flow_code" style="font-size: 13px;">
+                                  <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                                </span>
+                              </td>
+                              <td class="text-center">
+                                <a [routerLink]="['/okr-tree']" 
+                                   [queryParams]="{ highlight: pKr.kr_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
+                                   (click)="$event.stopPropagation()"
+                                   class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                                   style="font-size: 13px; border-radius: 4px;"
+                                   title="Xem trên OKR Tree">
+                                  <i class="fa-solid fa-sitemap"></i>
+                                </a>
+                              </td>
+                            </tr>
+                          </ng-container>
+                        </ng-container>
                       </ng-container>
+
+                      <!-- TRƯỜNG HỢP 3: obj CÓ CẢ MỤC TIÊU CON VÀ CÓ KR TRỰC TIẾP CỦA CHÍNH NÓ -->
+                      <ng-container *ngIf="getChildObjectives(obj).length > 0 && (obj.key_results?.length || 0) > 0">
+                        <tr class="tree-row tree-row-level-2 bg-light-subtle">
+                          <td colspan="7" class="py-2 px-3 fw-bold text-dark" style="font-size: 13px;">
+                            <i class="fa-solid fa-bullseye text-primary me-2"></i> Key Results trực tiếp của Mục tiêu Cấp trên
+                          </td>
+                        </tr>
+                        <ng-container *ngFor="let dKr of getDirectKrs(obj)">
+                          <tr class="tree-row tree-row-level-3">
+                            <td class="tree-cell-title" style="padding-left: 2rem;">
+                              <div class="d-flex align-items-center">
+                                <span class="kr-code-badge me-2">{{ dKr.kr_id }}</span>
+                                <span class="level-tag-mini level-tag-team-kr me-2">Trực tiếp</span>
+                                <span class="kr-title-text fw-medium text-dark">{{ dKr.title }}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <span class="d-flex align-items-center gap-1.5 text-muted" style="font-size: 13px;">
+                                <i class="fa-solid fa-user text-primary"></i> {{ getKrAssigneeLabel(dKr) }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <div class="metric-val-flow" style="font-size: 13px;">
+                                <span class="val-start text-muted">{{ dKr.start_value }}{{ dKr.unit || '%' }}</span>
+                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                <span class="val-current fw-bold" [ngClass]="getKrProgress(dKr) >= 75 ? 'text-success' : 'text-primary'">{{ dKr.current_value }}{{ dKr.unit || '%' }}</span>
+                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
+                                <span class="val-target fw-semibold text-dark">{{ dKr.expected_value }}{{ dKr.unit || '%' }}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <div class="d-flex align-items-center gap-2">
+                                <div class="kr-progress-track flex-1" style="height: 6px;">
+                                  <div class="kr-progress-bar" [style.width.%]="getKrProgress(dKr)" [ngClass]="getProgressBarColor(getKrProgress(dKr))"></div>
+                                </div>
+                                <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(dKr))" style="font-size: 13px; min-width: 44px; text-align: right;">
+                                  {{ getKrProgress(dKr) }}%
+                                </span>
+                              </div>
+                            </td>
+                            <td class="text-center">
+                              <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(dKr)" style="font-size: 13px;">
+                                <i class="fa-solid" [ngClass]="getKrProgress(dKr) >= 75 ? 'fa-check' : (getKrProgress(dKr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
+                                {{ getKrSlaLabel(dKr) }}
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <span class="badge-source-gitlab" *ngIf="dKr.flow_code" [title]="'Kịch bản: ' + dKr.flow_code" style="font-size: 13px;">
+                                <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
+                              </span>
+                              <span class="badge-source-manual" *ngIf="!dKr.flow_code" style="font-size: 13px;">
+                                <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
+                              </span>
+                            </td>
+                            <td class="text-center">
+                              <a [routerLink]="['/okr-tree']" 
+                                 [queryParams]="{ highlight: dKr.kr_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
+                                 (click)="$event.stopPropagation()"
+                                 class="btn btn-sm btn-outline-primary py-0.5 px-2" 
+                                 style="font-size: 13px; border-radius: 4px;"
+                                 title="Xem trên OKR Tree">
+                                <i class="fa-solid fa-sitemap"></i>
+                              </a>
+                            </td>
+                          </tr>
+                        </ng-container>
+                      </ng-container>
+
+                      <!-- TRƯỜNG HỢP 4: EMPTY STATE THEO QUY CHUẨN RULE 1 -->
+                      <tr *ngIf="getChildObjectives(obj).length === 0 && getTeamKrs(obj).length === 0">
+                        <td colspan="7" class="text-center py-4 text-muted" style="font-size: 13px;">
+                          <i class="fa-regular fa-circle-question me-1"></i> Chưa có mục tiêu con hay kết quả then chốt nào. Hãy tạo mới!
+                        </td>
+                      </tr>
                     </tbody>
                   </table>
                 </div>
               </div>
 
-              <!-- 2. BẢNG KEY RESULTS TRỰC TIẾP (HIỂN THỊ NẾU CÓ KR TRỰC TIẾP, HOẶC KHÔNG CÓ MỤC TIÊU CON) -->
-              <div class="table-container p-0" *ngIf="(obj.key_results && obj.key_results.length > 0) || getChildObjectives(obj).length === 0">
-                <div class="px-4 py-2 bg-light border-top border-bottom d-flex align-items-center justify-content-between" *ngIf="getChildObjectives(obj).length > 0 && obj.key_results && obj.key_results.length > 0">
-                  <strong class="text-dark" style="font-size: 13px;">Key Results trực tiếp</strong>
-                </div>
-                <table class="table table-hover align-middle mb-0 kr-table">
-                  <thead>
-                    <tr>
-                      <th style="width: 130px;">Mã KR</th>
-                      <th>Kết quả Then chốt & PIC</th>
-                      <th class="text-center" style="width: 170px;">Đo lường</th>
-                      <th style="width: 220px;">Tiến độ Hoàn thành</th>
-                      <th class="text-center" style="width: 130px;">Đạt SLA</th>
-                      <th class="text-center" style="width: 150px;">Cơ chế Đo lường</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let kr of obj.key_results">
-                      <!-- 1. Mã KR -->
-                      <td>
-                        <span class="kr-code-badge">{{ kr.kr_id }}</span>
-                      </td>
-
-                      <!-- 2. Tên KR & PIC -->
-                      <td>
-                        <div class="kr-title-wrapper">
-                          <span class="kr-title-text">{{ kr.title }}</span>
-                          <span class="kr-assignee-sub">
-                            <i class="fa-regular fa-user me-1"></i>{{ getKrAssigneeLabel(kr) }}
-                          </span>
-                        </div>
-                      </td>
-
-                      <!-- 3. Đo lường: Start -> Current -> Target -->
-                      <td class="text-center">
-                        <div class="metric-val-flow">
-                          <span class="val-start text-muted" title="Ban đầu">{{ kr.start_value }}{{ kr.unit || '%' }}</span>
-                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                          <span class="val-current fw-bold" [ngClass]="getKrProgress(kr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
-                            {{ kr.current_value }}{{ kr.unit || '%' }}
-                          </span>
-                          <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                          <span class="val-target fw-semibold text-dark" title="Chỉ tiêu">{{ kr.expected_value }}{{ kr.unit || '%' }}</span>
-                        </div>
-                      </td>
-
-                      <!-- 4. Tiến độ % -->
-                      <td>
-                        <div class="d-flex align-items-center gap-2">
-                          <div class="kr-progress-track flex-1">
-                            <div class="kr-progress-bar" [style.width.%]="getKrProgress(kr)" [ngClass]="getProgressBarColor(getKrProgress(kr))"></div>
-                          </div>
-                          <span class="kr-pct-label fw-bold" [ngClass]="getHealthTextClass(getKrProgress(kr))">
-                            {{ getKrProgress(kr) }}%
-                          </span>
-                        </div>
-                      </td>
-
-                      <!-- 5. Đạt SLA -->
-                      <td class="text-center">
-                        <span class="sla-badge" [ngClass]="getKrSlaBadgeClass(kr)">
-                          <i class="fa-solid" [ngClass]="getKrProgress(kr) >= 75 ? 'fa-check' : (getKrProgress(kr) >= 50 ? 'fa-clock' : 'fa-triangle-exclamation')"></i>
-                          {{ getKrSlaLabel(kr) }}
-                        </span>
-                      </td>
-
-                      <!-- 6. Cơ chế đo lường -->
-                      <td class="text-center">
-                        <span class="badge-source-gitlab" *ngIf="kr.flow_code" [title]="'Kịch bản: ' + kr.flow_code">
-                          <i class="fa-solid fa-robot text-primary me-1"></i> Activepieces
-                        </span>
-                        <span class="badge-source-manual" *ngIf="!kr.flow_code">
-                          <i class="fa-solid fa-hand text-muted me-1"></i> Thủ công
-                        </span>
-                      </td>
-                    </tr>
-
-                    <tr *ngIf="getChildObjectives(obj).length === 0 && (!obj.key_results || obj.key_results.length === 0)">
-                      <td colspan="6" class="text-center text-muted py-3" style="font-size: 13px;">
-                        <i class="fa-regular fa-circle-question me-1"></i> Chưa có Mục tiêu con hay Key Result nào gắn với mục tiêu này.
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-
               <!-- Footer Thẻ -->
               <div class="okr-card-footer d-flex justify-content-between align-items-center px-4 py-2 border-top bg-light">
-                <span class="text-muted" style="font-size: 12px;">
+                <span class="text-muted" style="font-size: 13px;">
                   Chu kỳ áp dụng: <strong>{{ obj.timeline_id || selectedTimelineTree }}</strong>
                 </span>
                 <a [routerLink]="['/okr-tree']" 
                    [queryParams]="{ highlight: obj.objective_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
                    class="text-primary text-decoration-none fw-semibold d-inline-flex align-items-center" 
-                   style="font-size: 12px; cursor: pointer;">
+                   style="font-size: 13px; cursor: pointer;">
                   Xem trên OKR Tree <i class="fa-solid fa-arrow-right ms-1"></i>
                 </a>
               </div>
@@ -1376,79 +1591,155 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       transition: width 0.4s ease;
     }
 
-    /* Child Objectives Block */
-    .child-objectives-container {
-      background: #ffffff;
+    /* Tree Card Toolbar */
+    .tree-card-toolbar {
+      background: #f8fafc;
+      font-size: 13px;
     }
-    .child-team-table th {
-      font-size: 11.5px;
+
+    /* Unified Hierarchical Tree Table */
+    .okr-card-tree-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+    .okr-card-tree-table th {
+      font-size: 13px;
       font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
+      color: #475569;
       background: #f8fafc;
       border-bottom: 1px solid #e2e8f0;
-      padding: 9px 16px;
+      padding: 10px 14px;
+      white-space: nowrap;
     }
-    .child-team-table td {
-      padding: 11px 16px;
+    .okr-card-tree-table td {
+      padding: 10px 14px;
       font-size: 13px;
       border-bottom: 1px solid #f1f5f9;
+      vertical-align: middle;
     }
-    .child-row-clickable {
+
+    /* Tree Rows Hierarchy */
+    .tree-row {
+      transition: background-color 0.15s ease;
+    }
+    .tree-row-level-2 {
+      background-color: #ffffff;
+      border-top: 1px solid #f1f5f9;
       cursor: pointer;
-      transition: background 0.15s ease;
     }
-    .child-row-clickable:hover {
-      background: #f8fafc;
+    .tree-row-level-2:hover {
+      background-color: #f8fafc;
     }
-    .child-chevron {
+    .tree-row-level-3 {
+      background-color: #ffffff;
+      border-left: 3px solid #3b82f6;
+      cursor: pointer;
+    }
+    .tree-row-level-3:hover {
+      background-color: #f8fafc;
+    }
+    .tree-row-level-4 {
+      background-color: #fafbfc;
+      border-left: 3px solid #cbd5e1;
+    }
+    .tree-row-level-4:hover {
+      background-color: #f1f5f9;
+    }
+
+    .tree-chevron {
       transition: transform 0.2s ease;
       display: inline-block;
+      font-size: 11px;
     }
-    .child-chevron.rotate-90 {
+    .tree-chevron.rotate-90 {
       transform: rotate(90deg);
     }
+    .tree-toggle-btn {
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      transition: background-color 0.15s ease;
+    }
+    .tree-toggle-btn:hover {
+      background-color: #e2e8f0;
+    }
+
+    .tree-branch-symbol {
+      font-family: 'Consolas', 'Courier New', monospace;
+      font-size: 13px;
+      font-weight: 700;
+      user-select: none;
+      display: inline-block;
+      width: 24px;
+    }
+
+    .level-tag-mini {
+      font-size: 13px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      white-space: nowrap;
+    }
+    .level-tag-team {
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+    }
+    .level-tag-team-kr {
+      background: #f5f3ff;
+      color: #6d28d9;
+      border: 1px solid #ddd6fe;
+    }
+    .level-tag-personal-kr {
+      background: #f1f5f9;
+      color: #475569;
+      border: 1px solid #e2e8f0;
+    }
+
     .badge-team-code {
-      font-size: 11px;
+      font-size: 13px;
       font-weight: 600;
       background: #eff6ff;
       color: #2563eb;
-      padding: 3px 8px;
+      padding: 2px 7px;
       border-radius: 4px;
       border: 1px solid #dbeafe;
     }
-    .nested-krs-box {
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #ffffff;
-    }
 
-    /* KR Table inside Card */
-    .kr-table th {
-      font-size: 12px;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-      background: #f8fafc;
-      border-bottom: 1px solid #e2e8f0;
-      padding: 10px 16px;
-    }
-    .kr-table td {
-      padding: 12px 16px;
-      font-size: 13px;
-      border-bottom: 1px solid #f1f5f9;
-    }
     .kr-code-badge {
       font-family: monospace;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 600;
       background: #eff6ff;
       color: #1d4ed8;
       padding: 2px 6px;
       border-radius: 4px;
+      border: 1px solid #dbeafe;
+      white-space: nowrap;
     }
+
+    .kr-code-badge-sub {
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f8fafc;
+      color: #475569;
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid #e2e8f0;
+      white-space: nowrap;
+    }
+
     .kr-title-wrapper {
       display: flex;
       flex-direction: column;
@@ -1461,14 +1752,14 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       font-size: 13px;
     }
     .kr-assignee-sub {
-      font-size: 11.5px;
+      font-size: 13px;
       color: #64748b;
     }
     .metric-val-flow {
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      font-size: 12px;
+      font-size: 13px;
       background: #f8fafc;
       padding: 3px 8px;
       border-radius: 6px;
@@ -1765,6 +2056,7 @@ export class OkrBoardComponent implements OnInit {
   searchQuery = '';
   viewMode: 'cards' | 'table' = 'cards';
   expandedChildObjectives: { [key: string]: boolean } = {};
+  expandedKrs: { [krId: string]: boolean } = {};
 
   getChildObjectives(parentObj: Objective): Objective[] {
     if (!parentObj) return [];
@@ -1778,6 +2070,90 @@ export class OkrBoardComponent implements OnInit {
   toggleChildObj(id: string, event?: MouseEvent): void {
     if (event) event.stopPropagation();
     this.expandedChildObjectives[id] = !this.isChildExpanded(id);
+  }
+
+  isKrExpanded(krId: string): boolean {
+    return this.expandedKrs[krId] !== false;
+  }
+
+  toggleKr(krId: string, event?: MouseEvent): void {
+    if (event) event.stopPropagation();
+    this.expandedKrs[krId] = !this.isKrExpanded(krId);
+  }
+
+  getTeamKrs(obj: Objective): KeyResult[] {
+    if (!obj || !obj.key_results) return [];
+    const rootKrs = obj.key_results.filter(k => !k.parent_kr_id);
+    return rootKrs.length > 0 ? rootKrs : obj.key_results;
+  }
+
+  getPersonalKrs(obj: Objective, parentKrId: string): KeyResult[] {
+    if (!obj || !obj.key_results || !parentKrId) return [];
+    return obj.key_results.filter(k => k.parent_kr_id === parentKrId);
+  }
+
+  hasPersonalKrs(obj: Objective, parentKrId: string): boolean {
+    return this.getPersonalKrs(obj, parentKrId).length > 0;
+  }
+
+  getDirectKrs(obj: Objective): KeyResult[] {
+    if (!obj || !obj.key_results) return [];
+    return obj.key_results;
+  }
+
+  getTeamKrCount(obj: Objective): number {
+    const children = this.getChildObjectives(obj);
+    if (children.length > 0) {
+      return children.reduce((sum, c) => sum + this.getTeamKrs(c).length, 0);
+    }
+    return this.getTeamKrs(obj).length;
+  }
+
+  getPersonalKrCount(obj: Objective): number {
+    const children = this.getChildObjectives(obj);
+    if (children.length > 0) {
+      return children.reduce((sum, c) => {
+        const teamKrs = this.getTeamKrs(c);
+        return sum + teamKrs.reduce((pSum, tk) => pSum + this.getPersonalKrs(c, tk.kr_id).length, 0);
+      }, 0);
+    }
+    const teamKrs = this.getTeamKrs(obj);
+    return teamKrs.reduce((pSum, tk) => pSum + this.getPersonalKrs(obj, tk.kr_id).length, 0);
+  }
+
+  expandAllTree(obj: Objective): void {
+    const children = this.getChildObjectives(obj);
+    children.forEach(c => {
+      this.expandedChildObjectives[c.objective_id] = true;
+      (c.key_results || []).forEach(k => {
+        this.expandedKrs[k.kr_id] = true;
+      });
+    });
+    (obj.key_results || []).forEach(k => {
+      this.expandedKrs[k.kr_id] = true;
+    });
+  }
+
+  collapseAllTree(obj: Objective): void {
+    const children = this.getChildObjectives(obj);
+    children.forEach(c => {
+      this.expandedChildObjectives[c.objective_id] = false;
+      (c.key_results || []).forEach(k => {
+        this.expandedKrs[k.kr_id] = false;
+      });
+    });
+    (obj.key_results || []).forEach(k => {
+      this.expandedKrs[k.kr_id] = false;
+    });
+  }
+
+  getKrAssigneeCode(kr: KeyResult): string {
+    if (kr.assignee_code) return kr.assignee_code;
+    if (kr.assignee_id && kr.assignee_id.startsWith('EMP')) {
+      const emp = this.employees.find(e => e.employee_id === kr.assignee_id);
+      if (emp && emp.display_code) return emp.display_code;
+    }
+    return '';
   }
 
   getAggregatedKrCount(obj: Objective): number {
