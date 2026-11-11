@@ -619,8 +619,8 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                         <tr class="tree-row tree-row-level-2" [class.tree-row-expanded]="isChildExpanded(child.objective_id)" (click)="toggleChildObj(child.objective_id)">
                           <td class="tree-cell-title" style="padding-left: 1.25rem;">
                             <div class="d-flex align-items-center">
-                              <button type="button" class="tree-toggle-btn text-primary me-2" (click)="toggleChildObj(child.objective_id, $event)" [title]="isChildExpanded(child.objective_id) ? 'Thu gọn' : 'Mở rộng'">
-                                <i class="fa-solid fa-chevron-right tree-chevron" [class.rotate-90]="isChildExpanded(child.objective_id)"></i>
+                              <button type="button" class="tree-toggle-btn me-2" (click)="toggleChildObj(child.objective_id, $event)" [title]="isChildExpanded(child.objective_id) ? 'Thu gọn' : 'Mở rộng'">
+                                <i class="fa-solid fa-caret-right tree-caret text-primary" [class.rotate-90]="isChildExpanded(child.objective_id)"></i>
                               </button>
                               <span class="badge badge-team-code me-2">{{ child.objective_id }}</span>
                               <span class="level-tag-mini level-tag-team me-2"><i class="fa-solid fa-users me-1"></i>Đội ngũ</span>
@@ -653,19 +653,18 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
                         <!-- KHI MỤC TIÊU ĐỘI NGŨ ĐƯỢC MỞ RỘNG: HIỂN THỊ CÁC KEY RESULTS (LEVEL 3 & 4) -->
                         <ng-container *ngIf="isChildExpanded(child.objective_id)">
-                          <ng-container *ngFor="let teamKr of getTeamKrs(child); let isLastTeamKr = last">
+                          <ng-container *ngFor="let teamKr of getTeamKrs(child)">
                             <!-- LEVEL 3: DÒNG KEY RESULT CẤP ĐỘI NGŨ -->
                             <tr class="tree-row tree-row-level-3" [class.tree-row-expanded]="isKrExpanded(teamKr.kr_id)" (click)="hasPersonalKrs(child, teamKr.kr_id) && toggleKr(teamKr.kr_id, $event)">
-                              <td class="tree-cell-title" style="padding-left: 2.5rem;">
+                              <td class="tree-cell-title" style="padding-left: 2.25rem;">
                                 <div class="d-flex align-items-center">
-                                  <span class="tree-branch-symbol text-primary me-2">{{ isLastTeamKr ? '└──' : '├──' }}</span>
-                                  <button type="button" class="tree-toggle-btn text-primary me-1.5" 
+                                  <button type="button" class="tree-toggle-btn me-2" 
                                           *ngIf="hasPersonalKrs(child, teamKr.kr_id)" 
                                           (click)="toggleKr(teamKr.kr_id, $event)"
                                           [title]="isKrExpanded(teamKr.kr_id) ? 'Thu gọn KR cá nhân' : 'Mở rộng KR cá nhân'">
-                                    <i class="fa-solid fa-chevron-right tree-chevron text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
+                                    <i class="fa-solid fa-caret-right tree-caret text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
                                   </button>
-                                  <i class="fa-solid fa-circle-dot text-muted me-1.5" *ngIf="!hasPersonalKrs(child, teamKr.kr_id)" style="font-size: 8px; width: 20px; text-align: center;"></i>
+                                  <span class="tree-caret-placeholder me-2" *ngIf="!hasPersonalKrs(child, teamKr.kr_id)"></span>
                                   <span class="kr-code-badge me-2">{{ teamKr.kr_id }}</span>
                                   <span class="level-tag-mini level-tag-team-kr me-2"><i class="fa-solid fa-bullseye me-1"></i>KR Đội ngũ</span>
                                   <span class="kr-title-text fw-medium text-dark">{{ teamKr.title }}</span>
@@ -699,11 +698,10 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
                             <!-- LEVEL 4: CÁC KEY RESULTS CẤP CÁ NHÂN KHI MỞ RỘNG TEAM KR -->
                             <ng-container *ngIf="isKrExpanded(teamKr.kr_id)">
-                              <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(child, teamKr.kr_id); let isLastPersonalKr = last">
-                                <td class="tree-cell-title" style="padding-left: 4.25rem;">
+                              <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(child, teamKr.kr_id)">
+                                <td class="tree-cell-title" style="padding-left: 3.5rem;">
                                   <div class="d-flex align-items-center">
-                                    <span class="tree-branch-symbol text-muted me-2">{{ isLastPersonalKr ? '└──' : '├──' }}</span>
-                                    <i class="fa-solid fa-user text-muted me-1.5" style="font-size: 11px; width: 14px; text-align: center;"></i>
+                                    <i class="fa-solid fa-user text-muted me-2" style="font-size: 11px; width: 14px; text-align: center;"></i>
                                     <span class="kr-code-badge-sub me-2">{{ pKr.kr_id }}</span>
                                     <span class="level-tag-mini level-tag-personal-kr me-2">Cá nhân</span>
                                     <span class="kr-title-text text-secondary" style="font-size: 13px;">{{ pKr.title }}</span>
@@ -739,17 +737,17 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
                       <!-- TRƯỜNG HỢP 2: KHÔNG CÓ MỤC TIÊU ĐỘI NGŨ CON (VÍ DỤ ĐANG LỌC CẤP TEAM HOẶC PERSONAL) -->
                       <ng-container *ngIf="getChildObjectives(obj).length === 0">
-                        <ng-container *ngFor="let teamKr of getTeamKrs(obj); let isLastTeamKr = last">
+                        <ng-container *ngFor="let teamKr of getTeamKrs(obj)">
                           <tr class="tree-row tree-row-level-3" [class.tree-row-expanded]="isKrExpanded(teamKr.kr_id)" (click)="hasPersonalKrs(obj, teamKr.kr_id) && toggleKr(teamKr.kr_id, $event)">
                             <td class="tree-cell-title" style="padding-left: 1.25rem;">
                               <div class="d-flex align-items-center">
-                                <button type="button" class="tree-toggle-btn text-primary me-1.5" 
+                                <button type="button" class="tree-toggle-btn me-2" 
                                         *ngIf="hasPersonalKrs(obj, teamKr.kr_id)" 
                                         (click)="toggleKr(teamKr.kr_id, $event)"
                                         [title]="isKrExpanded(teamKr.kr_id) ? 'Thu gọn KR cá nhân' : 'Mở rộng KR cá nhân'">
-                                  <i class="fa-solid fa-chevron-right tree-chevron text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
+                                  <i class="fa-solid fa-caret-right tree-caret text-primary" [class.rotate-90]="isKrExpanded(teamKr.kr_id)"></i>
                                 </button>
-                                <i class="fa-solid fa-circle-dot text-muted me-1.5" *ngIf="!hasPersonalKrs(obj, teamKr.kr_id)" style="font-size: 8px; width: 20px; text-align: center;"></i>
+                                <span class="tree-caret-placeholder me-2" *ngIf="!hasPersonalKrs(obj, teamKr.kr_id)"></span>
                                 <span class="kr-code-badge me-2">{{ teamKr.kr_id }}</span>
                                 <span class="level-tag-mini level-tag-team-kr me-2"><i class="fa-solid fa-bullseye me-1"></i>KR Đội ngũ</span>
                                 <span class="kr-title-text fw-medium text-dark">{{ teamKr.title }}</span>
@@ -783,11 +781,10 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
                           <!-- KR Cá nhân nếu có -->
                           <ng-container *ngIf="isKrExpanded(teamKr.kr_id)">
-                            <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(obj, teamKr.kr_id); let isLastPersonalKr = last">
-                              <td class="tree-cell-title" style="padding-left: 2.75rem;">
+                            <tr class="tree-row tree-row-level-4" *ngFor="let pKr of getPersonalKrs(obj, teamKr.kr_id)">
+                              <td class="tree-cell-title" style="padding-left: 2.5rem;">
                                 <div class="d-flex align-items-center">
-                                  <span class="tree-branch-symbol text-muted me-2">{{ isLastPersonalKr ? '└──' : '├──' }}</span>
-                                  <i class="fa-solid fa-user text-muted me-1.5" style="font-size: 11px; width: 14px; text-align: center;"></i>
+                                  <i class="fa-solid fa-user text-muted me-2" style="font-size: 11px; width: 14px; text-align: center;"></i>
                                   <span class="kr-code-badge-sub me-2">{{ pKr.kr_id }}</span>
                                   <span class="level-tag-mini level-tag-personal-kr me-2">Cá nhân</span>
                                   <span class="kr-title-text text-secondary" style="font-size: 13px;">{{ pKr.title }}</span>
@@ -831,6 +828,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                           <tr class="tree-row tree-row-level-3">
                             <td class="tree-cell-title" style="padding-left: 2rem;">
                               <div class="d-flex align-items-center">
+                                <span class="tree-caret-placeholder me-2"></span>
                                 <span class="kr-code-badge me-2">{{ dKr.kr_id }}</span>
                                 <span class="level-tag-mini level-tag-team-kr me-2">Trực tiếp</span>
                                 <span class="kr-title-text fw-medium text-dark">{{ dKr.title }}</span>
@@ -1481,12 +1479,18 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       background-color: #f1f5f9;
     }
 
-    .tree-chevron {
-      transition: transform 0.2s ease;
-      display: inline-block;
-      font-size: 11px;
+    .tree-caret {
+      transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      line-height: 1;
+      width: 14px;
+      height: 14px;
+      transform-origin: center center;
     }
-    .tree-chevron.rotate-90 {
+    .tree-caret.rotate-90 {
       transform: rotate(90deg);
     }
     .tree-toggle-btn {
@@ -1496,22 +1500,22 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 20px;
-      height: 20px;
+      width: 22px;
+      height: 22px;
+      padding: 0;
       border-radius: 4px;
       transition: background-color 0.15s ease;
     }
     .tree-toggle-btn:hover {
-      background-color: #e2e8f0;
+      background-color: #eff6ff;
     }
-
-    .tree-branch-symbol {
-      font-family: 'Consolas', 'Courier New', monospace;
-      font-size: 13px;
-      font-weight: 700;
-      user-select: none;
+    .tree-toggle-btn:hover .tree-caret {
+      color: #1d4ed8 !important;
+    }
+    .tree-caret-placeholder {
       display: inline-block;
-      width: 24px;
+      width: 22px;
+      height: 22px;
     }
 
     .level-tag-mini {
