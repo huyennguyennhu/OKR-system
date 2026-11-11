@@ -540,17 +540,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                     <span class="obj-big-pct" [ngClass]="getHealthTextClass(obj.progress)">
                       {{ obj.progress }}%
                     </span>
-
-                    <!-- Nút Xem trên OKR Tree ngay trên Header thẻ -->
-                    <a [routerLink]="['/okr-tree']" 
-                       [queryParams]="{ highlight: obj.objective_id, timeline_id: obj.timeline_id || selectedTimelineId, space_id: obj.space_id || selectedSpaceId }" 
-                       class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-2.5 ms-1 header-tree-btn" 
-                       style="font-size: 12px; font-weight: 600; border-radius: 6px; text-decoration: none;"
-                       title="Xem trên OKR Tree">
-                      <i class="fa-solid fa-sitemap"></i>
-                      <span>Xem trên OKR Tree</span>
-                      <i class="fa-solid fa-arrow-right" style="font-size: 10px;"></i>
-                    </a>
                   </div>
                 </div>
 
