@@ -139,21 +139,10 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
               </button>
             </div>
 
-            <!-- Search + View Toggle -->
-            <div class="d-flex align-items-center gap-2 flex-wrap">
-              <div class="board-search-wrapper">
-                <input type="text" class="form-control form-control-sm board-search-input" placeholder="Tìm theo mục tiêu, mã KR..." [(ngModel)]="searchQuery">
-                <button class="clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''"><i class="fa-solid fa-xmark"></i></button>
-              </div>
-
-              <div class="btn-group view-switcher">
-                <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === 'cards'" [class.btn-outline-secondary]="viewMode !== 'cards'" (click)="viewMode = 'cards'" title="Dạng Thẻ">
-                  <i class="fa-solid fa-grip-vertical me-1"></i> Thẻ
-                </button>
-                <button type="button" class="btn btn-sm" [class.btn-primary]="viewMode === 'table'" [class.btn-outline-secondary]="viewMode !== 'table'" (click)="viewMode = 'table'" title="Dạng Bảng">
-                  <i class="fa-solid fa-table-list me-1"></i> Bảng
-                </button>
-              </div>
+            <!-- Search -->
+            <div class="board-search-wrapper">
+              <input type="text" class="form-control form-control-sm board-search-input" placeholder="Tìm theo mục tiêu, mã KR..." [(ngModel)]="searchQuery">
+              <button class="clear-btn" *ngIf="searchQuery" (click)="searchQuery = ''"><i class="fa-solid fa-xmark"></i></button>
             </div>
           </div>
         </div>
