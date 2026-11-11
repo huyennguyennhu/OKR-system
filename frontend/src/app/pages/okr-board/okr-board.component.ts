@@ -607,10 +607,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                     <thead>
                       <tr>
                         <th style="min-width: 380px;">Cấu trúc Phân cấp (Mục tiêu & Key Results)</th>
-                        <th style="width: 170px;">Phụ trách</th>
-                        <th class="text-center" style="width: 180px;">Đo lường</th>
-                        <th style="width: 180px;">Tiến độ Hoàn thành</th>
-                        <th class="text-center" style="width: 130px;">Trạng thái / SLA</th>
+                        <th style="width: 180px;">Phụ trách</th>
+                        <th style="width: 200px;">Tiến độ Hoàn thành</th>
+                        <th class="text-center" style="width: 140px;">Trạng thái / SLA</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -633,9 +632,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                             <span class="d-flex align-items-center gap-1.5 text-dark fw-semibold" style="font-size: 13px;">
                               <i class="fa-solid fa-users text-primary"></i> {{ getAssigneeLabel(child) }}
                             </span>
-                          </td>
-                          <td class="text-center">
-                            <span class="text-muted" style="font-size: 13px;">Tổng hợp KRs đội ngũ</span>
                           </td>
                           <td>
                             <div class="d-flex align-items-center gap-2">
@@ -683,19 +679,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   <i class="fa-solid fa-users text-primary"></i> {{ teamKr.team_name || getKrAssigneeLabel(teamKr) }}
                                 </span>
                               </td>
-                              <td class="text-center">
-                                <div class="metric-val-flow" style="font-size: 13px;">
-                                  <span class="val-start text-muted" title="Khởi điểm">{{ teamKr.start_value }}{{ teamKr.unit || '%' }}</span>
-                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                  <span class="val-current fw-bold" [ngClass]="getKrProgress(teamKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
-                                    {{ teamKr.current_value }}{{ teamKr.unit || '%' }}
-                                  </span>
-                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                  <span class="val-target fw-semibold text-dark" title="Mục tiêu">
-                                    {{ teamKr.expected_value }}{{ teamKr.unit || '%' }}
-                                  </span>
-                                </div>
-                              </td>
                               <td>
                                 <div class="d-flex align-items-center gap-2">
                                   <div class="kr-progress-track flex-1" style="height: 6px;">
@@ -730,19 +713,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   <div class="d-flex align-items-center gap-1.5" style="font-size: 13px;">
                                     <span class="badge badge-emp-code" *ngIf="getKrAssigneeCode(pKr)">{{ getKrAssigneeCode(pKr) }}</span>
                                     <span class="emp-name fw-medium text-dark">{{ getKrAssigneeLabel(pKr) }}</span>
-                                  </div>
-                                </td>
-                                <td class="text-center">
-                                  <div class="metric-val-flow" style="font-size: 13px;">
-                                    <span class="val-start text-muted" title="Khởi điểm">{{ pKr.start_value }}{{ pKr.unit || '%' }}</span>
-                                    <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                    <span class="val-current fw-bold" [ngClass]="getKrProgress(pKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
-                                      {{ pKr.current_value }}{{ pKr.unit || '%' }}
-                                    </span>
-                                    <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                    <span class="val-target fw-semibold text-dark" title="Mục tiêu">
-                                      {{ pKr.expected_value }}{{ pKr.unit || '%' }}
-                                    </span>
                                   </div>
                                 </td>
                                 <td>
@@ -793,19 +763,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                 <i class="fa-solid fa-users text-primary"></i> {{ teamKr.team_name || getKrAssigneeLabel(teamKr) }}
                               </span>
                             </td>
-                            <td class="text-center">
-                              <div class="metric-val-flow" style="font-size: 13px;">
-                                <span class="val-start text-muted" title="Khởi điểm">{{ teamKr.start_value }}{{ teamKr.unit || '%' }}</span>
-                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                <span class="val-current fw-bold" [ngClass]="getKrProgress(teamKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
-                                  {{ teamKr.current_value }}{{ teamKr.unit || '%' }}
-                                </span>
-                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                <span class="val-target fw-semibold text-dark" title="Mục tiêu">
-                                  {{ teamKr.expected_value }}{{ teamKr.unit || '%' }}
-                                </span>
-                              </div>
-                            </td>
                             <td>
                               <div class="d-flex align-items-center gap-2">
                                 <div class="kr-progress-track flex-1" style="height: 6px;">
@@ -842,19 +799,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                                   <span class="emp-name fw-medium text-dark">{{ getKrAssigneeLabel(pKr) }}</span>
                                 </div>
                               </td>
-                              <td class="text-center">
-                                <div class="metric-val-flow" style="font-size: 13px;">
-                                  <span class="val-start text-muted" title="Khởi điểm">{{ pKr.start_value }}{{ pKr.unit || '%' }}</span>
-                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                  <span class="val-current fw-bold" [ngClass]="getKrProgress(pKr) >= 75 ? 'text-success' : 'text-primary'" title="Hiện tại">
-                                    {{ pKr.current_value }}{{ pKr.unit || '%' }}
-                                  </span>
-                                  <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                  <span class="val-target fw-semibold text-dark" title="Mục tiêu">
-                                    {{ pKr.expected_value }}{{ pKr.unit || '%' }}
-                                  </span>
-                                </div>
-                              </td>
                               <td>
                                 <div class="d-flex align-items-center gap-2">
                                   <div class="kr-progress-track flex-1" style="height: 6px;">
@@ -879,7 +823,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                       <!-- TRƯỜNG HỢP 3: obj CÓ CẢ MỤC TIÊU CON VÀ CÓ KR TRỰC TIẾP CỦA CHÍNH NÓ -->
                       <ng-container *ngIf="getChildObjectives(obj).length > 0 && (obj.key_results?.length || 0) > 0">
                         <tr class="tree-row tree-row-level-2 bg-light-subtle">
-                          <td colspan="5" class="py-2 px-3 fw-bold text-dark" style="font-size: 13px;">
+                          <td colspan="4" class="py-2 px-3 fw-bold text-dark" style="font-size: 13px;">
                             <i class="fa-solid fa-bullseye text-primary me-2"></i> Key Results trực tiếp của Mục tiêu Cấp trên
                           </td>
                         </tr>
@@ -896,15 +840,6 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                               <span class="d-flex align-items-center gap-1.5 text-muted" style="font-size: 13px;">
                                 <i class="fa-solid fa-user text-primary"></i> {{ getKrAssigneeLabel(dKr) }}
                               </span>
-                            </td>
-                            <td class="text-center">
-                              <div class="metric-val-flow" style="font-size: 13px;">
-                                <span class="val-start text-muted">{{ dKr.start_value }}{{ dKr.unit || '%' }}</span>
-                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                <span class="val-current fw-bold" [ngClass]="getKrProgress(dKr) >= 75 ? 'text-success' : 'text-primary'">{{ dKr.current_value }}{{ dKr.unit || '%' }}</span>
-                                <i class="fa-solid fa-arrow-right-long text-muted" style="font-size: 10px;"></i>
-                                <span class="val-target fw-semibold text-dark">{{ dKr.expected_value }}{{ dKr.unit || '%' }}</span>
-                              </div>
                             </td>
                             <td>
                               <div class="d-flex align-items-center gap-2">
@@ -928,7 +863,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
 
                       <!-- TRƯỜNG HỢP 4: EMPTY STATE THEO QUY CHUẨN RULE 1 -->
                       <tr *ngIf="getChildObjectives(obj).length === 0 && getTeamKrs(obj).length === 0">
-                        <td colspan="5" class="text-center py-4 text-muted" style="font-size: 13px;">
+                        <td colspan="4" class="text-center py-4 text-muted" style="font-size: 13px;">
                           <i class="fa-regular fa-circle-question me-1"></i> Chưa có mục tiêu con hay kết quả then chốt nào. Hãy tạo mới!
                         </td>
                       </tr>
