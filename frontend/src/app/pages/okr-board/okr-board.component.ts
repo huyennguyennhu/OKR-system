@@ -326,11 +326,11 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                       <td class="text-center" style="width: 44px;">
                         <span class="rank-medal" style="font-size: 16px;">{{ c.medal }}</span>
                       </td>
-                      <td style="width: 220px;">
-                        <div class="d-flex align-items-center gap-2">
-                          <span class="badge badge-emp-code">{{ c.displayCode }}</span>
-                          <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
-                        </div>
+                      <td style="width: 110px;">
+                        <span class="badge badge-emp-code">{{ c.displayCode }}</span>
+                      </td>
+                      <td style="width: 180px;">
+                        <span class="emp-name fw-bold text-dark">{{ c.fullName }}</span>
                       </td>
                       <td style="width: 180px;">
                         <span class="d-flex align-items-center gap-1.5 text-muted">
@@ -353,7 +353,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
                       </td>
                     </tr>
                     <tr *ngIf="bestContributors.length === 0">
-                      <td colspan="5" class="text-center py-4 text-muted" style="font-size: 13px;">
+                      <td colspan="6" class="text-center py-4 text-muted" style="font-size: 13px;">
                         <i class="fa-regular fa-user me-1"></i> Chưa có dữ liệu đóng góp cá nhân trong chu kỳ này.
                       </td>
                     </tr>
