@@ -484,9 +484,15 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
           </h4>
           <p class="subtitle mb-0">Các chỉ số then chốt được cập nhật tự động từ hệ thống GitLab</p>
         </div>
-        <span class="badge badge-light-secondary" style="font-size: 12px;">
-          Hiển thị: {{ filteredObjectives.length }} / {{ objectives.length }} Mục tiêu
-        </span>
+        <a [routerLink]="['/okr-tree']" 
+           [queryParams]="{ highlight: (filteredObjectives.length > 0 ? filteredObjectives[0].objective_id : 'OBJ-M11-COMPANY'), timeline_id: selectedTimelineId, space_id: selectedSpaceId }" 
+           class="btn btn-sm btn-outline-primary d-inline-flex align-items-center gap-1.5 py-1 px-2.5 ms-1 header-tree-btn" 
+           style="font-size: 13px; font-weight: 600; border-radius: 6px; text-decoration: none;" 
+           title="Xem trên OKR Tree">
+          <i class="fa-solid fa-sitemap"></i>
+          <span>Xem trên OKR Tree</span>
+          <i class="fa-solid fa-arrow-right" style="font-size: 10px;"></i>
+        </a>
       </div>
 
       <!-- Loading State -->
