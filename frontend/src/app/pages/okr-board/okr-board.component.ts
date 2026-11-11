@@ -509,9 +509,9 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
       </div>
 
       <!-- CHẾ ĐỘ 1: DẠNG THẺ CHIẾN LƯỢC (EXECUTIVE CARDS) -->
-      <ng-container *ngIf="!loading && viewMode === 'cards' && filteredObjectives.length > 0">
+      <ng-container *ngIf="!loading && viewMode === 'cards' && displayCardObjectives.length > 0">
         <div class="row g-4">
-          <div class="col-12" *ngFor="let obj of filteredObjectives">
+          <div class="col-12" *ngFor="let obj of displayCardObjectives">
             <div class="card okr-executive-card shadow-sm border-0">
               <!-- Header Thẻ Mục tiêu -->
               <div class="okr-card-header">
@@ -2077,10 +2077,28 @@ export class OkrBoardComponent implements OnInit {
         const matchKr = (obj.key_results || []).some(kr => 
           (kr.title || '').toLowerCase().includes(q) || (kr.kr_id || '').toLowerCase().includes(q)
         );
-        return matchTitle || matchCode || matchAssignee || matchKr;
+        const matchChild = this.getChildObjectives(obj).some(c => 
+          (c.title || '').toLowerCase().includes(q) || 
+          (c.objective_id || '').toLowerCase().includes(q) ||
+          this.getAssigneeLabel(c).toLowerCase().includes(q) ||
+          (c.key_results || []).some(ckr => (ckr.title || '').toLowerCase().includes(q) || (ckr.kr_id || '').toLowerCase().includes(q))
+        );
+        return matchTitle || matchCode || matchAssignee || matchKr || matchChild;
       }
       return true;
     });
+  }
+
+  /**
+   * Danh sách mục tiêu hiển thị dưới dạng Thẻ Chiến lược.
+   * Loại bỏ các mục tiêu con nếu mục tiêu cha của nó đã có trong danh sách
+   * (vì mục tiêu con đã được render thành nhánh cây bên trong thẻ mục tiêu cha),
+   * tránh bị duplicate lặp lại cả thẻ mục tiêu con bên dưới.
+   */
+  get displayCardObjectives(): Objective[] {
+    const list = this.filteredObjectives;
+    const rootObjs = list.filter(obj => !obj.parent_id || !list.some(p => p.objective_id === obj.parent_id));
+    return rootObjs.length > 0 ? rootObjs : list;
   }
 
   // --- KPI & Statistics Calculation ---
