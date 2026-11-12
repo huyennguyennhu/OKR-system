@@ -343,10 +343,7 @@
 
           <!-- KHUNG PHẢI: Chỉnh sửa mã LaTeX & Render trực quan -->
           <div class="rules-form-group mb-0">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="rules-label mb-0">Khung 2: LaTeX Code &amp; Visual Preview</label>
-              <span class="badge badge-light-success" style="font-size: 11px;"><i class="fa-solid fa-arrows-rotate me-1"></i>Đồng bộ 2 chiều</span>
-            </div>
+            <label class="rules-label mb-1">Khung 2: LaTeX Code &amp; Visual Preview</label>
             <textarea class="rules-control font-monospace text-primary mb-2" rows="2" 
                       [(ngModel)]="flow1Config.latexFormula" 
                       (ngModelChange)="syncFromLatexToFriendly($event)"
