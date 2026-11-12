@@ -192,16 +192,16 @@ async function migrate() {
       const krB1Children = [
         {
           id: `KR-${m.krPrefix}B1-01`,
-          title: 'Tỷ lệ rà soát Merge Request tầng Core phản hồi trong 4 giờ làm việc = 100% - Huyền Nguyễn Như',
+          title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Huyền Nguyễn Như',
           assignee: 'EMP001',
           start: 0,
-          expected: 100,
+          expected: 90,
           current: parseFloat((100.0 * m.progressMultiplier).toFixed(1)),
           unit: '%'
         },
         {
           id: `KR-${m.krPrefix}B1-02`,
-          title: 'Tỷ lệ rà soát chéo Merge Request Frontend phản hồi trong 4 giờ làm việc ≥ 90% - Alexander Nguyen',
+          title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Alexander Nguyen',
           assignee: 'EMP004',
           start: 0,
           expected: 90,
@@ -210,7 +210,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}B1-03`,
-          title: 'Tỷ lệ rà soát chéo Merge Request Backend phản hồi trong 4 giờ làm việc ≥ 90% - Tran Than',
+          title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Tran Than',
           assignee: 'EMP005',
           start: 0,
           expected: 90,
@@ -219,7 +219,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}B1-04`,
-          title: 'Tỷ lệ rà soát Merge Request Frontend phản hồi trong 4 giờ làm việc ≥ 90% - Nguyen Anh',
+          title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Nguyen Anh',
           assignee: 'EMP003',
           start: 0,
           expected: 90,
@@ -228,7 +228,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}B1-05`,
-          title: 'Tỷ lệ rà soát Merge Request Backend phản hồi trong 4 giờ làm việc ≥ 90% - Le An',
+          title: 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Le An',
           assignee: 'EMP002',
           start: 0,
           expected: 90,

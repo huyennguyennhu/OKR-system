@@ -569,11 +569,11 @@ async function seedInitialData() {
         [krB1Id, t1Id, parseFloat((94.2 * m.mult).toFixed(1)), defaultSpaceId]);
 
       const b1Children = [
-        [`KR-${m.krPre}B1-01`, t1Id, 'METRIC-01', 'Tỷ lệ rà soát Merge Request tầng Core phản hồi trong 4 giờ làm việc = 100% - Huyền Nguyễn Như', 0, 100, parseFloat((100.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP001', krB1Id],
-        [`KR-${m.krPre}B1-02`, t1Id, 'METRIC-01', 'Tỷ lệ rà soát chéo Merge Request Frontend phản hồi trong 4 giờ làm việc ≥ 90% - Alexander Nguyen', 0, 90, parseFloat((93.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP004', krB1Id],
-        [`KR-${m.krPre}B1-03`, t1Id, 'METRIC-01', 'Tỷ lệ rà soát chéo Merge Request Backend phản hồi trong 4 giờ làm việc ≥ 90% - Tran Than', 0, 90, parseFloat((94.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP005', krB1Id],
-        [`KR-${m.krPre}B1-04`, t1Id, 'METRIC-01', 'Tỷ lệ rà soát Merge Request Frontend phản hồi trong 4 giờ làm việc ≥ 90% - Nguyen Anh', 0, 90, parseFloat((92.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP003', krB1Id],
-        [`KR-${m.krPre}B1-05`, t1Id, 'METRIC-01', 'Tỷ lệ rà soát Merge Request Backend phản hồi trong 4 giờ làm việc ≥ 90% - Le An', 0, 90, parseFloat((95.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP002', krB1Id]
+        [`KR-${m.krPre}B1-01`, t1Id, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Huyền Nguyễn Như', 0, 90, parseFloat((100.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP001', krB1Id],
+        [`KR-${m.krPre}B1-02`, t1Id, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Alexander Nguyen', 0, 90, parseFloat((93.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP004', krB1Id],
+        [`KR-${m.krPre}B1-03`, t1Id, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Tran Than', 0, 90, parseFloat((94.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP005', krB1Id],
+        [`KR-${m.krPre}B1-04`, t1Id, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Nguyen Anh', 0, 90, parseFloat((92.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP003', krB1Id],
+        [`KR-${m.krPre}B1-05`, t1Id, 'METRIC-01', 'Tỷ lệ lượt phân công rà soát Merge Request được phản hồi trong 4 giờ làm việc ≥ 90% - Le An', 0, 90, parseFloat((95.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP002', krB1Id]
       ];
       for (const row of b1Children) {
         await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, row);
@@ -586,11 +586,11 @@ async function seedInitialData() {
         [krC1Id, t2Id, parseFloat((6.2 / m.mult).toFixed(1)), defaultSpaceId]);
 
       const c1Children = [
-        [`KR-${m.krPre}C1-01`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Huyền Nguyễn Như', 12.0, 8.0, parseFloat((3.5 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP001', krC1Id],
-        [`KR-${m.krPre}C1-02`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Alexander Nguyen', 12.0, 8.0, parseFloat((6.8 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP004', krC1Id],
-        [`KR-${m.krPre}C1-03`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Tran Than', 12.0, 8.0, parseFloat((6.5 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP005', krC1Id],
-        [`KR-${m.krPre}C1-04`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Nguyen Anh', 12.0, 8.0, parseFloat((7.2 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP003', krC1Id],
-        [`KR-${m.krPre}C1-05`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Le An', 12.0, 8.0, parseFloat((7.0 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP002', krC1Id]
+        [`KR-${m.krPre}C1-01`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết sự cố nghiêm trọng (Bug P1) ≤ 4,0 giờ làm việc - Huyền Nguyễn Như', 8.0, 4.0, parseFloat((3.5 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP001', krC1Id],
+        [`KR-${m.krPre}C1-02`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết Bug Frontend (P2, P3) ≤ 8,0 giờ làm việc - Alexander Nguyen', 12.0, 8.0, parseFloat((6.8 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP004', krC1Id],
+        [`KR-${m.krPre}C1-03`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết Bug Backend (P1, P2) ≤ 8,0 giờ làm việc - Tran Than', 12.0, 8.0, parseFloat((6.5 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP005', krC1Id],
+        [`KR-${m.krPre}C1-04`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết Bug giao diện (P3, P4) ≤ 8,0 giờ làm việc - Nguyen Anh', 12.0, 8.0, parseFloat((7.2 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP003', krC1Id],
+        [`KR-${m.krPre}C1-05`, t2Id, 'METRIC-06', 'Thời gian trung bình giải quyết Bug API (P2, P3) ≤ 8,0 giờ làm việc - Le An', 12.0, 8.0, parseFloat((7.0 / m.mult).toFixed(1)), 'decrease', 'giờ', defaultSpaceId, 'EMP002', krC1Id]
       ];
       for (const row of c1Children) {
         await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, row);
