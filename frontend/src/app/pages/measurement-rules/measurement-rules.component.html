@@ -347,10 +347,428 @@
         </div>
       </div>
 
+      <!-- ================================================================== -->
+      <!-- CHUYÊN BIỆT CHO FLOW 2: KR-B1 (PHẢN HỒI REVIEW MR <= 4.0H >= 90%) -->
+      <!-- ================================================================== -->
+      <div class="rules-config-form" *ngIf="isFlow2(currentFlow)">
+        <!-- CỤM 1: LỊCH QUÉT & MỐC DỮ LIỆU ĐO LƯỜNG -->
+        <div class="rules-section-title rules-section-first">
+          <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+          <span>Cụm 1: Lịch trình Quét Tác nghiệp &amp; Mốc Dữ liệu Đo lường</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">SLA Reminder Polling</label>
+            <div class="rules-input-unit">
+              <input type="text" class="rules-control bg-light" [value]="flow2Config.pollingInterval" readonly>
+              <span class="rules-unit-addon"><i class="fa-solid fa-bell text-primary"></i></span>
+            </div>
+            <span class="rules-hint">Quét định kỳ mỗi 15 phút (08:00 – 22:00) để nhắc nhở SLA; ngoài khung giờ tự động tạm dừng</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Daily Check-in Schedule</label>
+            <div class="rules-input-unit">
+              <input type="text" class="rules-control bg-light" [value]="flow2Config.checkInSchedule" readonly>
+              <span class="rules-unit-addon"><i class="fa-solid fa-calendar-check text-primary"></i></span>
+            </div>
+            <span class="rules-hint">Chốt phiên Check-in OKR lúc 21:00 hàng ngày (Thứ 2 – Thứ 6) và tổng hợp tỷ lệ toàn đội</span>
+          </div>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Start Event (T_start)</label>
+            <div class="position-relative space-dropdown-wrapper rules-dropdown-wrapper w-100">
+              <button type="button" class="toolbar-dropdown-trigger w-100"
+                      (click)="toggleFlow2StartDropdown($event)"
+                      [class.active]="isFlow2StartOpen">
+                <span class="space-label">{{ getFlow2StartLabel() }}</span>
+                <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isFlow2StartOpen"></i>
+              </button>
+              <div class="custom-select-menu space-dropdown-menu w-100" *ngIf="isFlow2StartOpen">
+                <div class="custom-select-option" *ngFor="let opt of flow2StartOptions"
+                     [class.selected]="flow2Config.startEvent === opt.value"
+                     (click)="selectFlow2Start(opt.value, $event)">
+                  <span style="color: #1e293b; font-weight: 500;">{{ opt.label }}</span>
+                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="flow2Config.startEvent === opt.value"></i>
+                </div>
+              </div>
+            </div>
+            <span class="rules-hint">Mốc bắt đầu đếm SLA: max(thời điểm gán Reviewer, thời điểm Mark as ready)</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">End Event (T_end)</label>
+            <div class="position-relative space-dropdown-wrapper rules-dropdown-wrapper w-100">
+              <button type="button" class="toolbar-dropdown-trigger w-100"
+                      (click)="toggleFlow2EndDropdown($event)"
+                      [class.active]="isFlow2EndOpen">
+                <span class="space-label">{{ getFlow2EndLabel() }}</span>
+                <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isFlow2EndOpen"></i>
+              </button>
+              <div class="custom-select-menu space-dropdown-menu w-100" *ngIf="isFlow2EndOpen">
+                <div class="custom-select-option" *ngFor="let opt of flow2EndOptions"
+                     [class.selected]="flow2Config.endEvent === opt.value"
+                     (click)="selectFlow2End(opt.value, $event)">
+                  <span style="color: #1e293b; font-weight: 500;">{{ opt.label }}</span>
+                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="flow2Config.endEvent === opt.value"></i>
+                </div>
+              </div>
+            </div>
+            <span class="rules-hint">Mốc thời gian của phản hồi chuyên môn hợp lệ đầu tiên từ Reviewer</span>
+          </div>
+        </div>
+
+        <div class="rules-toggle-row">
+          <div>
+            <div class="rules-toggle-label">Bỏ qua trạng thái Bản nháp (Draft / WIP)</div>
+            <div class="rules-toggle-sub">Chỉ kích hoạt đồng hồ SLA 4.0h khi tác giả bấm "Mark as ready"</div>
+          </div>
+          <label class="rules-switch">
+            <input type="checkbox" [(ngModel)]="flow2Config.ignoreDraft" (ngModelChange)="onConfigChange()">
+            <span class="rules-switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- CỤM 2: DANH MỤC PHẢN HỒI HỢP LỆ & NGOẠI LỆ LOẠI TRỪ -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-filter text-success"></i>
+          <span>Cụm 2: Danh mục Phản hồi Hợp lệ &amp; Ngoại lệ Loại trừ</span>
+        </div>
+
+        <div class="rules-form-group mb-0">
+          <label class="rules-label">4 Hành vi Review Chuyên môn được Công nhận</label>
+          <div class="rules-checkbox-grid">
+            <label class="rules-checkbox-card" [class.checked]="flow2Config.validActions.lineComment">
+              <input type="checkbox" [(ngModel)]="flow2Config.validActions.lineComment" (ngModelChange)="onConfigChange()">
+              <div>
+                <div class="rules-checkbox-title">Bình luận trên dòng mã nguồn (Line / Diff Comment)</div>
+                <div class="rules-checkbox-desc">Nhận xét trực tiếp tại dòng code cần cải tiến</div>
+              </div>
+            </label>
+            <label class="rules-checkbox-card" [class.checked]="flow2Config.validActions.generalNote">
+              <input type="checkbox" [(ngModel)]="flow2Config.validActions.generalNote" (ngModelChange)="onConfigChange()">
+              <div>
+                <div class="rules-checkbox-title">Ghi chú đánh giá chung (General Note / Discussion)</div>
+                <div class="rules-checkbox-desc">Nhận xét tổng thể về kiến trúc hoặc giải pháp kỹ thuật</div>
+              </div>
+            </label>
+            <label class="rules-checkbox-card" [class.checked]="flow2Config.validActions.approve">
+              <input type="checkbox" [(ngModel)]="flow2Config.validActions.approve" (ngModelChange)="onConfigChange()">
+              <div>
+                <div class="rules-checkbox-title">Phê duyệt Merge Request (Approve)</div>
+                <div class="rules-checkbox-desc">Đánh giá mã nguồn đạt chất lượng chuẩn để merge</div>
+              </div>
+            </label>
+            <label class="rules-checkbox-card" [class.checked]="flow2Config.validActions.requestChanges">
+              <input type="checkbox" [(ngModel)]="flow2Config.validActions.requestChanges" (ngModelChange)="onConfigChange()">
+              <div>
+                <div class="rules-checkbox-title">Yêu cầu chỉnh sửa (Request Changes)</div>
+                <div class="rules-checkbox-desc">Yêu cầu tác giả cập nhật lại code trước khi xem xét tiếp</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Excluded Bot Accounts</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-secondary" *ngFor="let b of flow2Config.excludedBots; let i = index">
+                {{ b }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTagFlow2('excludedBots', i)" title="Xóa bot"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm bot (Enter)..." (keydown.enter)="addTagFlow2('excludedBots', $event)">
+            </div>
+            <span class="rules-hint">Tương tác tự động từ các tài khoản hệ thống/Bot không được tính là phản hồi SLA</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Target Branches</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-info" *ngFor="let br of flow2Config.targetBranches; let i = index">
+                {{ br }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTagFlow2('targetBranches', i)" title="Xóa nhánh"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm nhánh (Enter)..." (keydown.enter)="addTagFlow2('targetBranches', $event)">
+            </div>
+            <span class="rules-hint">Nhánh đích áp dụng kiểm soát SLA phản hồi Merge Request</span>
+          </div>
+        </div>
+
+        <div class="rules-toggle-row">
+          <div>
+            <div class="rules-toggle-label">Loại trừ Tác giả tự duyệt (Author Self-Review Exclusion)</div>
+            <div class="rules-toggle-sub">Bình luận hoặc thao tác duyệt của chính tác giả tạo MR không được tính vào SLA của Reviewer</div>
+          </div>
+          <label class="rules-switch">
+            <input type="checkbox" [(ngModel)]="flow2Config.excludeAuthorSelfReview" (ngModelChange)="onConfigChange()">
+            <span class="rules-switch-slider"></span>
+          </label>
+        </div>
+
+        <!-- CỤM 3: HẠN MỨC SLA, TRỌNG SỐ & MỤC TIÊU CAM KẾT -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-bullseye text-warning"></i>
+          <span>Cụm 3: Hạn mức SLA, Ân hạn &amp; Mục tiêu Cam kết</span>
+        </div>
+
+        <div class="rules-three-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">SLA Max Response Time</label>
+            <div class="rules-input-unit">
+              <input type="number" min="0.5" step="0.5" class="rules-control" [(ngModel)]="flow2Config.slaHours" (ngModelChange)="onConfigChange()">
+              <span class="rules-unit-addon">giờ làm việc</span>
+            </div>
+            <span class="rules-hint">Hạn mức thời gian phản hồi đầu tiên (mặc định 4.0h làm việc)</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Target Threshold</label>
+            <div class="rules-input-unit">
+              <input type="number" min="1" max="100" class="rules-control" [(ngModel)]="flow2Config.thresholdPercent" (ngModelChange)="onConfigChange()">
+              <span class="rules-unit-addon">%</span>
+            </div>
+            <span class="rules-hint">Tỷ lệ phản hồi đúng hạn tối thiểu cam kết (&ge; 90%)</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Grace Period (Ân hạn chốt kỳ)</label>
+            <div class="rules-input-unit">
+              <input type="number" min="0" max="5" class="rules-control" [(ngModel)]="flow2Config.gracePeriodDays" (ngModelChange)="onConfigChange()">
+              <span class="rules-unit-addon">ngày làm việc</span>
+            </div>
+            <span class="rules-hint">Cho phép thêm ngày làm việc sau cuối tháng cho MR sát cuối kỳ</span>
+          </div>
+        </div>
+
+        <div class="rules-info-notice">
+          <i class="fa-solid fa-circle-info text-primary"></i>
+          <span><strong>Ràng buộc trách nhiệm tập thể &amp; thiếu dữ liệu:</strong> Mẫu số cấp Team bao gồm <code>N_unattributed</code> (MR chưa gán Reviewer tồn đọng &gt; 4h). Cá nhân có <code>N_total(u) = 0</code> ghi nhận <code>NO_DATA</code>.</span>
+        </div>
+
+        <!-- CỤM 4: FORMULA EDITOR -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+          <span>Cụm 4: Formula Editor</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <textarea class="rules-control font-monospace" rows="2"
+                      [(ngModel)]="flow2Config.friendlyFormula"
+                      (ngModelChange)="syncFlow2ToLatex($event)"
+                      placeholder="Ví dụ: \frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%"></textarea>
+            <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
+              <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip"
+                    *ngFor="let v of flow2Config.availableVariables"
+                    (click)="insertFlow2Chip(v)"
+                    title="Bấm để chèn biến vào công thức">
+                + {{ v }}
+              </span>
+            </div>
+            <span class="rules-hint">Bấm vào các thẻ biến trên để chèn nhanh vào công thức tính</span>
+          </div>
+
+          <div class="rules-form-group mb-0 d-flex flex-column">
+            <div class="rules-latex-preview-card flex-grow-1">
+              <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
+            </div>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================================================================== -->
+      <!-- CHUYÊN BIỆT CHO FLOW 3: KR-C1 (MTTR GIẢI QUYẾT BUG <= 8.0H)         -->
+      <!-- ================================================================== -->
+      <div class="rules-config-form" *ngIf="isFlow3(currentFlow)">
+        <!-- CỤM 1: LỊCH QUÉT & MỐC DỮ LIỆU ĐO LƯỜNG -->
+        <div class="rules-section-title rules-section-first">
+          <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+          <span>Cụm 1: Lịch trình Quét Định kỳ &amp; Mốc Dữ liệu Đo lường</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Daily Check-in Schedule</label>
+            <div class="rules-input-unit">
+              <input type="text" class="rules-control bg-light" [value]="flow3Config.scheduleTime" readonly>
+              <span class="rules-unit-addon"><i class="fa-solid fa-calendar-check text-primary"></i></span>
+            </div>
+            <span class="rules-hint">Chạy tự động lúc 21:00 (Thứ 2 – Thứ 6) để tính toán MTTR toàn đội</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Bug Identifier Labels</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-info" *ngFor="let lbl of flow3Config.bugLabels; let i = index">
+                {{ lbl }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTagFlow3('bugLabels', i)" title="Xóa nhãn"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm nhãn Bug (Enter)..." (keydown.enter)="addTagFlow3('bugLabels', $event)">
+            </div>
+            <span class="rules-hint">Nhãn GitLab dùng để nhận diện Issue là lỗi phần mềm (Bug)</span>
+          </div>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Start Event (T_start)</label>
+            <div class="position-relative space-dropdown-wrapper rules-dropdown-wrapper w-100">
+              <button type="button" class="toolbar-dropdown-trigger w-100"
+                      (click)="toggleFlow3StartDropdown($event)"
+                      [class.active]="isFlow3StartOpen">
+                <span class="space-label">{{ getFlow3StartLabel() }}</span>
+                <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isFlow3StartOpen"></i>
+              </button>
+              <div class="custom-select-menu space-dropdown-menu w-100" *ngIf="isFlow3StartOpen">
+                <div class="custom-select-option" *ngFor="let opt of flow3StartOptions"
+                     [class.selected]="flow3Config.startEvent === opt.value"
+                     (click)="selectFlow3Start(opt.value, $event)">
+                  <span style="color: #1e293b; font-weight: 500;">{{ opt.label }}</span>
+                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="flow3Config.startEvent === opt.value"></i>
+                </div>
+              </div>
+            </div>
+            <span class="rules-hint">Mốc bắt đầu xử lý Bug (mặc định khi chuyển sang In Progress)</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">End Event (T_end)</label>
+            <div class="position-relative space-dropdown-wrapper rules-dropdown-wrapper w-100">
+              <button type="button" class="toolbar-dropdown-trigger w-100"
+                      (click)="toggleFlow3EndDropdown($event)"
+                      [class.active]="isFlow3EndOpen">
+                <span class="space-label">{{ getFlow3EndLabel() }}</span>
+                <i class="fa-solid fa-chevron-down ms-1 chevron-icon" [class.rotate]="isFlow3EndOpen"></i>
+              </button>
+              <div class="custom-select-menu space-dropdown-menu w-100" *ngIf="isFlow3EndOpen">
+                <div class="custom-select-option" *ngFor="let opt of flow3EndOptions"
+                     [class.selected]="flow3Config.endEvent === opt.value"
+                     (click)="selectFlow3End(opt.value, $event)">
+                  <span style="color: #1e293b; font-weight: 500;">{{ opt.label }}</span>
+                  <i class="fa-solid fa-check check-icon ms-2" *ngIf="flow3Config.endEvent === opt.value"></i>
+                </div>
+              </div>
+            </div>
+            <span class="rules-hint">Mốc hoàn tất khắc phục kỹ thuật (trước khi triển khai lên Staging)</span>
+          </div>
+        </div>
+
+        <!-- CỤM 2: MA TRẬN HẠN MỨC SLA THEO MỨC ĐỘ NGHIÊM TRỌNG -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-layer-group text-danger"></i>
+          <span>Cụm 2: Ma trận Hạn mức SLA theo Mức độ Nghiêm trọng (Severity SLA Matrix)</span>
+        </div>
+
+        <div class="rules-severity-table-wrap">
+          <table class="rules-severity-table">
+            <thead>
+              <tr>
+                <th>Mức độ nghiêm trọng (Severity)</th>
+                <th style="width: 110px;">Trọng số</th>
+                <th style="width: 170px;">Hạn mức SLA (giờ)</th>
+                <th>Mô tả phạm vi áp dụng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr *ngFor="let row of flow3Config.severityMatrix">
+                <td><span class="sev-badge" [ngClass]="row.badgeClass">{{ row.label }}</span></td>
+                <td>
+                  <input type="number" min="0.5" step="0.5" class="rules-control" style="padding: 4px 8px; height: 32px;"
+                         [(ngModel)]="row.weight" (ngModelChange)="onConfigChange()">
+                </td>
+                <td>
+                  <div class="rules-input-unit">
+                    <input type="number" min="1" step="1" class="rules-control" style="padding: 4px 8px; height: 32px;"
+                           [(ngModel)]="row.slaHours" (ngModelChange)="onConfigChange()">
+                    <span class="rules-unit-addon" style="padding: 0 8px;">h</span>
+                  </div>
+                </td>
+                <td class="text-muted" style="font-size: 12.5px;">{{ row.description }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- CỤM 3: KHẤU TRỪ THỜI GIAN CHỜ & MỤC TIÊU CAM KẾT -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-bullseye text-warning"></i>
+          <span>Cụm 3: Khấu trừ Thời gian Chờ &amp; Mục tiêu Cam kết</span>
+        </div>
+
+        <div class="rules-form-group mb-0">
+          <label class="rules-label">SLA Paused Statuses (Trạng thái tạm dừng tính giờ)</label>
+          <div class="rules-tag-pill-container">
+            <span class="rules-tag-pill pill-warning" *ngFor="let st of flow3Config.pausedStatuses; let i = index">
+              {{ st }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTagFlow3('pausedStatuses', i)" title="Xóa trạng thái"></i>
+            </span>
+            <input type="text" class="rules-tag-input" placeholder="+ Thêm trạng thái tạm dừng (Enter)..." (keydown.enter)="addTagFlow3('pausedStatuses', $event)">
+          </div>
+          <span class="rules-hint">Hệ thống tự động trừ toàn bộ khoảng thời gian Bug lưu tại các trạng thái này khỏi MTTR thực tế</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">MTTR Target (Team Average)</label>
+            <div class="rules-input-unit">
+              <input type="number" min="0.5" step="0.5" class="rules-control" [(ngModel)]="flow3Config.mttrTargetHours" (ngModelChange)="onConfigChange()">
+              <span class="rules-unit-addon">giờ làm việc</span>
+            </div>
+            <span class="rules-hint">Chỉ tiêu MTTR trung bình toàn đội đạt tối đa &le; 8.0 giờ làm việc</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Bug SLA Compliance Rate</label>
+            <div class="rules-input-unit">
+              <input type="number" min="1" max="100" class="rules-control" [(ngModel)]="flow3Config.thresholdPercent" (ngModelChange)="onConfigChange()">
+              <span class="rules-unit-addon">%</span>
+            </div>
+            <span class="rules-hint">Tỷ lệ Bug khắc phục đúng hạn theo từng mức SLA P1–P4 (&ge; 90%)</span>
+          </div>
+        </div>
+
+        <div class="rules-info-notice">
+          <i class="fa-solid fa-circle-info text-primary"></i>
+          <span><strong>Xử lý ngoại lệ thiếu dữ liệu:</strong> Nếu trong kỳ đánh giá không có Bug nào hoàn tất (<code>|B_i| = 0</code>) &rArr; Kết quả tự động ghi nhận là <code>NO_DATA</code> (không quy kết 0 giờ).</span>
+        </div>
+
+        <!-- CỤM 4: FORMULA EDITOR -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+          <span>Cụm 4: Formula Editor</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <textarea class="rules-control font-monospace" rows="2"
+                      [(ngModel)]="flow3Config.friendlyFormula"
+                      (ngModelChange)="syncFlow3ToLatex($event)"
+                      placeholder="Ví dụ: \frac(sum(delta_t_working(j)), |B_Team|)"></textarea>
+            <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
+              <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip"
+                    *ngFor="let v of flow3Config.availableVariables"
+                    (click)="insertFlow3Chip(v)"
+                    title="Bấm để chèn biến vào công thức">
+                + {{ v }}
+              </span>
+            </div>
+            <span class="rules-hint">Bấm vào các thẻ biến trên để chèn nhanh vào công thức tính</span>
+          </div>
+
+          <div class="rules-form-group mb-0 d-flex flex-column">
+            <div class="rules-latex-preview-card flex-grow-1">
+              <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
+            </div>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
+          </div>
+        </div>
+      </div>
+
       <!-- ======================================================== -->
-      <!-- VIEW DỰ PHÒNG CHO CÁC FLOW KHÁC (FLOW 2, FLOW 3)        -->
+      <!-- VIEW DỰ PHÒNG CHO CÁC FLOW TÙY CHỈNH KHÁC                -->
       <!-- ======================================================== -->
-      <div class="rules-config-form" *ngIf="!isFlow1(currentFlow)">
+      <div class="rules-config-form" *ngIf="!isFlow1(currentFlow) && !isFlow2(currentFlow) && !isFlow3(currentFlow)">
         <div class="rules-section-title rules-section-first">
           <i class="fa-solid fa-bolt text-warning"></i>
           <span>Cấu hình Trigger & Mốc Bắt đầu / Kết thúc</span>

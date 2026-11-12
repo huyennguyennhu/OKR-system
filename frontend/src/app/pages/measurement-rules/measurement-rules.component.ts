@@ -54,6 +54,52 @@ export interface Flow1Config {
   availableVariables: string[];
 }
 
+export interface Flow2Config {
+  pollingInterval: string;
+  checkInSchedule: string;
+  startEvent: string;
+  endEvent: string;
+  ignoreDraft: boolean;
+  validActions: {
+    lineComment: boolean;
+    generalNote: boolean;
+    approve: boolean;
+    requestChanges: boolean;
+  };
+  excludedBots: string[];
+  excludeAuthorSelfReview: boolean;
+  slaHours: number;
+  thresholdPercent: number;
+  gracePeriodDays: number;
+  targetBranches: string[];
+  friendlyFormula: string;
+  latexFormula: string;
+  availableVariables: string[];
+}
+
+export interface SeveritySlaRow {
+  code: string;
+  label: string;
+  badgeClass: string;
+  weight: number;
+  slaHours: number;
+  description: string;
+}
+
+export interface Flow3Config {
+  scheduleTime: string;
+  startEvent: string;
+  endEvent: string;
+  bugLabels: string[];
+  severityMatrix: SeveritySlaRow[];
+  pausedStatuses: string[];
+  mttrTargetHours: number;
+  thresholdPercent: number;
+  friendlyFormula: string;
+  latexFormula: string;
+  availableVariables: string[];
+}
+
 @Component({
   selector: 'app-measurement-rules',
   standalone: true,
@@ -89,6 +135,50 @@ export class MeasurementRulesComponent implements OnInit {
     availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
   };
 
+  // Flow 2 No-Code Structured Configuration (KR-B1)
+  flow2Config: Flow2Config = {
+    pollingInterval: 'Mỗi 15 phút (08:00 – 22:00)',
+    checkInSchedule: '21:00 (Thứ 2 – Thứ 6)',
+    startEvent: 'max_assigned_ready',
+    endEvent: 'first_valid_review_action',
+    ignoreDraft: true,
+    validActions: {
+      lineComment: true,
+      generalNote: true,
+      approve: true,
+      requestChanges: true
+    },
+    excludedBots: ['dependabot', 'gitlab-bot', 'jenkins-bot', 'security-bot', 'project_bot_*'],
+    excludeAuthorSelfReview: true,
+    slaHours: 4.0,
+    thresholdPercent: 90,
+    gracePeriodDays: 1,
+    targetBranches: ['develop', 'main', 'master', 'release/*'],
+    friendlyFormula: '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+    latexFormula: '\\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%',
+    availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+  };
+
+  // Flow 3 No-Code Structured Configuration (KR-C1)
+  flow3Config: Flow3Config = {
+    scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
+    startEvent: 'status_in_progress',
+    endEvent: 'status_resolved',
+    bugLabels: ['type::bug', 'bug', 'defect', 'hotfix'],
+    severityMatrix: [
+      { code: 'P1', label: 'P1 — Blocker (Nguy cấp)', badgeClass: 'sev-p1', weight: 1.0, slaHours: 4.0, description: 'Lỗi sập hệ thống thanh toán, hỏng CSDL chính, ảnh hưởng diện rộng' },
+      { code: 'P2', label: 'P2 — Critical (Nghiêm trọng)', badgeClass: 'sev-p2', weight: 1.0, slaHours: 8.0, description: 'Lỗi tính năng cốt lõi (giỏ hàng, đặt hàng), không có giải pháp tạm' },
+      { code: 'P3', label: 'P3 — Major (Trung bình)', badgeClass: 'sev-p3', weight: 1.0, slaHours: 16.0, description: 'Lỗi giao diện, sai định dạng báo cáo, có phương án thay thế tạm' },
+      { code: 'P4', label: 'P4 — Minor (Thấp)', badgeClass: 'sev-p4', weight: 1.0, slaHours: 24.0, description: 'Lỗi chính tả, lệch icon, màu sắc không chuẩn thiết kế' }
+    ],
+    pausedStatuses: ['WAITING_FOR_INFO', 'BLOCKED', 'NEED_CUSTOMER_REPLY'],
+    mttrTargetHours: 8.0,
+    thresholdPercent: 90,
+    friendlyFormula: '\\frac(sum(delta_t_working(j)), |B_Team|)',
+    latexFormula: 'MTTR(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}',
+    availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h']
+  };
+
   renderedLatexHtml: SafeHtml = '';
 
   // Lock & Saving state for 'Áp dụng quy tắc' button
@@ -99,6 +189,10 @@ export class MeasurementRulesComponent implements OnInit {
   isStartEventOpen = false;
   isEndEventOpen = false;
   isCalcModeOpen = false;
+  isFlow2StartOpen = false;
+  isFlow2EndOpen = false;
+  isFlow3StartOpen = false;
+  isFlow3EndOpen = false;
 
   readonly startEventOptions = [
     { value: 'issue_assigned', label: 'issue_assigned (Default)' },
@@ -114,6 +208,27 @@ export class MeasurementRulesComponent implements OnInit {
   readonly calcModeOptions = [
     { value: 'STORY_POINT', label: 'Story Point Weight (Recommended)' },
     { value: 'COUNT', label: 'Issue Count (Equal Weight)' }
+  ];
+
+  readonly flow2StartOptions = [
+    { value: 'max_assigned_ready', label: 'max(T_assigned, T_ready) (Default)' },
+    { value: 'reviewer_assigned', label: 'reviewer_assigned' },
+    { value: 'mr_opened', label: 'mr_opened' }
+  ];
+
+  readonly flow2EndOptions = [
+    { value: 'first_valid_review_action', label: 'first_valid_review_action (Default)' },
+    { value: 'mr_approved', label: 'mr_approved' }
+  ];
+
+  readonly flow3StartOptions = [
+    { value: 'status_in_progress', label: 'status_in_progress (Default)' },
+    { value: 'max_created_assigned', label: 'max(T_created, T_assigned)' }
+  ];
+
+  readonly flow3EndOptions = [
+    { value: 'status_resolved', label: 'status_resolved (Default)' },
+    { value: 'issue_closed', label: 'issue_closed' }
   ];
 
   constructor(
@@ -182,6 +297,76 @@ export class MeasurementRulesComponent implements OnInit {
     return opt ? opt.label : 'Story Point Weight (Recommended)';
   }
 
+  // Flow 2 Dropdowns
+  toggleFlow2StartDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isFlow2StartOpen = !this.isFlow2StartOpen;
+    this.isFlow2EndOpen = false;
+  }
+
+  toggleFlow2EndDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isFlow2EndOpen = !this.isFlow2EndOpen;
+    this.isFlow2StartOpen = false;
+  }
+
+  selectFlow2Start(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow2Config.startEvent = value;
+    this.isFlow2StartOpen = false;
+    this.onConfigChange();
+  }
+
+  selectFlow2End(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow2Config.endEvent = value;
+    this.isFlow2EndOpen = false;
+    this.onConfigChange();
+  }
+
+  getFlow2StartLabel(): string {
+    return this.flow2StartOptions.find(o => o.value === this.flow2Config.startEvent)?.label || 'max(T_assigned, T_ready) (Default)';
+  }
+
+  getFlow2EndLabel(): string {
+    return this.flow2EndOptions.find(o => o.value === this.flow2Config.endEvent)?.label || 'first_valid_review_action (Default)';
+  }
+
+  // Flow 3 Dropdowns
+  toggleFlow3StartDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isFlow3StartOpen = !this.isFlow3StartOpen;
+    this.isFlow3EndOpen = false;
+  }
+
+  toggleFlow3EndDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isFlow3EndOpen = !this.isFlow3EndOpen;
+    this.isFlow3StartOpen = false;
+  }
+
+  selectFlow3Start(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow3Config.startEvent = value;
+    this.isFlow3StartOpen = false;
+    this.onConfigChange();
+  }
+
+  selectFlow3End(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow3Config.endEvent = value;
+    this.isFlow3EndOpen = false;
+    this.onConfigChange();
+  }
+
+  getFlow3StartLabel(): string {
+    return this.flow3StartOptions.find(o => o.value === this.flow3Config.startEvent)?.label || 'status_in_progress (Default)';
+  }
+
+  getFlow3EndLabel(): string {
+    return this.flow3EndOptions.find(o => o.value === this.flow3Config.endEvent)?.label || 'status_resolved (Default)';
+  }
+
   @HostListener('document:click', ['$event'])
   onDocumentClick(event?: MouseEvent): void {
     if (event) {
@@ -190,6 +375,10 @@ export class MeasurementRulesComponent implements OnInit {
         this.isStartEventOpen = false;
         this.isEndEventOpen = false;
         this.isCalcModeOpen = false;
+        this.isFlow2StartOpen = false;
+        this.isFlow2EndOpen = false;
+        this.isFlow3StartOpen = false;
+        this.isFlow3EndOpen = false;
       }
     }
   }
@@ -201,7 +390,11 @@ export class MeasurementRulesComponent implements OnInit {
     const checkKatex = setInterval(() => {
       if (typeof (window as any).katex !== 'undefined') {
         clearInterval(checkKatex);
-        this.renderLatexPreview(this.flow1Config.latexFormula);
+        if (this.currentFlow) {
+          if (this.isFlow1(this.currentFlow)) this.renderLatexPreview(this.flow1Config.latexFormula);
+          else if (this.isFlow2(this.currentFlow)) this.renderLatexPreview(this.flow2Config.latexFormula);
+          else if (this.isFlow3(this.currentFlow)) this.renderLatexPreview(this.flow3Config.latexFormula);
+        }
       }
     }, 250);
     setTimeout(() => clearInterval(checkKatex), 4000);
@@ -213,6 +406,22 @@ export class MeasurementRulesComponent implements OnInit {
     const fCode = (flow.flowCode || '').toUpperCase();
     const title = (flow.krTitle || flow.title || '').toLowerCase();
     return kId.includes('A1') || kId === 'KR-A1' || fCode.includes('A1') || title.includes('issue hoàn thành') || title.includes('đúng hạn');
+  }
+
+  isFlow2(flow?: FlowRuleTab): boolean {
+    if (!flow) return false;
+    const kId = (flow.krId || '').toUpperCase();
+    const fCode = (flow.flowCode || '').toUpperCase();
+    const title = (flow.krTitle || flow.title || '').toLowerCase();
+    return kId.includes('B1') || kId === 'KR-B1' || fCode.includes('B1') || title.includes('merge request') || title.includes('rà soát');
+  }
+
+  isFlow3(flow?: FlowRuleTab): boolean {
+    if (!flow) return false;
+    const kId = (flow.krId || '').toUpperCase();
+    const fCode = (flow.flowCode || '').toUpperCase();
+    const title = (flow.krTitle || flow.title || '').toLowerCase();
+    return kId.includes('C1') || kId === 'KR-C1' || fCode.includes('C1') || title.includes('mttr') || title.includes('sự cố bug');
   }
 
   loadTeamObjectivesRules(): void {
@@ -362,6 +571,10 @@ const result = {
       this.currentFlow = found;
       if (this.isFlow1(found)) {
         this.initFlow1Config(found);
+      } else if (this.isFlow2(found)) {
+        this.initFlow2Config(found);
+      } else if (this.isFlow3(found)) {
+        this.initFlow3Config(found);
       }
       this.isRuleSaved = false;
     }
@@ -421,6 +634,154 @@ const result = {
     };
 
     this.renderLatexPreview(this.flow1Config.latexFormula);
+  }
+
+  initFlow2Config(flow: FlowRuleTab): void {
+    let parsed: any = {};
+    if (flow.filterCriteria) {
+      try {
+        parsed = typeof flow.filterCriteria === 'string' ? JSON.parse(flow.filterCriteria) : flow.filterCriteria;
+      } catch {}
+    }
+
+    const defaultLatex = '\\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%';
+    this.flow2Config = {
+      pollingInterval: parsed.pollingInterval || 'Mỗi 15 phút (08:00 – 22:00)',
+      checkInSchedule: parsed.checkInSchedule || '21:00 (Thứ 2 – Thứ 6)',
+      startEvent: this.flow2StartOptions.some(o => o.value === parsed.startEvent) ? parsed.startEvent : 'max_assigned_ready',
+      endEvent: this.flow2EndOptions.some(o => o.value === parsed.endEvent) ? parsed.endEvent : 'first_valid_review_action',
+      ignoreDraft: parsed.ignoreDraft !== undefined ? parsed.ignoreDraft : true,
+      validActions: parsed.validActions || {
+        lineComment: true,
+        generalNote: true,
+        approve: true,
+        requestChanges: true
+      },
+      excludedBots: Array.isArray(parsed.excludedBots) && parsed.excludedBots.length > 0
+        ? parsed.excludedBots
+        : ['dependabot', 'gitlab-bot', 'jenkins-bot', 'security-bot', 'project_bot_*'],
+      excludeAuthorSelfReview: parsed.excludeAuthorSelfReview !== undefined ? parsed.excludeAuthorSelfReview : true,
+      slaHours: typeof parsed.slaHours === 'number' ? parsed.slaHours : (flow.slaHours || 4.0),
+      thresholdPercent: typeof parsed.thresholdPercent === 'number' ? parsed.thresholdPercent : (flow.thresholdPercent || 90),
+      gracePeriodDays: typeof parsed.gracePeriodDays === 'number' ? parsed.gracePeriodDays : 1,
+      targetBranches: Array.isArray(parsed.targetBranches) && parsed.targetBranches.length > 0
+        ? parsed.targetBranches
+        : ['develop', 'main', 'master', 'release/*'],
+      friendlyFormula: parsed.friendlyFormula || '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+      latexFormula: parsed.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : defaultLatex),
+      availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+    };
+    this.renderLatexPreview(this.flow2Config.latexFormula);
+  }
+
+  initFlow3Config(flow: FlowRuleTab): void {
+    let parsed: any = {};
+    if (flow.filterCriteria) {
+      try {
+        parsed = typeof flow.filterCriteria === 'string' ? JSON.parse(flow.filterCriteria) : flow.filterCriteria;
+      } catch {}
+    }
+
+    const defaultLatex = 'MTTR(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}';
+    this.flow3Config = {
+      scheduleTime: parsed.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
+      startEvent: this.flow3StartOptions.some(o => o.value === parsed.startEvent) ? parsed.startEvent : 'status_in_progress',
+      endEvent: this.flow3EndOptions.some(o => o.value === parsed.endEvent) ? parsed.endEvent : 'status_resolved',
+      bugLabels: Array.isArray(parsed.bugLabels) && parsed.bugLabels.length > 0
+        ? parsed.bugLabels
+        : ['type::bug', 'bug', 'defect', 'hotfix'],
+      severityMatrix: Array.isArray(parsed.severityMatrix) && parsed.severityMatrix.length > 0
+        ? parsed.severityMatrix
+        : [
+            { code: 'P1', label: 'P1 — Blocker (Nguy cấp)', badgeClass: 'sev-p1', weight: 1.0, slaHours: 4.0, description: 'Lỗi sập hệ thống thanh toán, hỏng CSDL chính, ảnh hưởng diện rộng' },
+            { code: 'P2', label: 'P2 — Critical (Nghiêm trọng)', badgeClass: 'sev-p2', weight: 1.0, slaHours: 8.0, description: 'Lỗi tính năng cốt lõi (giỏ hàng, đặt hàng), không có giải pháp tạm' },
+            { code: 'P3', label: 'P3 — Major (Trung bình)', badgeClass: 'sev-p3', weight: 1.0, slaHours: 16.0, description: 'Lỗi giao diện, sai định dạng báo cáo, có phương án thay thế tạm' },
+            { code: 'P4', label: 'P4 — Minor (Thấp)', badgeClass: 'sev-p4', weight: 1.0, slaHours: 24.0, description: 'Lỗi chính tả, lệch icon, màu sắc không chuẩn thiết kế' }
+          ],
+      pausedStatuses: Array.isArray(parsed.pausedStatuses) && parsed.pausedStatuses.length > 0
+        ? parsed.pausedStatuses
+        : ['WAITING_FOR_INFO', 'BLOCKED', 'NEED_CUSTOMER_REPLY'],
+      mttrTargetHours: typeof parsed.mttrTargetHours === 'number' ? parsed.mttrTargetHours : (flow.slaHours || 8.0),
+      thresholdPercent: typeof parsed.thresholdPercent === 'number' ? parsed.thresholdPercent : (flow.thresholdPercent || 90),
+      friendlyFormula: parsed.friendlyFormula || '\\frac(sum(delta_t_working(j)), |B_Team|)',
+      latexFormula: parsed.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : defaultLatex),
+      availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h']
+    };
+    this.renderLatexPreview(this.flow3Config.latexFormula);
+  }
+
+  addTagFlow2(category: 'excludedBots' | 'targetBranches', event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = (input.value || '').trim();
+    if (!value) return;
+    if (!this.flow2Config[category].includes(value)) {
+      this.flow2Config[category].push(value);
+      this.onConfigChange();
+    }
+    input.value = '';
+  }
+
+  removeTagFlow2(category: 'excludedBots' | 'targetBranches', index: number): void {
+    if (index >= 0 && index < this.flow2Config[category].length) {
+      this.flow2Config[category].splice(index, 1);
+      this.onConfigChange();
+    }
+  }
+
+  addTagFlow3(category: 'bugLabels' | 'pausedStatuses', event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = (input.value || '').trim();
+    if (!value) return;
+    if (!this.flow3Config[category].includes(value)) {
+      this.flow3Config[category].push(value);
+      this.onConfigChange();
+    }
+    input.value = '';
+  }
+
+  removeTagFlow3(category: 'bugLabels' | 'pausedStatuses', index: number): void {
+    if (index >= 0 && index < this.flow3Config[category].length) {
+      this.flow3Config[category].splice(index, 1);
+      this.onConfigChange();
+    }
+  }
+
+  private convertFriendlyToLatexString(input: string): string {
+    if (!input) return '';
+    let latex = input;
+    latex = latex.replace(/\\frac\(([^,]+),\s*([^)]+)\)/g, '\\frac{$1}{$2}');
+    latex = latex.replace(/\bsum\(/g, '\\sum(');
+    latex = latex.replace(/\s*\*\s*/g, ' \\cdot ');
+    latex = latex.replace(/\\cdot\s*100%/g, '\\times 100\\%');
+    return latex;
+  }
+
+  syncFlow2ToLatex(input: string): void {
+    this.onConfigChange();
+    this.flow2Config.latexFormula = this.convertFriendlyToLatexString(input);
+    this.renderLatexPreview(this.flow2Config.latexFormula);
+  }
+
+  insertFlow2Chip(variable: string): void {
+    this.onConfigChange();
+    this.flow2Config.friendlyFormula = this.flow2Config.friendlyFormula
+      ? `${this.flow2Config.friendlyFormula} * ${variable}`
+      : variable;
+    this.syncFlow2ToLatex(this.flow2Config.friendlyFormula);
+  }
+
+  syncFlow3ToLatex(input: string): void {
+    this.onConfigChange();
+    this.flow3Config.latexFormula = this.convertFriendlyToLatexString(input);
+    this.renderLatexPreview(this.flow3Config.latexFormula);
+  }
+
+  insertFlow3Chip(variable: string): void {
+    this.onConfigChange();
+    this.flow3Config.friendlyFormula = this.flow3Config.friendlyFormula
+      ? `${this.flow3Config.friendlyFormula} * ${variable}`
+      : variable;
+    this.syncFlow3ToLatex(this.flow3Config.friendlyFormula);
   }
 
   // Tag Management Methods (No-Code interaction)
@@ -551,6 +912,46 @@ const result = {
         friendlyFormula: this.flow1Config.friendlyFormula,
         latexFormula: this.flow1Config.latexFormula
       });
+    } else if (this.isFlow2(this.currentFlow)) {
+      this.currentFlow.startTrigger = this.flow2Config.startEvent;
+      this.currentFlow.endTrigger = this.flow2Config.endEvent;
+      this.currentFlow.slaHours = this.flow2Config.slaHours;
+      this.currentFlow.thresholdPercent = this.flow2Config.thresholdPercent;
+      this.currentFlow.businessLogicNote = this.flow2Config.latexFormula;
+      this.currentFlow.filterCriteria = JSON.stringify({
+        pollingInterval: this.flow2Config.pollingInterval,
+        checkInSchedule: this.flow2Config.checkInSchedule,
+        startEvent: this.flow2Config.startEvent,
+        endEvent: this.flow2Config.endEvent,
+        ignoreDraft: this.flow2Config.ignoreDraft,
+        validActions: this.flow2Config.validActions,
+        excludedBots: this.flow2Config.excludedBots,
+        excludeAuthorSelfReview: this.flow2Config.excludeAuthorSelfReview,
+        slaHours: this.flow2Config.slaHours,
+        thresholdPercent: this.flow2Config.thresholdPercent,
+        gracePeriodDays: this.flow2Config.gracePeriodDays,
+        targetBranches: this.flow2Config.targetBranches,
+        friendlyFormula: this.flow2Config.friendlyFormula,
+        latexFormula: this.flow2Config.latexFormula
+      });
+    } else if (this.isFlow3(this.currentFlow)) {
+      this.currentFlow.startTrigger = this.flow3Config.startEvent;
+      this.currentFlow.endTrigger = this.flow3Config.endEvent;
+      this.currentFlow.slaHours = this.flow3Config.mttrTargetHours;
+      this.currentFlow.thresholdPercent = this.flow3Config.thresholdPercent;
+      this.currentFlow.businessLogicNote = this.flow3Config.latexFormula;
+      this.currentFlow.filterCriteria = JSON.stringify({
+        scheduleTime: this.flow3Config.scheduleTime,
+        startEvent: this.flow3Config.startEvent,
+        endEvent: this.flow3Config.endEvent,
+        bugLabels: this.flow3Config.bugLabels,
+        severityMatrix: this.flow3Config.severityMatrix,
+        pausedStatuses: this.flow3Config.pausedStatuses,
+        mttrTargetHours: this.flow3Config.mttrTargetHours,
+        thresholdPercent: this.flow3Config.thresholdPercent,
+        friendlyFormula: this.flow3Config.friendlyFormula,
+        latexFormula: this.flow3Config.latexFormula
+      });
     }
 
     const payload = {
@@ -593,6 +994,10 @@ const result = {
     this.isRuleSaved = false;
     if (this.isFlow1(this.currentFlow)) {
       this.initFlow1Config(this.currentFlow);
+    } else if (this.isFlow2(this.currentFlow)) {
+      this.initFlow2Config(this.currentFlow);
+    } else if (this.isFlow3(this.currentFlow)) {
+      this.initFlow3Config(this.currentFlow);
     } else {
       this.loadTeamObjectivesRules();
     }
