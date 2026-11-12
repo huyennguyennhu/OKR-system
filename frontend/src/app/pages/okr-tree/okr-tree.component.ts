@@ -330,7 +330,6 @@ interface TreeNode {
                 <th style="width: 7%; text-align: center;" class="text-center">Agg Type</th>
                 <th style="width: 140px; min-width: 140px; text-align: center;" class="text-center">Result</th>
                 <th style="width: 10%;">Progress</th>
-                <th style="width: 48px; min-width: 48px; text-align: center;" class="text-center">Risk</th>
                 <th style="width: 48px; text-align: center;"></th>
               </tr>
             </thead>
@@ -378,8 +377,6 @@ interface TreeNode {
                     <!-- Agg Type -->
                     <td class="text-center" style="text-align: center;">
                       <span class="badge" [ngClass]="getAggBadgeClass(node.aggType)" *ngIf="node.type !== 'team_kr' && node.type !== 'ind_kr'">{{ node.aggType }}</span>
-                      <i class="fa-solid fa-circle-exclamation text-warning ms-1" *ngIf="node.aggType === 'AVG' && depth > 2 && node.type !== 'team_kr' && node.type !== 'ind_kr'"></i>
-                      <i class="fa-solid fa-circle-exclamation text-danger ms-1" *ngIf="node.aggType === 'SUM' && depth > 2 && node.type !== 'team_kr' && node.type !== 'ind_kr'"></i>
                     </td>
 
                     <!-- Result (S, C, E) -->
@@ -408,13 +405,6 @@ interface TreeNode {
                       <div class="progress" style="height: 4px;">
                         <div class="progress-bar bg-success" role="progressbar" [style.width.%]="node.progress"></div>
                       </div>
-                    </td>
-
-                    <!-- Risk -->
-                    <td class="text-center">
-                      <i class="fa-solid fa-circle-exclamation text-danger" *ngIf="node.risk === 'danger'"></i>
-                      <i class="fa-solid fa-triangle-exclamation text-warning" *ngIf="node.risk === 'warning'"></i>
-                      <span class="text-muted" *ngIf="node.risk === 'none'">-</span>
                     </td>
 
                     <!-- Actions -->
@@ -447,7 +437,7 @@ interface TreeNode {
 
               <!-- Loading State (Center Table Loading - Rule 3 rule_UI.md) -->
               <tr *ngIf="loading">
-                <td colspan="7" class="table-loading-cell">
+                <td colspan="6" class="table-loading-cell">
                   <div class="table-loading-content">
                     <div class="loading-spinner-circle"></div>
                     <span class="loading-spinner-text">Đang tải cấu trúc OKR Tree từ hệ thống...</span>
@@ -458,7 +448,7 @@ interface TreeNode {
               <!-- Content Rendered Strictly When Not Loading -->
               <ng-container *ngIf="!loading">
                 <tr *ngIf="treeData.length === 0">
-                  <td colspan="7" class="text-center py-4 text-muted" style="padding: 2.5rem 1rem;">
+                  <td colspan="6" class="text-center py-4 text-muted" style="padding: 2.5rem 1rem;">
                     <i class="fa-solid fa-folder-open mb-2" style="font-size: 2rem; color: #94a3b8; display: block;"></i>
                     Chưa có Mục tiêu hoặc Kết quả then chốt nào. Hãy tạo mới!
                   </td>
