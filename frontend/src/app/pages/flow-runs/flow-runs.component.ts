@@ -557,7 +557,7 @@ export interface RunDetailViewModel {
                 <thead>
                   <tr>
                     <th style="width: 72px;">Loại</th>
-                    <th>Mã &amp; Tiêu đề trên GitLab (Click để mở)</th>
+                    <th>Mã &amp; Tiêu đề</th>
                     <th>Người thực hiện / Reviewer</th>
                     <th>Trọng số / Thời lượng</th>
                     <th>Mốc hoàn thành</th>
