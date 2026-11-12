@@ -321,10 +321,6 @@
         <div class="rules-two-col-grid">
           <!-- KHUNG TRÁI: Nhập biểu thức thân thiện -->
           <div class="rules-form-group mb-0">
-            <div class="d-flex justify-content-between align-items-center mb-1">
-              <label class="rules-label mb-0">Khung 1: Function-style Formula Input</label>
-              <span class="badge badge-light-primary" style="font-size: 11px;">Hỗ trợ: \frac(tử, mẫu)</span>
-            </div>
             <textarea class="rules-control font-monospace" rows="2" 
                       [(ngModel)]="flow1Config.friendlyFormula" 
                       (ngModelChange)="syncFromFriendlyToLatex($event)"
