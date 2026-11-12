@@ -126,16 +126,16 @@ async function migrate() {
       const krA1Children = [
         {
           id: `KR-${m.krPrefix}A1-01`,
-          title: 'Tỷ lệ Issue kiến trúc cốt lõi hoàn thành đúng hạn ≥ 95% - Huyền Nguyễn Như',
+          title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Huyền Nguyễn Như',
           assignee: 'EMP001',
           start: 0,
-          expected: 95,
+          expected: 90,
           current: parseFloat((95.0 * m.progressMultiplier).toFixed(1)),
           unit: '%'
         },
         {
           id: `KR-${m.krPrefix}A1-02`,
-          title: 'Tỷ lệ Issue Frontend hoàn thành đúng hạn ≥ 90% - Alexander Nguyen',
+          title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Alexander Nguyen',
           assignee: 'EMP004',
           start: 0,
           expected: 90,
@@ -144,7 +144,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}A1-03`,
-          title: 'Tỷ lệ Issue Backend hoàn thành đúng hạn ≥ 90% - Tran Than',
+          title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Tran Than',
           assignee: 'EMP005',
           start: 0,
           expected: 90,
@@ -153,7 +153,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}A1-04`,
-          title: 'Tỷ lệ Issue UI Component hoàn thành đúng hạn ≥ 90% - Nguyen Anh',
+          title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Nguyen Anh',
           assignee: 'EMP003',
           start: 0,
           expected: 90,
@@ -162,7 +162,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}A1-05`,
-          title: 'Tỷ lệ Issue RESTful API hoàn thành đúng hạn ≥ 90% - Le An',
+          title: 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Le An',
           assignee: 'EMP002',
           start: 0,
           expected: 90,

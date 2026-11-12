@@ -552,11 +552,11 @@ async function seedInitialData() {
         [krA1Id, t1Id, parseFloat((91.5 * m.mult).toFixed(1)), defaultSpaceId]);
 
       const a1Children = [
-        [`KR-${m.krPre}A1-01`, t1Id, 'METRIC-02', 'Tỷ lệ Issue kiến trúc cốt lõi hoàn thành đúng hạn ≥ 95% - Huyền Nguyễn Như', 0, 95, parseFloat((95.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP001', krA1Id],
-        [`KR-${m.krPre}A1-02`, t1Id, 'METRIC-02', 'Tỷ lệ Issue Frontend hoàn thành đúng hạn ≥ 90% - Alexander Nguyen', 0, 90, parseFloat((92.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP004', krA1Id],
-        [`KR-${m.krPre}A1-03`, t1Id, 'METRIC-02', 'Tỷ lệ Issue Backend hoàn thành đúng hạn ≥ 90% - Tran Than', 0, 90, parseFloat((91.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP005', krA1Id],
-        [`KR-${m.krPre}A1-04`, t1Id, 'METRIC-02', 'Tỷ lệ Issue UI Component hoàn thành đúng hạn ≥ 90% - Nguyen Anh', 0, 90, parseFloat((93.5 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP003', krA1Id],
-        [`KR-${m.krPre}A1-05`, t1Id, 'METRIC-02', 'Tỷ lệ Issue RESTful API hoàn thành đúng hạn ≥ 90% - Le An', 0, 90, parseFloat((90.5 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP002', krA1Id]
+        [`KR-${m.krPre}A1-01`, t1Id, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Huyền Nguyễn Như', 0, 90, parseFloat((95.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP001', krA1Id],
+        [`KR-${m.krPre}A1-02`, t1Id, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Alexander Nguyen', 0, 90, parseFloat((92.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP004', krA1Id],
+        [`KR-${m.krPre}A1-03`, t1Id, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Tran Than', 0, 90, parseFloat((91.0 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP005', krA1Id],
+        [`KR-${m.krPre}A1-04`, t1Id, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Nguyen Anh', 0, 90, parseFloat((93.5 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP003', krA1Id],
+        [`KR-${m.krPre}A1-05`, t1Id, 'METRIC-02', 'Tỷ lệ Issue hoàn thành đúng hạn ≥ 90% - Le An', 0, 90, parseFloat((90.5 * m.mult).toFixed(1)), 'increase', '%', defaultSpaceId, 'EMP002', krA1Id]
       ];
       for (const row of a1Children) {
         await run(`INSERT INTO KeyResults (kr_id, objective_id, metric_id, title, start_value, expected_value, current_value, direction, unit, space_id, assignee_id, parent_kr_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, row);
