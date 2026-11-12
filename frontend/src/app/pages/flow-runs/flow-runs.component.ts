@@ -644,7 +644,6 @@ export interface RunDetailViewModel {
                 <i class="fa-solid fa-chevron-right summary-chevron"></i>
                 <i class="fa-solid fa-file-code text-primary"></i>
                 <span>Xem Payload JSON kỹ thuật</span>
-                <span class="badge bg-light text-secondary border" style="font-size: 11px;">Developer / IT</span>
               </div>
               <button type="button" class="btn-copy-payload" (click)="copyPayload($event)" title="Sao chép toàn bộ dữ liệu JSON">
                 <i class="fa-solid" [ngClass]="isCopied ? 'fa-check text-success' : 'fa-copy'"></i>
