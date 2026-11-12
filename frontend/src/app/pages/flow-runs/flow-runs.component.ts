@@ -625,7 +625,7 @@ export interface RunDetailViewModel {
           <div class="rules-snapshot-box mb-4">
             <div class="rules-snapshot-title">
               <i class="fa-solid fa-scale-balanced text-secondary me-2"></i>
-              Quy tắc đo lường áp dụng (Measurement Rules Snapshot)
+              Quy tắc đo lường áp dụng
             </div>
             <ul class="rules-snapshot-list">
               <li>
