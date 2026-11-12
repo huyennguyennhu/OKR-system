@@ -337,16 +337,13 @@
             <span class="rules-hint">Bấm vào các thẻ biến trên để chèn nhanh vào công thức tính</span>
           </div>
 
-          <!-- KHUNG PHẢI: Chỉnh sửa mã LaTeX & Render trực quan -->
-          <div class="rules-form-group mb-0">
-            <textarea class="rules-control font-monospace text-primary mb-2" rows="2" 
-                      [(ngModel)]="flow1Config.latexFormula" 
-                      (ngModelChange)="syncFromLatexToFriendly($event)"
-                      placeholder="\frac{\sum S_k \cdot W_k}{\sum W_k} \times 100\%"></textarea>
+          <!-- KHUNG PHẢI: Render trực quan công thức KaTeX -->
+          <div class="rules-form-group mb-0 d-flex flex-column">
             <!-- Khung render KaTeX toán học trực quan -->
-            <div class="rules-latex-preview-card">
+            <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
           </div>
         </div>
       </div>
