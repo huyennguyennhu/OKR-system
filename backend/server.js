@@ -503,7 +503,11 @@ app.get('/api/okr-tree', async (req, res) => {
         parent_kr_id: kr.parent_kr_id,
         unit: kr.unit || '%',
         direction: kr.direction || 'increase',
-        description: rule ? `Quy tắc đo lường SLA: ${rule.event_type} <= ${rule.sla_value}h. ${rule.formula}` : 'Chỉ số đo lường hiệu năng kỹ thuật tự động qua GitLab Activepieces Flow.',
+        description: kr.description || (kr.kr_id.includes('B1')
+          ? 'Đo lường tỷ lệ lượt phân công rà soát Merge Request nhận được phản hồi chuyên môn đầu tiên trong vòng 4.0 giờ làm việc hành chính (≥ 90%).'
+          : (kr.kr_id.includes('C1')
+            ? 'Đo lường thời gian trung bình giải quyết sự cố Bug (MTTR) trong giờ làm việc hành chính (khấu trừ nghỉ trưa, cuối tuần & trạng thái chờ), đạt mục tiêu ≤ 8.0 giờ.'
+            : 'Đo lường tỷ lệ Issue hợp lệ (Story/Bug/Improvement) hoàn thành đúng hạn trước 23:59:59 ngày Due Date, có gia quyền theo Story Point (≥ 90%).')),
         children: childKrNodes
       };
     };
@@ -1059,7 +1063,11 @@ app.get('/api/key-results/:id', async (req, res) => {
       objective: obj,
       rule,
       ancestors,
-      description: rule ? `Quy tắc đo lường SLA: ${rule.event_type} <= ${rule.sla_value}h. ${rule.formula}` : 'Chỉ số đo lường hiệu năng kỹ thuật tự động qua GitLab Activepieces Flow.'
+      description: kr.description || (kr.kr_id.includes('B1')
+        ? 'Đo lường tỷ lệ lượt phân công rà soát Merge Request nhận được phản hồi chuyên môn đầu tiên trong vòng 4.0 giờ làm việc hành chính (≥ 90%).'
+        : (kr.kr_id.includes('C1')
+          ? 'Đo lường thời gian trung bình giải quyết sự cố Bug (MTTR) trong giờ làm việc hành chính (khấu trừ nghỉ trưa, cuối tuần & trạng thái chờ), đạt mục tiêu ≤ 8.0 giờ.'
+          : 'Đo lường tỷ lệ Issue hợp lệ (Story/Bug/Improvement) hoàn thành đúng hạn trước 23:59:59 ngày Due Date, có gia quyền theo Story Point (≥ 90%).'))
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
