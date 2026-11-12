@@ -318,12 +318,30 @@ async function migrate() {
       // ------------------------------------------------------------------
       // MeasurementRules cho 3 KR chính
       // ------------------------------------------------------------------
+      const flow1Filters = JSON.stringify({
+        scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
+        startEvent: 'issue_assigned',
+        endEvent: 'status_resolved',
+        dueDateTime: '23:59:59 (GMT+7)',
+        resolvedStatuses: ['RESOLVED', 'DEV_COMPLETED', 'READY IN STAGING', 'PASS IN STAGING'],
+        reopenedStatuses: ['REOPENED'],
+        excludedStatuses: ['CANCELLED', 'WONTFIX', 'CANNOT REPRODUCE', 'DUPLICATE'],
+        validIssueTypes: ['Story', 'Bug', 'Improvement'],
+        calculationMode: 'STORY_POINT',
+        fallbackStoryPoint: 1,
+        thresholdPercent: 90,
+        noDataHandling: true,
+        friendlyFormula: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latexFormula: '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%'
+      });
+
       await run(`
         INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
-        VALUES (?, ?, 'issue', '{"labels":["story","bug","improvement"]}', 'opened', 'closed', 24, 'Số Issue đóng <= Due Date / Tổng Issue trong kỳ đo * 100%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue tạo ngoài giờ sẽ tính từ 08:00 sáng ngày làm việc kế tiếp', 'Tự động trừ 1.5h nghỉ trưa (12:00 - 13:30)', 'Đóng băng SLA toàn bộ T7, CN và ngày nghỉ lễ')
+        VALUES (?, ?, 'issue', ?, 'issue_assigned', 'status_resolved', 24, '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue tạo ngoài giờ sẽ tính từ 08:00 sáng ngày làm việc kế tiếp', 'Tự động trừ 1.5h nghỉ trưa (12:00 - 13:30)', 'Đóng băng SLA toàn bộ T7, CN và ngày nghỉ lễ')
       `, [
         `RULE-${m.prefix}-A1`,
         krA1Id,
+        flow1Filters,
         teamObj1Id,
         `FLOW-KR-A1-${m.prefix}`,
         `Activepieces SLA Issue Tracker Tháng ${m.monthNum} - KR-A1`

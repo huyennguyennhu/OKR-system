@@ -56,8 +56,13 @@
   <div class="flow-content-area mb-4" *ngIf="currentFlow">
     <!-- Action Button phía trên khối Card -->
     <div class="d-flex justify-content-end mb-3">
-      <button class="btn btn-primary btn-sm px-3 fw-semibold shadow-sm" (click)="applyRules()">
-        <i class="fa-solid fa-check me-1"></i> Áp dụng quy tắc
+      <button class="btn btn-sm px-3 fw-semibold shadow-sm"
+              [ngClass]="isRuleSaved ? 'btn-secondary text-white' : 'btn-primary'"
+              [disabled]="isSavingRule || isRuleSaved" 
+              (click)="applyRules()"
+              [title]="isRuleSaved ? 'Quy tắc đã được áp dụng và lưu vào CSDL' : 'Áp dụng quy tắc đo lường'">
+        <i class="fa-solid me-1" [ngClass]="isSavingRule ? 'fa-spinner fa-spin' : (isRuleSaved ? 'fa-lock' : 'fa-check')"></i>
+        <span>{{ isSavingRule ? 'Đang lưu...' : (isRuleSaved ? 'Đã áp dụng quy tắc' : 'Áp dụng quy tắc') }}</span>
       </button>
     </div>
 
@@ -283,7 +288,7 @@
           <div class="rules-form-group mb-0">
             <label class="rules-label">Fallback Story Point</label>
             <div class="rules-input-unit">
-              <input type="number" min="0.5" step="0.5" class="rules-control" [(ngModel)]="flow1Config.fallbackStoryPoint">
+              <input type="number" min="0.5" step="0.5" class="rules-control" [(ngModel)]="flow1Config.fallbackStoryPoint" (ngModelChange)="onConfigChange()">
               <span class="rules-unit-addon">SP</span>
             </div>
             <span class="rules-hint">Gán tự động khi Issue thiếu Story Point và bật cờ is_default_sp = true</span>
@@ -292,7 +297,7 @@
           <div class="rules-form-group mb-0">
             <label class="rules-label">Target Threshold</label>
             <div class="rules-input-unit">
-              <input type="number" min="1" max="100" class="rules-control" [(ngModel)]="flow1Config.thresholdPercent">
+              <input type="number" min="1" max="100" class="rules-control" [(ngModel)]="flow1Config.thresholdPercent" (ngModelChange)="onConfigChange()">
               <span class="rules-unit-addon">%</span>
             </div>
             <span class="rules-hint">Ngưỡng đạt cam kết của Key Result (R_on-time &ge; 90%)</span>
@@ -354,12 +359,12 @@
         <div class="rules-two-col-grid">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Start Event</label>
-            <input type="text" class="rules-control" [(ngModel)]="currentFlow.startTrigger">
+            <input type="text" class="rules-control" [(ngModel)]="currentFlow.startTrigger" (ngModelChange)="onConfigChange()">
           </div>
 
           <div class="rules-form-group mb-0">
             <label class="rules-label">End Event</label>
-            <input type="text" class="rules-control" [(ngModel)]="currentFlow.endTrigger">
+            <input type="text" class="rules-control" [(ngModel)]="currentFlow.endTrigger" (ngModelChange)="onConfigChange()">
           </div>
         </div>
 
@@ -367,14 +372,14 @@
           <div class="rules-form-group mb-0">
             <label class="rules-label">SLA Max Limit</label>
             <div class="rules-input-unit">
-              <input type="number" class="rules-control" [(ngModel)]="currentFlow.slaHours">
+              <input type="number" class="rules-control" [(ngModel)]="currentFlow.slaHours" (ngModelChange)="onConfigChange()">
               <span class="rules-unit-addon">giờ làm việc</span>
             </div>
           </div>
           <div class="rules-form-group mb-0" *ngIf="currentFlow.thresholdPercent">
             <label class="rules-label">Target Threshold</label>
             <div class="rules-input-unit">
-              <input type="number" class="rules-control" [(ngModel)]="currentFlow.thresholdPercent">
+              <input type="number" class="rules-control" [(ngModel)]="currentFlow.thresholdPercent" (ngModelChange)="onConfigChange()">
               <span class="rules-unit-addon">%</span>
             </div>
           </div>
@@ -382,7 +387,7 @@
 
         <div class="rules-form-group mb-0">
           <label class="rules-label">Filter Conditions</label>
-          <textarea class="rules-control font-monospace" rows="2" [(ngModel)]="currentFlow.filterCriteria"></textarea>
+          <textarea class="rules-control font-monospace" rows="2" [(ngModel)]="currentFlow.filterCriteria" (ngModelChange)="onConfigChange()"></textarea>
         </div>
       </div>
     </div>

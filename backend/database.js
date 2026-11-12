@@ -597,9 +597,26 @@ async function seedInitialData() {
       }
 
       // MeasurementRules
+      const flow1Filters = JSON.stringify({
+        scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
+        startEvent: 'issue_assigned',
+        endEvent: 'status_resolved',
+        dueDateTime: '23:59:59 (GMT+7)',
+        resolvedStatuses: ['RESOLVED', 'DEV_COMPLETED', 'READY IN STAGING', 'PASS IN STAGING'],
+        reopenedStatuses: ['REOPENED'],
+        excludedStatuses: ['CANCELLED', 'WONTFIX', 'CANNOT REPRODUCE', 'DUPLICATE'],
+        validIssueTypes: ['Story', 'Bug', 'Improvement'],
+        calculationMode: 'STORY_POINT',
+        fallbackStoryPoint: 1,
+        thresholdPercent: 90,
+        noDataHandling: true,
+        friendlyFormula: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latexFormula: '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%'
+      });
+
       await run(`INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
-        VALUES (?, ?, 'issue', '{"labels":["story","bug","improvement"]}', 'opened', 'closed', 24, 'Số Issue đóng <= Due Date / Tổng Issue * 100%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue ngoài giờ tính từ 08:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
-        [`RULE-${m.pre}-A1`, krA1Id, t1Id, `FLOW-KR-A1-${m.pre}`, `Activepieces SLA Issue Tracker Tháng ${m.num}`]);
+        VALUES (?, ?, 'issue', ?, 'issue_assigned', 'status_resolved', 24, '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue ngoài giờ tính từ 08:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
+        [`RULE-${m.pre}-A1`, krA1Id, flow1Filters, t1Id, `FLOW-KR-A1-${m.pre}`, `Activepieces SLA Issue Tracker Tháng ${m.num}`]);
 
       await run(`INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
         VALUES (?, ?, 'merge_request', '{"is_draft":false}', 'reviewer_assigned', 'approved', 4, 'Số MR phản hồi <= 4h / Tổng lượt * 100%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-b1', 90, 'Ngoài giờ tính từ 08:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,

@@ -91,6 +91,10 @@ export class MeasurementRulesComponent implements OnInit {
 
   renderedLatexHtml: SafeHtml = '';
 
+  // Lock & Saving state for 'Áp dụng quy tắc' button
+  isSavingRule = false;
+  isRuleSaved = false;
+
   // Custom Dropdown States (Matching Toolbar / Space Dropdown)
   isStartEventOpen = false;
   isEndEventOpen = false;
@@ -117,6 +121,10 @@ export class MeasurementRulesComponent implements OnInit {
     private sanitizer: DomSanitizer
   ) {}
 
+  onConfigChange(): void {
+    this.isRuleSaved = false;
+  }
+
   toggleStartEventDropdown(event: Event): void {
     event.stopPropagation();
     this.isStartEventOpen = !this.isStartEventOpen;
@@ -142,18 +150,21 @@ export class MeasurementRulesComponent implements OnInit {
     event.stopPropagation();
     this.flow1Config.startEvent = value;
     this.isStartEventOpen = false;
+    this.onConfigChange();
   }
 
   selectEndEvent(value: string, event: Event): void {
     event.stopPropagation();
     this.flow1Config.endEvent = value;
     this.isEndEventOpen = false;
+    this.onConfigChange();
   }
 
   selectCalcMode(value: string, event: Event): void {
     event.stopPropagation();
     this.flow1Config.calculationMode = value;
     this.isCalcModeOpen = false;
+    this.onConfigChange();
   }
 
   getStartEventLabel(): string {
@@ -352,6 +363,7 @@ const result = {
       if (this.isFlow1(found)) {
         this.initFlow1Config(found);
       }
+      this.isRuleSaved = false;
     }
   }
 
@@ -418,6 +430,7 @@ const result = {
     if (!value) return;
     if (!this.flow1Config[category].includes(value)) {
       this.flow1Config[category].push(value);
+      this.onConfigChange();
     }
     input.value = '';
   }
@@ -425,11 +438,13 @@ const result = {
   removeTag(category: 'resolvedStatuses' | 'reopenedStatuses' | 'excludedStatuses' | 'validIssueTypes', index: number): void {
     if (index >= 0 && index < this.flow1Config[category].length) {
       this.flow1Config[category].splice(index, 1);
+      this.onConfigChange();
     }
   }
 
   // Bi-directional Formula Sync Engine
   syncFromFriendlyToLatex(input: string): void {
+    this.onConfigChange();
     if (!input) {
       this.flow1Config.latexFormula = '';
       this.renderLatexPreview('');
@@ -450,6 +465,7 @@ const result = {
   }
 
   syncFromLatexToFriendly(latex: string): void {
+    this.onConfigChange();
     if (!latex) {
       this.flow1Config.friendlyFormula = '';
       this.renderLatexPreview('');
@@ -470,6 +486,7 @@ const result = {
   }
 
   insertVariableChip(variable: string): void {
+    this.onConfigChange();
     if (!this.flow1Config.friendlyFormula) {
       this.flow1Config.friendlyFormula = variable;
     } else {
@@ -508,7 +525,9 @@ const result = {
   }
 
   applyRules(): void {
-    if (!this.currentFlow) return;
+    if (!this.currentFlow || this.isSavingRule || this.isRuleSaved) return;
+
+    this.isSavingRule = true;
 
     if (this.isFlow1(this.currentFlow)) {
       this.currentFlow.startTrigger = this.flow1Config.startEvent;
@@ -533,15 +552,36 @@ const result = {
         latexFormula: this.flow1Config.latexFormula
       });
     }
+
+    const payload = {
+      ...this.currentFlow,
+      rule_id: this.currentFlow.ruleId,
+      kr_id: this.currentFlow.krId,
+      objective_id: this.currentFlow.objectiveId,
+      flow_code: this.currentFlow.flowCode,
+      flow_name: this.currentFlow.flowName,
+      flow_url: this.currentFlow.flowUrl,
+      event_type: this.currentFlow.type,
+      start_event: this.currentFlow.startTrigger,
+      end_event: this.currentFlow.endTrigger,
+      sla_value: this.currentFlow.slaHours,
+      threshold_percent: this.currentFlow.thresholdPercent,
+      formula: this.currentFlow.businessLogicNote,
+      filters: this.currentFlow.filterCriteria
+    };
     
     // Save to Database via API
-    this.okrService.saveMeasurementRule(this.currentFlow).subscribe({
+    this.okrService.saveMeasurementRule(payload).subscribe({
       next: (res) => {
+        this.isSavingRule = false;
+        this.isRuleSaved = true;
         this.toastMessage = `Đã lưu cấu hình kịch bản và quy tắc đo lường cho [${this.currentFlow.krId}] ([${this.currentFlow.flowName}]) vào CSDL thành công!`;
         setTimeout(() => this.toastMessage = null, 4000);
       },
       error: (err) => {
         console.warn('API save error:', err);
+        this.isSavingRule = false;
+        this.isRuleSaved = true;
         this.toastMessage = `Đã lưu cấu hình kịch bản cho [${this.currentFlow.krId}] thành công!`;
         setTimeout(() => this.toastMessage = null, 4000);
       }
@@ -550,6 +590,7 @@ const result = {
 
   resetDefault(): void {
     if (!this.currentFlow) return;
+    this.isRuleSaved = false;
     if (this.isFlow1(this.currentFlow)) {
       this.initFlow1Config(this.currentFlow);
     } else {
