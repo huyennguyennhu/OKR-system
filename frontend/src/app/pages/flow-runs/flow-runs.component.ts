@@ -845,7 +845,8 @@ import { ConfirmDialogService } from '../../services/confirm-dialog.service';
       background: #ffffff;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
-      overflow: hidden;
+      overflow-x: auto;
+      overflow-y: hidden;
     }
 
     .table {
