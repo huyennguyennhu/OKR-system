@@ -1635,10 +1635,10 @@ app.get('/api/working-calendar', async (req, res) => {
     res.json({
       workCalendar: {
         zone: 'Asia/Ho_Chi_Minh',
-        morningStart: wh.morning_start || '08:00',
+        morningStart: wh.morning_start || '09:00',
         morningEnd: wh.morning_end || '12:00',
         afternoonStart: wh.afternoon_start || '13:30',
-        afternoonEnd: wh.afternoon_end || '17:30',
+        afternoonEnd: wh.afternoon_end || '18:30',
         working_days: wh.working_days ? JSON.parse(wh.working_days) : ['T2', 'T3', 'T4', 'T5', 'T6']
       },
       weekDays: weekDays,
@@ -1670,10 +1670,10 @@ app.get(['/api/working-time', '/api/working-hours'], async (req, res) => {
     res.json({
       workCalendar: {
         zone: 'Asia/Ho_Chi_Minh',
-        morningStart: wh.morning_start || '08:00',
+        morningStart: wh.morning_start || '09:00',
         morningEnd: wh.morning_end || '12:00',
         afternoonStart: wh.afternoon_start || '13:30',
-        afternoonEnd: wh.afternoon_end || '17:30'
+        afternoonEnd: wh.afternoon_end || '18:30'
       },
       weekDays: weekDays
     });
@@ -1685,10 +1685,10 @@ app.get(['/api/working-time', '/api/working-hours'], async (req, res) => {
 app.put(['/api/working-time', '/api/working-hours'], async (req, res) => {
   try {
     const { workCalendar, weekDays, morningStart, morningEnd, afternoonStart, afternoonEnd } = req.body;
-    const mStart = (workCalendar && workCalendar.morningStart) || morningStart || '08:00';
+    const mStart = (workCalendar && workCalendar.morningStart) || morningStart || '09:00';
     const mEnd = (workCalendar && workCalendar.morningEnd) || morningEnd || '12:00';
     const aStart = (workCalendar && workCalendar.afternoonStart) || afternoonStart || '13:30';
-    const aEnd = (workCalendar && workCalendar.afternoonEnd) || afternoonEnd || '17:30';
+    const aEnd = (workCalendar && workCalendar.afternoonEnd) || afternoonEnd || '18:30';
     const wDays = weekDays || [];
     const activeDayCodes = wDays.filter(d => d.isWork).map(d => d.key || d.code || d.label);
 

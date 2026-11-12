@@ -615,11 +615,11 @@ async function seedInitialData() {
       });
 
       await run(`INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
-        VALUES (?, ?, 'issue', ?, 'issue_assigned', 'status_resolved', 24, '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue ngoài giờ tính từ 08:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
+        VALUES (?, ?, 'issue', ?, 'issue_assigned', 'status_resolved', 24, '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-a1', 90, 'Issue ngoài giờ tính từ 09:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
         [`RULE-${m.pre}-A1`, krA1Id, flow1Filters, t1Id, `FLOW-KR-A1-${m.pre}`, `Activepieces SLA Issue Tracker Tháng ${m.num}`]);
 
       await run(`INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
-        VALUES (?, ?, 'merge_request', '{"is_draft":false}', 'reviewer_assigned', 'approved', 4, 'Số MR phản hồi <= 4h / Tổng lượt * 100%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-b1', 90, 'Ngoài giờ tính từ 08:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
+        VALUES (?, ?, 'merge_request', '{"is_draft":false}', 'reviewer_assigned', 'approved', 4, 'Số MR phản hồi <= 4h / Tổng lượt * 100%', 'v1.0', ?, ?, ?, 'https://cloud.activepieces.com/flows/flow-kr-b1', 90, 'Ngoài giờ tính từ 09:00 hôm sau', 'Trừ 1.5h trưa', 'Đóng băng cuối tuần và lễ')`,
         [`RULE-${m.pre}-B1`, krB1Id, t1Id, `FLOW-KR-B1-${m.pre}`, `Activepieces MR Review SLA Tracker Tháng ${m.num}`]);
 
       await run(`INSERT INTO MeasurementRules (rule_id, kr_id, event_type, filters, start_event, end_event, sla_value, formula, version, objective_id, flow_code, flow_name, flow_url, threshold_percent, overtime_handling, lunch_break_rule, weekend_holiday_rule)
@@ -665,7 +665,7 @@ async function seedInitialData() {
     ];
     await run(`
       INSERT INTO WorkingHours (id, space_id, morning_start, morning_end, afternoon_start, afternoon_end, working_days, week_days_json)
-      VALUES ('DEFAULT', 'SPC-1793153879989', '08:00', '12:00', '13:30', '17:30', ?, ?)
+      VALUES ('DEFAULT', 'SPC-1793153879989', '09:00', '12:00', '13:30', '18:30', ?, ?)
     `, [JSON.stringify(['T2', 'T3', 'T4', 'T5', 'T6']), JSON.stringify(defaultWeekDays)]);
   }
 
