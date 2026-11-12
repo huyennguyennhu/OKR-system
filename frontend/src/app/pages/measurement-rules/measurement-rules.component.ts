@@ -158,17 +158,17 @@ export class MeasurementRulesComponent implements OnInit {
 
   getStartEventLabel(): string {
     const opt = this.startEventOptions.find(o => o.value === this.flow1Config.startEvent);
-    return opt ? opt.label : this.flow1Config.startEvent || 'Chọn sự kiện';
+    return opt ? opt.label : 'issue_assigned (Default)';
   }
 
   getEndEventLabel(): string {
     const opt = this.endEventOptions.find(o => o.value === this.flow1Config.endEvent);
-    return opt ? opt.label : this.flow1Config.endEvent || 'Chọn sự kiện';
+    return opt ? opt.label : 'status_resolved (Default)';
   }
 
   getCalcModeLabel(): string {
     const opt = this.calcModeOptions.find(o => o.value === this.flow1Config.calculationMode);
-    return opt ? opt.label : this.flow1Config.calculationMode || 'Chọn phương thức';
+    return opt ? opt.label : 'Story Point Weight (Recommended)';
   }
 
   @HostListener('document:click', ['$event'])
@@ -296,8 +296,12 @@ export class MeasurementRulesComponent implements OnInit {
             slaTarget: `Tối đa ${dbRule?.sla_value || dbRule?.slaHours || slaHours}h làm việc (SLA >= ${dbRule?.threshold_percent || dbRule?.thresholdPercent || threshold}%)`,
             icon: icon,
             colorClass: index % 2 === 0 ? 'purple' : 'blue',
-            startTrigger: dbRule?.start_event || dbRule?.startTrigger || startTrigger,
-            endTrigger: dbRule?.end_event || dbRule?.endTrigger || endTrigger,
+            startTrigger: (kr.kr_id.includes('A1') && (!dbRule?.start_event || dbRule?.start_event === 'opened'))
+              ? 'issue_assigned'
+              : (dbRule?.start_event || dbRule?.startTrigger || startTrigger),
+            endTrigger: (kr.kr_id.includes('A1') && (!dbRule?.end_event || dbRule?.end_event === 'closed'))
+              ? 'status_resolved'
+              : (dbRule?.end_event || dbRule?.endTrigger || endTrigger),
             slaHours: Number(dbRule?.sla_value || dbRule?.slaHours || slaHours),
             thresholdPercent: Number(dbRule?.threshold_percent || dbRule?.thresholdPercent || threshold),
             filterCriteria: dbRule?.filters || dbRule?.filterCriteria || `kr_id == "${kr.kr_id}"`,
@@ -361,10 +365,27 @@ const result = {
       }
     }
 
+    // Resolve Start Event strictly against startEventOptions (pre-selected Default: 'issue_assigned')
+    let startVal = parsedFilters.startEvent || flow.startTrigger || 'issue_assigned';
+    if (startVal === 'opened') startVal = 'issue_assigned';
+    const validStart = this.startEventOptions.find(o => o.value === startVal);
+    const selectedStartEvent = validStart ? validStart.value : 'issue_assigned';
+
+    // Resolve End Event strictly against endEventOptions (pre-selected Default: 'status_resolved')
+    let endVal = parsedFilters.endEvent || flow.endTrigger || 'status_resolved';
+    if (endVal === 'closed') endVal = 'status_resolved';
+    const validEnd = this.endEventOptions.find(o => o.value === endVal);
+    const selectedEndEvent = validEnd ? validEnd.value : 'status_resolved';
+
+    // Resolve Calculation Mode strictly against calcModeOptions (pre-selected Default: 'STORY_POINT')
+    let calcVal = parsedFilters.calculationMode || 'STORY_POINT';
+    const validCalc = this.calcModeOptions.find(o => o.value === calcVal);
+    const selectedCalcMode = validCalc ? validCalc.value : 'STORY_POINT';
+
     this.flow1Config = {
       scheduleTime: parsedFilters.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
-      startEvent: parsedFilters.startEvent || flow.startTrigger || 'issue_assigned',
-      endEvent: parsedFilters.endEvent || flow.endTrigger || 'status_resolved',
+      startEvent: selectedStartEvent,
+      endEvent: selectedEndEvent,
       dueDateTime: parsedFilters.dueDateTime || '23:59:59 (GMT+7)',
       resolvedStatuses: Array.isArray(parsedFilters.resolvedStatuses) && parsedFilters.resolvedStatuses.length > 0 
         ? parsedFilters.resolvedStatuses 
@@ -378,7 +399,7 @@ const result = {
       validIssueTypes: Array.isArray(parsedFilters.validIssueTypes) && parsedFilters.validIssueTypes.length > 0 
         ? parsedFilters.validIssueTypes 
         : ['Story', 'Bug', 'Improvement'],
-      calculationMode: parsedFilters.calculationMode || 'STORY_POINT',
+      calculationMode: selectedCalcMode,
       fallbackStoryPoint: typeof parsedFilters.fallbackStoryPoint === 'number' ? parsedFilters.fallbackStoryPoint : 1,
       thresholdPercent: typeof parsedFilters.thresholdPercent === 'number' ? parsedFilters.thresholdPercent : (flow.thresholdPercent || 90),
       noDataHandling: parsedFilters.noDataHandling !== undefined ? parsedFilters.noDataHandling : true,
