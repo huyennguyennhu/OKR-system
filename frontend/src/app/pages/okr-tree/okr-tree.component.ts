@@ -377,9 +377,9 @@ interface TreeNode {
 
                     <!-- Agg Type -->
                     <td class="text-center" style="text-align: center;">
-                      <span class="badge" [ngClass]="getAggBadgeClass(node.aggType)">{{ node.aggType }}</span>
-                      <i class="fa-solid fa-circle-exclamation text-warning ms-1" *ngIf="node.aggType === 'AVG' && depth > 2"></i>
-                      <i class="fa-solid fa-circle-exclamation text-danger ms-1" *ngIf="node.aggType === 'SUM' && depth > 2"></i>
+                      <span class="badge" [ngClass]="getAggBadgeClass(node.aggType)" *ngIf="node.type !== 'team_kr' && node.type !== 'ind_kr'">{{ node.aggType }}</span>
+                      <i class="fa-solid fa-circle-exclamation text-warning ms-1" *ngIf="node.aggType === 'AVG' && depth > 2 && node.type !== 'team_kr' && node.type !== 'ind_kr'"></i>
+                      <i class="fa-solid fa-circle-exclamation text-danger ms-1" *ngIf="node.aggType === 'SUM' && depth > 2 && node.type !== 'team_kr' && node.type !== 'ind_kr'"></i>
                     </td>
 
                     <!-- Result (S, C, E) -->
