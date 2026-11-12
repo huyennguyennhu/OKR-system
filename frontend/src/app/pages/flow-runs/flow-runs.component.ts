@@ -559,7 +559,7 @@ export interface RunDetailViewModel {
                     <th style="width: 72px;">Loại</th>
                     <th>Mã &amp; Tiêu đề</th>
                     <th>Assign to</th>
-                    <th>Trọng số / Thời lượng</th>
+                    <th>{{ weightOrDurationColumnLabel }}</th>
                     <th>Mốc hoàn thành</th>
                     <th>Đánh giá SLA</th>
                     <th>Tác động KR</th>
@@ -2527,6 +2527,11 @@ export class FlowRunsComponent implements OnInit {
 
   toggleMemberTasks(member: MemberBreakdown): void {
     member.expanded = !member.expanded;
+  }
+
+  get weightOrDurationColumnLabel(): string {
+    const code = (this.selectedRunForModal?.flow_code || '').toUpperCase();
+    return (code.includes('B1') || code.includes('C1')) ? 'Thời lượng' : 'Trọng số';
   }
 
   onEvidenceFilterChange(): void {
