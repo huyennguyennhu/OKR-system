@@ -132,8 +132,6 @@ export interface RunDetailViewModel {
                 <i class="fa-solid fa-arrow-left"></i>
                 <span>Quay lại danh sách Flows</span>
               </button>
-              <span class="text-muted">/</span>
-              <span class="badge badge-code" style="font-size: 12.5px;">{{ selectedFlowCode === 'all' ? 'TẤT CẢ LẦN CHẠY' : selectedFlowCode }}</span>
             </div>
 
             <h3 class="card-title mb-1" style="font-size: 16px; font-weight: 700;">
