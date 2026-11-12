@@ -156,7 +156,7 @@
         <div class="rules-two-col-grid">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Sự kiện bắt đầu (T_start)</label>
-            <select class="rules-control" [(ngModel)]="flow1Config.startEvent">
+            <select class="rules-control rules-select" [(ngModel)]="flow1Config.startEvent">
               <option value="issue_assigned">thoi_gian_phan_cong (Thời điểm phân công - Mặc định)</option>
               <option value="issue_opened">thoi_gian_tao (Thời điểm tạo Issue)</option>
               <option value="status_in_progress">status_in_progress (Chuyển sang Đang xử lý)</option>
@@ -166,7 +166,7 @@
 
           <div class="rules-form-group mb-0">
             <label class="rules-label">Sự kiện hoàn thành (T_end)</label>
-            <select class="rules-control" [(ngModel)]="flow1Config.endEvent">
+            <select class="rules-control rules-select" [(ngModel)]="flow1Config.endEvent">
               <option value="status_resolved">thoi_gian_chuyen_resolved (Chuyển sang Bàn giao - Mặc định)</option>
               <option value="issue_closed">thoi_gian_dong_issue (Thời điểm Đóng Issue / Closed)</option>
             </select>
@@ -241,7 +241,7 @@
         <div class="rules-three-col-grid">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Phương thức đánh giá (Calculation Method)</label>
-            <select class="rules-control" [(ngModel)]="flow1Config.calculationMode">
+            <select class="rules-control rules-select" [(ngModel)]="flow1Config.calculationMode">
               <option value="STORY_POINT">Trọng số Story Point (Khuyến nghị)</option>
               <option value="COUNT">Đếm số lượng tác vụ (Equal Weight)</option>
             </select>

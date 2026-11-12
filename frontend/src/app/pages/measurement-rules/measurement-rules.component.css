@@ -296,6 +296,49 @@ textarea.rules-control {
   box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.15);
 }
 
+/* Select Dropdown Control Styling */
+select.rules-control,
+.rules-select {
+  height: 38px;
+  padding: 0 2.25rem 0 0.85rem;
+  line-height: 36px;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: #ffffff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.15rem 1.15rem;
+  font-weight: 500;
+  color: #1e293b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+select.rules-control:hover,
+.rules-select:hover {
+  border-color: #94a3b8;
+  background-color: #f8fafc;
+}
+
+select.rules-control:focus,
+.rules-select:focus {
+  border-color: var(--primary, #3157D5);
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.15);
+  background-color: #ffffff;
+}
+
+select.rules-control option,
+.rules-select option {
+  font-size: 13px;
+  font-weight: 400;
+  color: #1e293b;
+  background-color: #ffffff;
+  padding: 8px 12px;
+}
+
 /* SLA Sub-grid */
 .rules-sla-grid {
   display: grid;
