@@ -1470,7 +1470,11 @@ export interface RunDetailViewModel {
     }
 
     .sub-table-wrapper {
+      width: 100%;
+      max-width: 100%;
       overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid #e2e8f0;
       border-radius: 8px;
     }
@@ -1479,6 +1483,15 @@ export interface RunDetailViewModel {
       width: 100%;
       border-collapse: collapse;
       font-size: 12.5px;
+    }
+
+    .evidence-table {
+      min-width: 980px;
+    }
+
+    .evidence-table th,
+    .evidence-table td {
+      white-space: nowrap;
     }
 
     .sub-table th {
