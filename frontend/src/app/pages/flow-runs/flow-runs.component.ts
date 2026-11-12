@@ -1551,35 +1551,35 @@ export interface RunDetailViewModel {
 
     .drilldown-detail-row td {
       background: #f8fafc;
-      padding: 0.65rem 1rem !important;
+      padding: 0.9rem 1.25rem !important;
       border-bottom: 1px solid #e2e8f0 !important;
     }
 
     .drilldown-list {
       display: flex;
       flex-direction: column;
-      gap: 0.5rem;
-      padding-left: 0.5rem;
+      gap: 0.85rem;
+      padding-left: 0.85rem;
       border-left: 2px solid #93c5fd;
     }
 
     .drilldown-item {
       display: flex;
       flex-direction: column;
-      gap: 0.15rem;
+      gap: 0.45rem;
       background: #ffffff;
       border: 1px solid #e2e8f0;
-      border-radius: 6px;
-      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
     }
 
     .gitlab-task-link {
       color: #2563eb;
       text-decoration: none;
-      font-size: 12.5px;
+      font-size: 13px;
       display: inline-flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.4rem;
     }
 
     .gitlab-task-link:hover {
@@ -1598,7 +1598,7 @@ export interface RunDetailViewModel {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 0.4rem;
+      gap: 0.65rem;
     }
 
     .meta-sep {
