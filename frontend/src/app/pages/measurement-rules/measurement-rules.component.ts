@@ -444,11 +444,12 @@ export class MeasurementRulesComponent implements OnInit {
           (teamObjIds.has(k.objective_id) || k.kr_id === 'KR-A1' || k.kr_id === 'KR-B1' || k.kr_id === 'KR-C1')
         );
 
-        // Ưu tiên 3 KR cấp Team cốt lõi của chu kỳ hoạt động
+        // Ưu tiên 3 KR cấp Team cốt lõi của chu kỳ hoạt động và sắp xếp theo thứ tự A1 -> B1 -> C1
         const coreTeamKrs = teamKrs.filter(k => k.kr_id === 'KR-A1' || k.kr_id === 'KR-B1' || k.kr_id === 'KR-C1');
         if (coreTeamKrs.length > 0) {
           teamKrs = coreTeamKrs;
         }
+        teamKrs.sort((a, b) => (a.kr_id || '').localeCompare(b.kr_id || ''));
 
         // 3. Tạo tab quy tắc đo lường gắn liền với TỪNG Key Result cấp Team
         this.flowTabs = teamKrs.map((kr, index) => {
