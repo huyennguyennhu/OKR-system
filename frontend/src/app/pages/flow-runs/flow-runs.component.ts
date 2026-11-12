@@ -2778,7 +2778,7 @@ export class FlowRunsComponent implements OnInit {
       failCount,
       failPercent,
       overallPass,
-      overallLabel: overallPass ? 'ĐẠT CHUẨN (PASS)' : 'CẦN CẢI THIỆN',
+      overallLabel: overallPass ? 'ĐẠT CHUẨN' : 'CẦN CẢI THIỆN',
       members,
       evidences,
       slaRuleText
