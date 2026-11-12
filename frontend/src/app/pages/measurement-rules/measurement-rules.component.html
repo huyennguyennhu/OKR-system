@@ -336,13 +336,17 @@
             <span class="rules-hint">Bấm vào các thẻ biến trên để chèn nhanh vào công thức tính</span>
           </div>
 
-          <!-- KHUNG PHẢI: Render trực quan công thức KaTeX -->
+          <!-- KHUNG PHẢI: Chỉnh LaTeX trực tiếp (2 chiều) & Render KaTeX -->
           <div class="rules-form-group mb-0 d-flex flex-column">
+            <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
+                      [(ngModel)]="flow1Config.latexFormula"
+                      (ngModelChange)="syncFromLatexToFriendly($event)"
+                      placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <!-- Khung render KaTeX toán học trực quan -->
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
+            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
           </div>
         </div>
       </div>
@@ -571,10 +575,14 @@
           </div>
 
           <div class="rules-form-group mb-0 d-flex flex-column">
+            <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
+                      [(ngModel)]="flow2Config.latexFormula"
+                      (ngModelChange)="syncFlow2FromLatex($event)"
+                      placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
+            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
           </div>
         </div>
       </div>
@@ -757,10 +765,14 @@
           </div>
 
           <div class="rules-form-group mb-0 d-flex flex-column">
+            <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
+                      [(ngModel)]="flow3Config.latexFormula"
+                      (ngModelChange)="syncFlow3FromLatex($event)"
+                      placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động từ công thức bên trái</span>
+            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
           </div>
         </div>
       </div>

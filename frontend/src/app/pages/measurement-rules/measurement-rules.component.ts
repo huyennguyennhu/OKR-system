@@ -746,20 +746,103 @@ const result = {
     }
   }
 
+  private replaceFracCalls(input: string): string {
+    let res = input;
+    let idx = res.indexOf('\\frac(');
+    while (idx !== -1) {
+      let depth = 0;
+      let commaIdx = -1;
+      let closeIdx = -1;
+      for (let i = idx + 5; i < res.length; i++) {
+        const ch = res[i];
+        if (ch === '(') depth++;
+        else if (ch === ')') {
+          depth--;
+          if (depth === 0) {
+            closeIdx = i;
+            break;
+          }
+        } else if (ch === ',' && depth === 1 && commaIdx === -1) {
+          commaIdx = i;
+        }
+      }
+      if (commaIdx !== -1 && closeIdx !== -1) {
+        const num = res.slice(idx + 6, commaIdx).trim();
+        const den = res.slice(commaIdx + 1, closeIdx).trim();
+        res = res.slice(0, idx) + `\\frac{${num}}{${den}}` + res.slice(closeIdx + 1);
+      } else {
+        break;
+      }
+      idx = res.indexOf('\\frac(', idx + 6);
+    }
+    return res;
+  }
+
   private convertFriendlyToLatexString(input: string): string {
     if (!input) return '';
-    let latex = input;
-    latex = latex.replace(/\\frac\(([^,]+),\s*([^)]+)\)/g, '\\frac{$1}{$2}');
+    let latex = this.replaceFracCalls(input);
     latex = latex.replace(/\bsum\(/g, '\\sum(');
+
+    // Map known multi-underscore / domain variables cleanly for KaTeX
+    latex = latex
+      .replace(/\bdelta_t_working\b/g, '\\Delta t_{\\text{working}}')
+      .replace(/\bdelta_t_paused\b/g, '\\Delta t_{\\text{paused}}')
+      .replace(/\bB_Team\b/g, 'B_{\\text{Team}}')
+      .replace(/\bN_ontime\b/g, 'N_{\\text{on-time}}')
+      .replace(/\bN_total\b/g, 'N_{\\text{total}}')
+      .replace(/\bN_unattributed\b/g, 'N_{\\text{unattributed}}')
+      .replace(/\bStory_Point\b/g, '\\text{Story\\_Point}')
+      .replace(/\bDue_Date\b/g, '\\text{Due\\_Date}')
+      .replace(/\bSLA_4h\b/g, '\\text{SLA}_{4\\text{h}}')
+      .replace(/\bSLA_8h\b/g, '\\text{SLA}_{8\\text{h}}');
+
+    // Guard against any remaining double subscripts (e.g. a_b_c -> a_{b\_c})
+    latex = latex.replace(/\b([A-Za-z]+)_([A-Za-z0-9]+_[A-Za-z0-9_]+)\b/g, (_m, base, sub) => {
+      return `${base}_{\\text{${sub.replace(/_/g, '\\_')}}}`;
+    });
+
     latex = latex.replace(/\s*\*\s*/g, ' \\cdot ');
     latex = latex.replace(/\\cdot\s*100%/g, '\\times 100\\%');
     return latex;
+  }
+
+  private convertLatexToFriendlyString(latex: string): string {
+    if (!latex) return '';
+    let friendly = latex;
+    friendly = friendly
+      .replace(/\\Delta\s*t_\{\\text\{working\}\}/g, 'delta_t_working')
+      .replace(/\\Delta\s*t_\{\\text\{paused\}\}/g, 'delta_t_paused')
+      .replace(/B_\{\\text\{Team\}\}/g, 'B_Team')
+      .replace(/N_\{\\text\{on-time\}\}/g, 'N_ontime')
+      .replace(/N_\{\\text\{total\}\}/g, 'N_total')
+      .replace(/N_\{\\text\{unattributed\}\}/g, 'N_unattributed')
+      .replace(/\\text\{Story\\_Point\}/g, 'Story_Point')
+      .replace(/\\text\{Due\\_Date\}/g, 'Due_Date')
+      .replace(/\\text\{SLA\}_\{4\\text\{h\}\}/g, 'SLA_4h')
+      .replace(/\\text\{SLA\}_\{8\\text\{h\}\}/g, 'SLA_8h');
+
+    // Convert \frac{a}{b} (iteratively for simple/nested braces)
+    let prev = '';
+    while (prev !== friendly) {
+      prev = friendly;
+      friendly = friendly.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '\\frac($1, $2)');
+    }
+    friendly = friendly.replace(/\\sum/g, 'sum');
+    friendly = friendly.replace(/\s*\\cdot\s*/g, ' * ');
+    friendly = friendly.replace(/\\times\s*100\\%/g, '* 100%');
+    return friendly;
   }
 
   syncFlow2ToLatex(input: string): void {
     this.onConfigChange();
     this.flow2Config.latexFormula = this.convertFriendlyToLatexString(input);
     this.renderLatexPreview(this.flow2Config.latexFormula);
+  }
+
+  syncFlow2FromLatex(latex: string): void {
+    this.onConfigChange();
+    this.flow2Config.friendlyFormula = this.convertLatexToFriendlyString(latex);
+    this.renderLatexPreview(latex);
   }
 
   insertFlow2Chip(variable: string): void {
@@ -774,6 +857,12 @@ const result = {
     this.onConfigChange();
     this.flow3Config.latexFormula = this.convertFriendlyToLatexString(input);
     this.renderLatexPreview(this.flow3Config.latexFormula);
+  }
+
+  syncFlow3FromLatex(latex: string): void {
+    this.onConfigChange();
+    this.flow3Config.friendlyFormula = this.convertLatexToFriendlyString(latex);
+    this.renderLatexPreview(latex);
   }
 
   insertFlow3Chip(variable: string): void {
@@ -806,43 +895,13 @@ const result = {
   // Bi-directional Formula Sync Engine
   syncFromFriendlyToLatex(input: string): void {
     this.onConfigChange();
-    if (!input) {
-      this.flow1Config.latexFormula = '';
-      this.renderLatexPreview('');
-      return;
-    }
-    let latex = input;
-    // Quy đổi phân số: \frac(a, b) => \frac{a}{b}
-    latex = latex.replace(/\\frac\(([^,]+),\s*([^)]+)\)/g, '\\frac{$1}{$2}');
-    // Quy đổi hàm tổng: sum(...) => \sum(...)
-    latex = latex.replace(/\bsum\(/g, '\\sum(');
-    // Quy đổi phép nhân: * => \cdot
-    latex = latex.replace(/\s*\*\s*/g, ' \\cdot ');
-    // Quy đổi tỷ lệ phần trăm: * 100% => \times 100\%
-    latex = latex.replace(/\\cdot\s*100%/g, '\\times 100\\%');
-    
-    this.flow1Config.latexFormula = latex;
-    this.renderLatexPreview(latex);
+    this.flow1Config.latexFormula = this.convertFriendlyToLatexString(input);
+    this.renderLatexPreview(this.flow1Config.latexFormula);
   }
 
   syncFromLatexToFriendly(latex: string): void {
     this.onConfigChange();
-    if (!latex) {
-      this.flow1Config.friendlyFormula = '';
-      this.renderLatexPreview('');
-      return;
-    }
-    let friendly = latex;
-    // Quy đổi ngược phân số: \frac{a}{b} => \frac(a, b)
-    friendly = friendly.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '\\frac($1, $2)');
-    // Quy đổi ngược hàm tổng: \sum => sum
-    friendly = friendly.replace(/\\sum/g, 'sum');
-    // Quy đổi ngược phép nhân: \cdot => *
-    friendly = friendly.replace(/\s*\\cdot\s*/g, ' * ');
-    // Quy đổi ngược tỷ lệ: \times 100\% => * 100%
-    friendly = friendly.replace(/\\times\s*100\\%/g, '* 100%');
-
-    this.flow1Config.friendlyFormula = friendly;
+    this.flow1Config.friendlyFormula = this.convertLatexToFriendlyString(latex);
     this.renderLatexPreview(latex);
   }
 
