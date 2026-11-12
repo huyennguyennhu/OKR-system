@@ -1369,6 +1369,11 @@ app.get(['/api/measurement-rules', '/api/rules'], async (req, res) => {
     query += ` ORDER BY r.rule_id ASC`;
 
     const rules = await all(query, params);
+    const parseRuleConfig = (rawFilters) => {
+      if (!rawFilters) return {};
+      if (typeof rawFilters === 'object') return rawFilters;
+      try { return JSON.parse(rawFilters); } catch { return { raw: rawFilters }; }
+    };
     const mapped = rules.map(r => ({
       rule_id: r.rule_id,
       kr_id: r.kr_id,
@@ -1394,6 +1399,7 @@ app.get(['/api/measurement-rules', '/api/rules'], async (req, res) => {
       businessLogicNote: r.formula,
       filters: r.filters,
       filterCriteria: r.filters,
+      config: parseRuleConfig(r.filters),
       overtime_handling: r.overtime_handling,
       overtimeHandling: r.overtime_handling,
       lunch_break_rule: r.lunch_break_rule,
@@ -1424,12 +1430,19 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
       FROM MeasurementRules r
       LEFT JOIN KeyResults kr ON r.kr_id = kr.kr_id
       LEFT JOIN Objectives o ON (r.objective_id = o.objective_id OR kr.objective_id = o.objective_id)
-      WHERE r.rule_id = ? OR r.objective_id = ? OR r.kr_id = ?
+      WHERE r.rule_id = ? OR r.objective_id = ? OR r.kr_id = ? OR r.flow_code = ?
       LIMIT 1
-    `, [id, id, id]);
+    `, [id, id, id, id]);
 
     if (!rule) {
       return res.status(404).json({ error: `Measurement rule not found for id ${id}` });
+    }
+
+    let parsedConfig = {};
+    try {
+      parsedConfig = typeof rule.filters === 'string' ? JSON.parse(rule.filters) : (rule.filters || {});
+    } catch {
+      parsedConfig = { raw: rule.filters };
     }
 
     res.json({
@@ -1457,6 +1470,7 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
       businessLogicNote: rule.formula,
       filters: rule.filters,
       filterCriteria: rule.filters,
+      config: parsedConfig,
       overtime_handling: rule.overtime_handling,
       overtimeHandling: rule.overtime_handling,
       lunch_break_rule: rule.lunch_break_rule,
