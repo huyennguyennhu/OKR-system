@@ -486,7 +486,7 @@ export interface RunDetailViewModel {
                       </td>
                       <td>
                         <span class="badge" [ngClass]="m.isPass ? 'badge-success' : 'badge-warning-soft'">
-                          {{ m.isPass ? 'ĐẠT (PASS)' : 'CẦN CẢI THIỆN' }}
+                          {{ m.isPass ? 'ĐẠT' : 'CẦN CẢI THIỆN' }}
                         </span>
                       </td>
                       <td class="text-end">
