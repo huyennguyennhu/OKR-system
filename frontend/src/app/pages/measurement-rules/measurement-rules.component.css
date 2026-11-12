@@ -747,3 +747,174 @@ textarea.rules-control {
   line-height: 1.5;
 }
 
+/* ========================================================= */
+/* NO-CODE STYLING FOR MEASUREMENT RULES (FLOW 1 - 4 CLUSTERS) */
+/* ========================================================= */
+
+/* Tag Pills & Container */
+.rules-tag-pill-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 4px 8px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background-color: #ffffff;
+  box-sizing: border-box;
+  transition: all 0.2s ease;
+}
+
+.rules-tag-pill-container:focus-within {
+  border-color: var(--primary, #3157D5);
+  box-shadow: 0 0 0 3px rgba(49, 87, 213, 0.15);
+}
+
+.rules-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px !important;
+  font-weight: 600;
+  padding: 2.5px 7px;
+  border-radius: 4px;
+  line-height: 1.35;
+  user-select: none;
+}
+
+.pill-success {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.pill-warning {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.pill-secondary {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+}
+
+.pill-info {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.rules-tag-remove {
+  font-size: 11px;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.rules-tag-remove:hover {
+  opacity: 1;
+  transform: scale(1.15);
+}
+
+.rules-tag-input {
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12.5px;
+  color: #1e293b;
+  min-width: 130px;
+  flex: 1;
+  padding: 2px 4px;
+}
+
+.rules-tag-input::placeholder {
+  color: #94a3b8;
+  font-size: 11.5px;
+}
+
+/* Hints */
+.rules-hint {
+  font-size: 11.5px !important;
+  color: #64748b;
+  margin-top: 3px;
+  line-height: 1.4;
+  display: block;
+}
+
+/* 3-Column Grid for Cluster 3 */
+.rules-three-col-grid {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .rules-three-col-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Notice Card */
+.rules-info-notice {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #3b82f6;
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+/* Variable Chips */
+.rules-variable-chip {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-size: 11.5px !important;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  background-color: #f1f5f9 !important;
+  color: #2563eb !important;
+  border-color: #cbd5e1 !important;
+  user-select: none;
+}
+
+.rules-variable-chip:hover {
+  background-color: #dbeafe !important;
+  color: #1d4ed8 !important;
+  border-color: #93c5fd !important;
+}
+
+/* LaTeX Preview Card */
+.rules-latex-preview-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 8px 14px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-x: auto;
+}
+
+.katex-rendered-math {
+  font-size: 1.05rem;
+  max-width: 100%;
+}
+
+/* Working Calendar Banner */
+.rules-calendar-banner {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px 18px;
+}
+

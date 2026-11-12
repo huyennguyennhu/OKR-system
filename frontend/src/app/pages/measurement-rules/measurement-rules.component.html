@@ -55,7 +55,10 @@
   <!-- TAB CONTENT -->
   <div class="flow-content-area mb-4" *ngIf="currentFlow">
     <!-- Action Button phía trên khối Card -->
-    <div class="d-flex justify-content-end mb-3">
+    <div class="d-flex justify-content-end align-items-center gap-2 mb-3">
+      <button class="btn btn-outline-secondary btn-sm px-3 fw-semibold shadow-sm" (click)="resetDefault()" title="Khôi phục giá trị cấu hình mặc định">
+        <i class="fa-solid fa-arrow-rotate-left me-1"></i> Khôi phục mặc định
+      </button>
       <button class="btn btn-primary btn-sm px-3 fw-semibold shadow-sm" (click)="applyRules()">
         <i class="fa-solid fa-check me-1"></i> Áp dụng quy tắc
       </button>
@@ -108,21 +111,252 @@
       </form>
     </div>
 
-    <!-- KHỐI 2: KHỐI RULE ĐO LƯỜNG -->
+    <!-- KHỐI 2: KHỐI RULE ĐO LƯỜNG (NO-CODE CHO FLOW 1) -->
     <div class="rules-card-container">
-      <div class="rules-card-header">
-        <h4 class="rules-card-title">
-          Quy tắc đo lường
-        </h4>
+      <div class="rules-card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div>
+          <h4 class="rules-card-title mb-0">Quy tắc đo lường</h4>
+          <small class="text-muted" style="font-size: 12px;">Cấu hình tham số và tiêu chí đo lường trực quan theo chuẩn No-Code</small>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge badge-light-secondary" style="font-size: 12px; font-weight: 600;">Mã: {{ currentFlow.ruleId || ('RULE-' + currentFlow.krId) }}</span>
+          <span class="badge badge-light-primary" style="font-size: 12px; font-weight: 600;">No-Code Engine</span>
+        </div>
       </div>
 
-      <div class="rules-config-form">
+      <!-- ======================================================== -->
+      <!-- CHUYÊN BIỆT CHO FLOW 1: KR-A1 (TỶ LỆ ISSUE ĐÚNG HẠN >= 90%) -->
+      <!-- ======================================================== -->
+      <div class="rules-config-form" *ngIf="isFlow1(currentFlow)">
+        <!-- ========================================== -->
+        <!-- CỤM 1: LỊCH QUÉT & MỐC TRÍCH XUẤT DỮ LIỆU  -->
+        <!-- ========================================== -->
+        <div class="rules-section-title">
+          <i class="fa-solid fa-clock-rotate-left text-primary"></i>
+          <span>Cụm 1: Lịch trình Quét Định kỳ & Mốc Dữ liệu Đo lường</span>
+        </div>
+        
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Lịch quét phiên Check-in OKR hàng ngày</label>
+            <div class="rules-input-unit">
+              <input type="text" class="rules-control bg-light" [value]="flow1Config.scheduleTime" readonly>
+              <span class="rules-unit-addon"><i class="fa-solid fa-calendar-check text-primary"></i></span>
+            </div>
+            <span class="rules-hint">Chạy tự động kiểm tra tiến độ tác vụ và thực hiện Check-in OKR cuối ngày</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Mốc hạn chót nghiệm thu (Due Date Deadline)</label>
+            <div class="rules-input-unit">
+              <input type="text" class="rules-control bg-light" [value]="flow1Config.dueDateTime" readonly>
+              <span class="rules-unit-addon"><i class="fa-solid fa-clock text-warning"></i></span>
+            </div>
+            <span class="rules-hint">Cố định chốt vào lúc 23:59:59 của ngày Due Date theo giờ địa phương (Asia/Ho_Chi_Minh)</span>
+          </div>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Sự kiện bắt đầu (T_start)</label>
+            <select class="rules-control" [(ngModel)]="flow1Config.startEvent">
+              <option value="issue_assigned">thoi_gian_phan_cong (Thời điểm phân công - Mặc định)</option>
+              <option value="issue_opened">thoi_gian_tao (Thời điểm tạo Issue)</option>
+              <option value="status_in_progress">status_in_progress (Chuyển sang Đang xử lý)</option>
+            </select>
+            <span class="rules-hint">Trích xuất mốc kích hoạt bắt đầu tính chu kỳ thực hiện của Issue</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Sự kiện hoàn thành (T_end)</label>
+            <select class="rules-control" [(ngModel)]="flow1Config.endEvent">
+              <option value="status_resolved">thoi_gian_chuyen_resolved (Chuyển sang Bàn giao - Mặc định)</option>
+              <option value="issue_closed">thoi_gian_dong_issue (Thời điểm Đóng Issue / Closed)</option>
+            </select>
+            <span class="rules-hint">Trích xuất mốc ghi nhận hoàn thành kỹ thuật để so sánh với hạn chót Due Date</span>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CỤM 2: TIÊU CHÍ LỌC TÁC VỤ & TRẠNG THÁI HỢP LỆ -->
+        <!-- ========================================== -->
+        <div class="rules-section-title mt-2">
+          <i class="fa-solid fa-filter text-success"></i>
+          <span>Cụm 2: Tiêu chí Lọc Tác vụ & Trạng thái Hợp lệ (Status Matrix & Filters)</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Trạng thái công nhận hoàn thành (Resolved Statuses)</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-success" *ngFor="let s of flow1Config.resolvedStatuses; let i = index">
+                {{ s }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTag('resolvedStatuses', i)" title="Xóa trạng thái"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm trạng thái (Enter)..." (keydown.enter)="addTag('resolvedStatuses', $event)">
+            </div>
+            <span class="rules-hint">Issue chuyển sang một trong các trạng thái này được coi là đã hoàn thành</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Quy tắc tác vụ bị mở lại (Reopened Statuses)</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-warning" *ngFor="let s of flow1Config.reopenedStatuses; let i = index">
+                {{ s }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTag('reopenedStatuses', i)" title="Xóa trạng thái"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm trạng thái (Enter)..." (keydown.enter)="addTag('reopenedStatuses', $event)">
+            </div>
+            <span class="rules-hint">Khi bị mở lại, mốc bàn giao cũ bị hủy và chờ mốc bàn giao thành công tiếp theo</span>
+          </div>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Trạng thái loại trừ không tính (Excluded Statuses)</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-secondary" *ngFor="let s of flow1Config.excludedStatuses; let i = index">
+                {{ s }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTag('excludedStatuses', i)" title="Xóa trạng thái"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm trạng thái (Enter)..." (keydown.enter)="addTag('excludedStatuses', $event)">
+            </div>
+            <span class="rules-hint">Tác vụ mang các trạng thái này tự động bị loại khỏi cả tử số và mẫu số đo lường</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Phạm vi loại tác vụ hợp lệ (Valid Issue Types)</label>
+            <div class="rules-tag-pill-container">
+              <span class="rules-tag-pill pill-info" *ngFor="let s of flow1Config.validIssueTypes; let i = index">
+                {{ s }} <i class="fa-solid fa-xmark rules-tag-remove" (click)="removeTag('validIssueTypes', i)" title="Xóa loại"></i>
+              </span>
+              <input type="text" class="rules-tag-input" placeholder="+ Thêm loại (Enter)..." (keydown.enter)="addTag('validIssueTypes', $event)">
+            </div>
+            <span class="rules-hint">Chỉ các loại tác vụ này trong GitLab mới được đưa vào đánh giá Key Result</span>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CỤM 3: HẠN MỨC SLA, TRỌNG SỐ & MỤC TIÊU    -->
+        <!-- ========================================== -->
+        <div class="rules-section-title mt-2">
+          <i class="fa-solid fa-bullseye text-warning"></i>
+          <span>Cụm 3: Hạn mức SLA, Trọng số & Mục tiêu Cam kết</span>
+        </div>
+
+        <div class="rules-three-col-grid">
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Phương thức đánh giá (Calculation Method)</label>
+            <select class="rules-control" [(ngModel)]="flow1Config.calculationMode">
+              <option value="STORY_POINT">Trọng số Story Point (Khuyến nghị)</option>
+              <option value="COUNT">Đếm số lượng tác vụ (Equal Weight)</option>
+            </select>
+            <span class="rules-hint">Gia quyền theo khối lượng kỹ thuật thực tế thay vì cào bằng số lượng</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Story Point mặc định dự phòng (Fallback SP)</label>
+            <div class="rules-input-unit">
+              <input type="number" min="0.5" step="0.5" class="rules-control" [(ngModel)]="flow1Config.fallbackStoryPoint">
+              <span class="rules-unit-addon">SP</span>
+            </div>
+            <span class="rules-hint">Gán tự động khi Issue thiếu Story Point và bật cờ is_default_sp = true</span>
+          </div>
+
+          <div class="rules-form-group mb-0">
+            <label class="rules-label">Tỷ lệ tối thiểu cần đạt (Target Threshold)</label>
+            <div class="rules-input-unit">
+              <input type="number" min="1" max="100" class="rules-control" [(ngModel)]="flow1Config.thresholdPercent">
+              <span class="rules-unit-addon">%</span>
+            </div>
+            <span class="rules-hint">Ngưỡng đạt cam kết của Key Result (R_on-time &ge; 90%)</span>
+          </div>
+        </div>
+
+        <div class="rules-info-notice">
+          <i class="fa-solid fa-circle-info text-primary"></i>
+          <span><strong>Xử lý ngoại lệ thiếu dữ liệu:</strong> Nếu tổng mẫu số trong kỳ đánh giá &Sigma; W(k) = 0 SP &rArr; Kết quả tự động ghi nhận là <code>NO_DATA</code> (không quy kết 0%).</span>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- CỤM 4: KHU VỰC SOẠN THẢO CÔNG THỨC ĐO LƯỜNG 2 CHIỀU     -->
+        <!-- ======================================================== -->
+        <div class="rules-section-title mt-2">
+          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+          <span>Cụm 4: Khu vực Soạn thảo Công thức Đo lường (Đồng bộ 2 Chiều Thân thiện &amp; LaTeX)</span>
+        </div>
+
+        <div class="rules-two-col-grid">
+          <!-- KHUNG TRÁI: Nhập biểu thức thân thiện -->
+          <div class="rules-form-group mb-0">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="rules-label mb-0">Khung 1: Biểu thức Thân thiện (Function-style Input)</label>
+              <span class="badge badge-light-primary" style="font-size: 11px;">Hỗ trợ: \frac(tử, mẫu)</span>
+            </div>
+            <textarea class="rules-control font-monospace" rows="2" 
+                      [(ngModel)]="flow1Config.friendlyFormula" 
+                      (ngModelChange)="syncFromFriendlyToLatex($event)"
+                      placeholder="Ví dụ: \frac(sum(S_k * W(k)), sum(W(k))) * 100%"></textarea>
+            <!-- Thẻ biến gợi ý bấm chèn nhanh -->
+            <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
+              <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip" 
+                    *ngFor="let v of flow1Config.availableVariables" 
+                    (click)="insertVariableChip(v)" 
+                    title="Bấm để chèn biến vào công thức">
+                + {{ v }}
+              </span>
+            </div>
+            <span class="rules-hint">Bấm vào các thẻ biến trên để chèn nhanh vào công thức tính</span>
+          </div>
+
+          <!-- KHUNG PHẢI: Chỉnh sửa mã LaTeX & Render trực quan -->
+          <div class="rules-form-group mb-0">
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <label class="rules-label mb-0">Khung 2: Cấu trúc Mã LaTeX &amp; Render Trực quan</label>
+              <span class="badge badge-light-success" style="font-size: 11px;"><i class="fa-solid fa-arrows-rotate me-1"></i>Đồng bộ 2 chiều</span>
+            </div>
+            <textarea class="rules-control font-monospace text-primary mb-2" rows="2" 
+                      [(ngModel)]="flow1Config.latexFormula" 
+                      (ngModelChange)="syncFromLatexToFriendly($event)"
+                      placeholder="\frac{\sum S_k \cdot W_k}{\sum W_k} \times 100\%"></textarea>
+            <!-- Khung render KaTeX toán học trực quan -->
+            <div class="rules-latex-preview-card">
+              <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========================================== -->
+        <!-- CHÍNH SÁCH LỊCH LÀM VIỆC DÙNG CHUNG (BANNER) -->
+        <!-- ========================================== -->
+        <div class="rules-section-title mt-2">
+          <i class="fa-solid fa-business-time text-info"></i>
+          <span>Chính sách Lịch làm việc &amp; Khấu trừ Thời gian (Master Working Calendar Policy)</span>
+        </div>
+        <div class="rules-calendar-banner">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2 pb-2 border-bottom">
+            <div class="d-flex align-items-center gap-2">
+              <span class="badge badge-light-primary fw-bold" style="font-size: 11.5px;">Chính sách dùng chung</span>
+              <span class="text-dark fw-semibold" style="font-size: 13px;">Khung giờ chuẩn 8.0 giờ/ngày (Thứ Hai – Thứ Sáu)</span>
+            </div>
+            <span class="badge badge-light-secondary" style="font-size: 11px;">Tự động khấu trừ &amp; đóng băng đồng hồ</span>
+          </div>
+          <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 12.5px; color: #334155;">
+            <span><i class="fa-solid fa-sun text-warning me-1"></i> Ca sáng: <strong>09:00 – 12:00</strong> (3.0h)</span>
+            <span><i class="fa-solid fa-cloud-sun text-primary me-1"></i> Ca chiều: <strong>13:30 – 18:30</strong> (5.0h)</span>
+            <span><i class="fa-solid fa-utensils text-danger me-1"></i> Nghỉ trưa: <strong>12:00 – 13:30</strong> (Khấu trừ 1.5h)</span>
+            <span class="text-secondary"><i class="fa-solid fa-snowflake me-1 text-info"></i> Đóng băng: <strong>Thứ Bảy, Chủ Nhật &amp; Ngày Lễ</strong></span>
+            <span><i class="fa-solid fa-moon text-secondary me-1"></i> Ngoài giờ: <strong>Cộng dồn ca sáng hôm sau</strong></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- VIEW DỰ PHÒNG CHO CÁC FLOW KHÁC (FLOW 2, FLOW 3)        -->
+      <!-- ======================================================== -->
+      <div class="rules-config-form" *ngIf="!isFlow1(currentFlow)">
         <div class="rules-section-title">
           <i class="fa-solid fa-bolt text-warning"></i>
           <span>Cấu hình Trigger & Mốc Bắt đầu / Kết thúc</span>
         </div>
 
-        <!-- Start Event & End Event trên 1 hàng -->
         <div class="rules-two-col-grid">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Sự kiện bắt đầu (Start Event)</label>
@@ -135,7 +369,6 @@
           </div>
         </div>
 
-        <!-- Hạn mức SLA & Tỷ lệ tối thiểu trên 1 hàng -->
         <div class="rules-sla-grid">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Hạn mức SLA tối đa</label>
@@ -153,7 +386,6 @@
           </div>
         </div>
 
-        <!-- Điều kiện lọc -->
         <div class="rules-form-group mb-0">
           <label class="rules-label">Điều kiện lọc (Filter Conditions)</label>
           <textarea class="rules-control font-monospace" rows="2" [(ngModel)]="currentFlow.filterCriteria"></textarea>

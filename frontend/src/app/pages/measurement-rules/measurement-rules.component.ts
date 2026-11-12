@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 import { OkrService } from '../../services/okr.service';
@@ -35,6 +36,24 @@ export interface FlowRuleTab {
   payloadSimulation: string;
 }
 
+export interface Flow1Config {
+  scheduleTime: string;
+  startEvent: string;
+  endEvent: string;
+  dueDateTime: string;
+  resolvedStatuses: string[];
+  reopenedStatuses: string[];
+  excludedStatuses: string[];
+  validIssueTypes: string[];
+  calculationMode: string;
+  fallbackStoryPoint: number;
+  thresholdPercent: number;
+  noDataHandling: boolean;
+  friendlyFormula: string;
+  latexFormula: string;
+  availableVariables: string[];
+}
+
 @Component({
   selector: 'app-measurement-rules',
   standalone: true,
@@ -51,10 +70,51 @@ export class MeasurementRulesComponent implements OnInit {
   flowTabs: FlowRuleTab[] = [];
   currentFlow!: FlowRuleTab;
 
-  constructor(private okrService: OkrService) {}
+  // Flow 1 No-Code Structured Configuration
+  flow1Config: Flow1Config = {
+    scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
+    startEvent: 'issue_assigned',
+    endEvent: 'status_resolved',
+    dueDateTime: '23:59:59 (GMT+7)',
+    resolvedStatuses: ['RESOLVED', 'DEV_COMPLETED', 'READY IN STAGING', 'PASS IN STAGING'],
+    reopenedStatuses: ['REOPENED'],
+    excludedStatuses: ['CANCELLED', 'WONTFIX', 'CANNOT REPRODUCE', 'DUPLICATE'],
+    validIssueTypes: ['Story', 'Bug', 'Improvement'],
+    calculationMode: 'STORY_POINT',
+    fallbackStoryPoint: 1,
+    thresholdPercent: 90,
+    noDataHandling: true,
+    friendlyFormula: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+    latexFormula: '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
+    availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+  };
+
+  renderedLatexHtml: SafeHtml = '';
+
+  constructor(
+    private okrService: OkrService,
+    private sanitizer: DomSanitizer
+  ) {}
 
   ngOnInit(): void {
     this.loadTeamObjectivesRules();
+
+    // Check if KaTeX is loaded from CDN and render preview
+    const checkKatex = setInterval(() => {
+      if (typeof (window as any).katex !== 'undefined') {
+        clearInterval(checkKatex);
+        this.renderLatexPreview(this.flow1Config.latexFormula);
+      }
+    }, 250);
+    setTimeout(() => clearInterval(checkKatex), 4000);
+  }
+
+  isFlow1(flow?: FlowRuleTab): boolean {
+    if (!flow) return false;
+    const kId = (flow.krId || '').toUpperCase();
+    const fCode = (flow.flowCode || '').toUpperCase();
+    const title = (flow.krTitle || flow.title || '').toLowerCase();
+    return kId.includes('A1') || kId === 'KR-A1' || fCode.includes('A1') || title.includes('issue hoàn thành') || title.includes('đúng hạn');
   }
 
   loadTeamObjectivesRules(): void {
@@ -96,6 +156,7 @@ export class MeasurementRulesComponent implements OnInit {
             r.krId === kr.kr_id || 
             r.rule_id === `RULE-${kr.kr_id}` ||
             r.rule_id === `RULE-M10-${kr.kr_id.replace('KR-', '')}` ||
+            r.rule_id === `RULE-M11-${kr.kr_id.replace('KR-', '')}` ||
             (r.flow_code && r.flow_code.includes(kr.kr_id))
           );
 
@@ -116,11 +177,11 @@ export class MeasurementRulesComponent implements OnInit {
           if (kr.kr_id === 'KR-A1' || kr.kr_id.includes('A1')) {
             icon = 'fa-solid fa-list-check';
             eventType = 'GitLab Issues';
-            startTrigger = 'opened';
-            endTrigger = 'closed';
+            startTrigger = 'issue_assigned';
+            endTrigger = 'status_resolved';
             slaHours = 24.0;
             threshold = 90;
-            formula = 'Số Issue đóng <= Due Date / Tổng Issue trong kỳ đo * 100%';
+            formula = '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%';
           } else if (kr.kr_id === 'KR-C1' || kr.kr_id.includes('C1')) {
             icon = 'fa-solid fa-bug';
             eventType = 'GitLab Issues (Bug)';
@@ -153,7 +214,7 @@ export class MeasurementRulesComponent implements OnInit {
             slaHours: Number(dbRule?.sla_value || dbRule?.slaHours || slaHours),
             thresholdPercent: Number(dbRule?.threshold_percent || dbRule?.thresholdPercent || threshold),
             filterCriteria: dbRule?.filters || dbRule?.filterCriteria || `kr_id == "${kr.kr_id}"`,
-            overtimeHandling: dbRule?.overtime_handling || dbRule?.overtimeHandling || 'Sự kiện tạo ngoài giờ hành chính sẽ bắt đầu tính từ 08:00 sáng ngày làm việc kế tiếp.',
+            overtimeHandling: dbRule?.overtime_handling || dbRule?.overtimeHandling || 'Sự kiện tạo ngoài giờ hành chính sẽ bắt đầu tính từ 09:00 sáng ngày làm việc kế tiếp.',
             lunchBreakRule: dbRule?.lunch_break_rule || dbRule?.lunchBreakRule || 'Tự động trừ 1.5h giờ trưa (12:00 - 13:30) nếu thời gian xử lý vắt qua trưa.',
             weekendHolidayRule: dbRule?.weekend_holiday_rule || dbRule?.weekendHolidayRule || 'Đóng băng SLA trong toàn bộ Thứ 7, Chủ Nhật và các ngày nghỉ Lễ Quốc gia (01/01, Tết, 30/04-01/05, 02/09).',
             businessLogicNote: dbRule?.formula || dbRule?.businessLogicNote || formula,
@@ -162,7 +223,7 @@ const { reviewer_assigned_at, approved_at } = event.object_attributes;
 
 // Khấu trừ giờ ngoài giờ, giờ trưa và ngày nghỉ lễ
 const businessHours = computeWorkingHours(reviewer_assigned_at, approved_at, {
-  workStart: "08:00", workEnd: "17:30", lunchHours: 1.5, excludeHolidays: true
+  workStart: "09:00", workEnd: "18:30", lunchHours: 1.5, excludeHolidays: true
 });
 
 const isPassed = businessHours <= ${slaHours};
@@ -197,16 +258,178 @@ const result = {
     const found = this.flowTabs.find(f => f.tabKey === tabKey);
     if (found) {
       this.currentFlow = found;
+      if (this.isFlow1(found)) {
+        this.initFlow1Config(found);
+      }
     }
+  }
+
+  initFlow1Config(flow: FlowRuleTab): void {
+    let parsedFilters: any = {};
+    if (flow.filterCriteria) {
+      try {
+        parsedFilters = typeof flow.filterCriteria === 'string' ? JSON.parse(flow.filterCriteria) : flow.filterCriteria;
+      } catch (e) {
+        // legacy string
+      }
+    }
+
+    this.flow1Config = {
+      scheduleTime: parsedFilters.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
+      startEvent: parsedFilters.startEvent || flow.startTrigger || 'issue_assigned',
+      endEvent: parsedFilters.endEvent || flow.endTrigger || 'status_resolved',
+      dueDateTime: parsedFilters.dueDateTime || '23:59:59 (GMT+7)',
+      resolvedStatuses: Array.isArray(parsedFilters.resolvedStatuses) && parsedFilters.resolvedStatuses.length > 0 
+        ? parsedFilters.resolvedStatuses 
+        : ['RESOLVED', 'DEV_COMPLETED', 'READY IN STAGING', 'PASS IN STAGING'],
+      reopenedStatuses: Array.isArray(parsedFilters.reopenedStatuses) && parsedFilters.reopenedStatuses.length > 0 
+        ? parsedFilters.reopenedStatuses 
+        : ['REOPENED'],
+      excludedStatuses: Array.isArray(parsedFilters.excludedStatuses) && parsedFilters.excludedStatuses.length > 0 
+        ? parsedFilters.excludedStatuses 
+        : ['CANCELLED', 'WONTFIX', 'CANNOT REPRODUCE', 'DUPLICATE'],
+      validIssueTypes: Array.isArray(parsedFilters.validIssueTypes) && parsedFilters.validIssueTypes.length > 0 
+        ? parsedFilters.validIssueTypes 
+        : ['Story', 'Bug', 'Improvement'],
+      calculationMode: parsedFilters.calculationMode || 'STORY_POINT',
+      fallbackStoryPoint: typeof parsedFilters.fallbackStoryPoint === 'number' ? parsedFilters.fallbackStoryPoint : 1,
+      thresholdPercent: typeof parsedFilters.thresholdPercent === 'number' ? parsedFilters.thresholdPercent : (flow.thresholdPercent || 90),
+      noDataHandling: parsedFilters.noDataHandling !== undefined ? parsedFilters.noDataHandling : true,
+      friendlyFormula: parsedFilters.friendlyFormula || '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+      latexFormula: parsedFilters.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%'),
+      availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+    };
+
+    this.renderLatexPreview(this.flow1Config.latexFormula);
+  }
+
+  // Tag Management Methods (No-Code interaction)
+  addTag(category: 'resolvedStatuses' | 'reopenedStatuses' | 'excludedStatuses' | 'validIssueTypes', event: Event): void {
+    const input = event.target as HTMLInputElement;
+    const value = (input.value || '').trim();
+    if (!value) return;
+    if (!this.flow1Config[category].includes(value)) {
+      this.flow1Config[category].push(value);
+    }
+    input.value = '';
+  }
+
+  removeTag(category: 'resolvedStatuses' | 'reopenedStatuses' | 'excludedStatuses' | 'validIssueTypes', index: number): void {
+    if (index >= 0 && index < this.flow1Config[category].length) {
+      this.flow1Config[category].splice(index, 1);
+    }
+  }
+
+  // Bi-directional Formula Sync Engine
+  syncFromFriendlyToLatex(input: string): void {
+    if (!input) {
+      this.flow1Config.latexFormula = '';
+      this.renderLatexPreview('');
+      return;
+    }
+    let latex = input;
+    // Quy đổi phân số: \frac(a, b) => \frac{a}{b}
+    latex = latex.replace(/\\frac\(([^,]+),\s*([^)]+)\)/g, '\\frac{$1}{$2}');
+    // Quy đổi hàm tổng: sum(...) => \sum(...)
+    latex = latex.replace(/\bsum\(/g, '\\sum(');
+    // Quy đổi phép nhân: * => \cdot
+    latex = latex.replace(/\s*\*\s*/g, ' \\cdot ');
+    // Quy đổi tỷ lệ phần trăm: * 100% => \times 100\%
+    latex = latex.replace(/\\cdot\s*100%/g, '\\times 100\\%');
+    
+    this.flow1Config.latexFormula = latex;
+    this.renderLatexPreview(latex);
+  }
+
+  syncFromLatexToFriendly(latex: string): void {
+    if (!latex) {
+      this.flow1Config.friendlyFormula = '';
+      this.renderLatexPreview('');
+      return;
+    }
+    let friendly = latex;
+    // Quy đổi ngược phân số: \frac{a}{b} => \frac(a, b)
+    friendly = friendly.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '\\frac($1, $2)');
+    // Quy đổi ngược hàm tổng: \sum => sum
+    friendly = friendly.replace(/\\sum/g, 'sum');
+    // Quy đổi ngược phép nhân: \cdot => *
+    friendly = friendly.replace(/\s*\\cdot\s*/g, ' * ');
+    // Quy đổi ngược tỷ lệ: \times 100\% => * 100%
+    friendly = friendly.replace(/\\times\s*100\\%/g, '* 100%');
+
+    this.flow1Config.friendlyFormula = friendly;
+    this.renderLatexPreview(latex);
+  }
+
+  insertVariableChip(variable: string): void {
+    if (!this.flow1Config.friendlyFormula) {
+      this.flow1Config.friendlyFormula = variable;
+    } else {
+      this.flow1Config.friendlyFormula += ` * ${variable}`;
+    }
+    this.syncFromFriendlyToLatex(this.flow1Config.friendlyFormula);
+  }
+
+  renderLatexPreview(latex: string): void {
+    try {
+      if (typeof (window as any).katex !== 'undefined') {
+        const html = (window as any).katex.renderToString(latex, {
+          throwOnError: false,
+          displayMode: true
+        });
+        this.renderedLatexHtml = this.sanitizer.bypassSecurityTrustHtml(html);
+      } else {
+        this.renderedLatexHtml = this.sanitizer.bypassSecurityTrustHtml(
+          `<span class="font-monospace text-primary" style="font-size: 13px;">${this.escapeHtml(latex)}</span>`
+        );
+      }
+    } catch (err) {
+      this.renderedLatexHtml = this.sanitizer.bypassSecurityTrustHtml(
+        `<span class="text-danger small">Lỗi cú pháp LaTeX</span>`
+      );
+    }
+  }
+
+  escapeHtml(text: string): string {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
   }
 
   applyRules(): void {
     if (!this.currentFlow) return;
+
+    if (this.isFlow1(this.currentFlow)) {
+      this.currentFlow.startTrigger = this.flow1Config.startEvent;
+      this.currentFlow.endTrigger = this.flow1Config.endEvent;
+      this.currentFlow.thresholdPercent = this.flow1Config.thresholdPercent;
+      this.currentFlow.slaHours = 24.0;
+      this.currentFlow.businessLogicNote = this.flow1Config.latexFormula;
+      this.currentFlow.filterCriteria = JSON.stringify({
+        scheduleTime: this.flow1Config.scheduleTime,
+        startEvent: this.flow1Config.startEvent,
+        endEvent: this.flow1Config.endEvent,
+        dueDateTime: this.flow1Config.dueDateTime,
+        resolvedStatuses: this.flow1Config.resolvedStatuses,
+        reopenedStatuses: this.flow1Config.reopenedStatuses,
+        excludedStatuses: this.flow1Config.excludedStatuses,
+        validIssueTypes: this.flow1Config.validIssueTypes,
+        calculationMode: this.flow1Config.calculationMode,
+        fallbackStoryPoint: this.flow1Config.fallbackStoryPoint,
+        thresholdPercent: this.flow1Config.thresholdPercent,
+        noDataHandling: this.flow1Config.noDataHandling,
+        friendlyFormula: this.flow1Config.friendlyFormula,
+        latexFormula: this.flow1Config.latexFormula
+      });
+    }
     
     // Save to Database via API
     this.okrService.saveMeasurementRule(this.currentFlow).subscribe({
       next: (res) => {
-        this.toastMessage = `Đã lưu cấu hình kịch bản và quy tắc đo lường cho [${this.currentFlow.krId}] ([${this.currentFlow.flowName}]) vào CSDL thành công!`;
+        this.toastMessage = `Đã lưu cấu hình kịch bản và quy tắc đo lường No-Code cho [${this.currentFlow.krId}] ([${this.currentFlow.flowName}]) vào CSDL thành công!`;
         setTimeout(() => this.toastMessage = null, 4000);
       },
       error: (err) => {
@@ -219,7 +442,11 @@ const result = {
 
   resetDefault(): void {
     if (!this.currentFlow) return;
-    this.loadTeamObjectivesRules();
+    if (this.isFlow1(this.currentFlow)) {
+      this.initFlow1Config(this.currentFlow);
+    } else {
+      this.loadTeamObjectivesRules();
+    }
     this.toastMessage = `Đã khôi phục quy tắc mặc định cho [${this.currentFlow.krId}]!`;
     setTimeout(() => this.toastMessage = null, 4000);
   }
@@ -229,7 +456,7 @@ const result = {
     this.activeTestRunning = true;
     
     // Trigger real Activepieces Key Result Metric update in DB
-    const simulatedCurrent = 85.0;
+    const simulatedCurrent = 92.5;
     this.okrService.updateKrCurrentValue(this.currentFlow.krId, {
       current_value: simulatedCurrent,
       period: 'Q3-2026',
@@ -239,8 +466,8 @@ const result = {
     }).subscribe({
       next: (res) => {
         this.activeTestRunning = false;
-        const krProgress = res?.data?.key_result?.progress ?? 90;
-        const objProgress = res?.data?.parent_objective?.progress ?? 90;
+        const krProgress = res?.data?.key_result?.progress ?? 92.5;
+        const objProgress = res?.data?.parent_objective?.progress ?? 92.5;
         this.toastMessage = `[Mô phỏng OK] Activepieces flow [${this.currentFlow.flowCode}] đã tính toán và ghi đè giá trị current_value = ${simulatedCurrent}% lên Key Result! Tiến độ KR đạt ${krProgress}%, tiến độ Objective [${this.currentFlow.objectiveId}] đạt ${objProgress}%.`;
         setTimeout(() => this.toastMessage = null, 5000);
       },
