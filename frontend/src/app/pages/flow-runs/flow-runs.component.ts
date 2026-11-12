@@ -259,14 +259,13 @@ export interface RunDetailViewModel {
                 <th style="width: 110px;" class="text-center">Trạng thái</th>
                 <th style="width: 130px;" class="text-center">Quét GitLab</th>
                 <th>Dữ liệu tạo ra / Tác động OKR</th>
-                <th style="width: 110px;" class="text-center">Payload</th>
                 <th style="width: 48px; text-align: center;"></th>
               </tr>
             </thead>
             <tbody>
               <!-- Center Table Loading -->
               <tr *ngIf="loading">
-                <td colspan="10" class="table-loading-cell">
+                <td colspan="9" class="table-loading-cell">
                   <div class="table-loading-content">
                     <div class="loading-spinner-circle"></div>
                     <span>Đang tải danh sách lần chạy flow...</span>
@@ -276,7 +275,7 @@ export interface RunDetailViewModel {
 
               <!-- Table Rows & Empty State strictly wrapped in !loading -->
               <ng-container *ngIf="!loading">
-                <tr *ngFor="let run of filteredRuns">
+                <tr *ngFor="let run of filteredRuns" class="clickable-run-row" (click)="openPayloadModal(run)" title="Nhấn để xem chi tiết lần chạy">
                   <td>
                     <code class="run-id">{{ run.run_id }}</code>
                   </td>
@@ -314,13 +313,8 @@ export interface RunDetailViewModel {
                       <span>{{ run.data_created }}</span>
                     </div>
                   </td>
-                  <td class="text-center">
-                    <button type="button" class="btn btn-sm btn-payload" (click)="openPayloadModal(run)" title="Xem chi tiết dữ liệu JSON">
-                      <i class="fa-solid fa-code me-1"></i>Chi tiết
-                    </button>
-                  </td>
                   <!-- 3-Dot Action Column -->
-                  <td style="width: 48px; text-align: center; position: relative;">
+                  <td style="width: 48px; text-align: center; position: relative;" (click)="$event.stopPropagation()">
                     <button 
                       type="button" 
                       class="btn-action-trigger" 
@@ -331,7 +325,7 @@ export interface RunDetailViewModel {
                     </button>
                     <div class="action-dropdown" *ngIf="activeActionMenu === run.run_id" (click)="$event.stopPropagation()">
                       <button class="action-dropdown-item" (click)="openPayloadModal(run); closeDropdown()">
-                        <i class="fa-solid fa-code"></i> Xem Payload JSON
+                        <i class="fa-solid fa-magnifying-glass-chart"></i> Xem chi tiết lần chạy
                       </button>
                       <button class="action-dropdown-item text-danger" (click)="deleteRun(run); closeDropdown()">
                         <i class="fa-solid fa-trash-can"></i> Xóa lần chạy
@@ -342,7 +336,7 @@ export interface RunDetailViewModel {
 
                 <!-- Standard Empty State -->
                 <tr *ngIf="filteredRuns.length === 0">
-                  <td colspan="10" class="text-center text-muted py-4">
+                  <td colspan="9" class="text-center text-muted py-4">
                     {{ (searchQuery || selectedStatus !== 'all' || selectedFlowCode !== 'all') ? 'Không tìm thấy lần chạy nào phù hợp bộ lọc.' : 'Chưa có lần chạy nào cho Flow này. Hãy kích hoạt chạy flow!' }}
                   </td>
                 </tr>
@@ -1104,6 +1098,15 @@ export interface RunDetailViewModel {
       margin-bottom: 0;
       width: 100%;
       border-collapse: collapse;
+    }
+
+    .clickable-run-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+    }
+
+    .clickable-run-row:hover {
+      background-color: #f8fafc !important;
     }
 
     .table th {
