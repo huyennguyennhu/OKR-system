@@ -537,7 +537,7 @@ const result = {
     // Save to Database via API
     this.okrService.saveMeasurementRule(this.currentFlow).subscribe({
       next: (res) => {
-        this.toastMessage = `Đã lưu cấu hình kịch bản và quy tắc đo lường No-Code cho [${this.currentFlow.krId}] ([${this.currentFlow.flowName}]) vào CSDL thành công!`;
+        this.toastMessage = `Đã lưu cấu hình kịch bản và quy tắc đo lường cho [${this.currentFlow.krId}] ([${this.currentFlow.flowName}]) vào CSDL thành công!`;
         setTimeout(() => this.toastMessage = null, 4000);
       },
       error: (err) => {
