@@ -558,7 +558,7 @@ export interface RunDetailViewModel {
                   <tr>
                     <th style="width: 72px;">Loại</th>
                     <th>Mã &amp; Tiêu đề</th>
-                    <th>Người thực hiện / Reviewer</th>
+                    <th>Assign to</th>
                     <th>Trọng số / Thời lượng</th>
                     <th>Mốc hoàn thành</th>
                     <th>Đánh giá SLA</th>
