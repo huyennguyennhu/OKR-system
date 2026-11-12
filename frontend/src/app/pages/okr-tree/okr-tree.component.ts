@@ -358,7 +358,7 @@ interface TreeNode {
                         </span>
                       </div>
                       <div class="node-subtitle text-muted ms-5" *ngIf="(node.type === 'ind_kr' || node.type === 'team_kr') && node.metricSub">
-                        <small>Quy tắc SLA: {{ node.metricSub }}</small>
+                        <small>Đơn vị đo lường: {{ node.metricSub }}</small>
                       </div>
                     </td>
                     

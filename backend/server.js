@@ -492,7 +492,7 @@ app.get('/api/okr-tree', async (req, res) => {
         assignTo,
         assignToAvatar,
         metricName: kr.metric_id || 'GitLab SLA',
-        metricSub: rule ? `${rule.event_type} <= ${rule.sla_value}h` : (kr.unit || '%'),
+        metricSub: kr.unit || '%',
         aggType: 'AVG',
         resultS: String(kr.start_value),
         resultC: String(kr.current_value),
