@@ -1993,7 +1993,7 @@ app.get('/api/flow-runs', async (req, res) => {
     
     // 1. Dynamically fetch Flow Specs from MeasurementRules joined with KeyResults (Team level KRs)
     const teamKrs = await all(`
-      SELECT 
+      SELECT DISTINCT ON (k.kr_id)
         k.kr_id,
         k.title as kr_title,
         k.objective_id,
@@ -2009,7 +2009,7 @@ app.get('/api/flow-runs', async (req, res) => {
       JOIN Objectives o ON k.objective_id = o.objective_id
       LEFT JOIN MeasurementRules r ON (r.kr_id = k.kr_id)
       WHERE k.parent_kr_id IS NULL AND (UPPER(o.level) = 'TEAM' OR o.level IS NULL)
-      ORDER BY k.kr_id ASC
+      ORDER BY k.kr_id ASC, r.rule_id DESC
     `);
 
     // Target the core team KRs (KR-A1, KR-B1, KR-C1)
