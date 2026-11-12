@@ -175,7 +175,7 @@ export class MeasurementRulesComponent implements OnInit {
   onDocumentClick(event?: MouseEvent): void {
     if (event) {
       const target = event.target as HTMLElement;
-      if (!target.closest('.rules-dropdown-wrapper')) {
+      if (!target.closest('.rules-dropdown-wrapper') && !target.closest('.space-dropdown-wrapper')) {
         this.isStartEventOpen = false;
         this.isEndEventOpen = false;
         this.isCalcModeOpen = false;
