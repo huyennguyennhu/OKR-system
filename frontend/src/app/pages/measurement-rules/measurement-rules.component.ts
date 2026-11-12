@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { RouterModule } from '@angular/router';
@@ -91,10 +91,97 @@ export class MeasurementRulesComponent implements OnInit {
 
   renderedLatexHtml: SafeHtml = '';
 
+  // Custom Dropdown States (Matching Toolbar / Space Dropdown)
+  isStartEventOpen = false;
+  isEndEventOpen = false;
+  isCalcModeOpen = false;
+
+  readonly startEventOptions = [
+    { value: 'issue_assigned', label: 'issue_assigned (Default)' },
+    { value: 'issue_opened', label: 'issue_opened' },
+    { value: 'status_in_progress', label: 'status_in_progress' }
+  ];
+
+  readonly endEventOptions = [
+    { value: 'status_resolved', label: 'status_resolved (Default)' },
+    { value: 'issue_closed', label: 'issue_closed' }
+  ];
+
+  readonly calcModeOptions = [
+    { value: 'STORY_POINT', label: 'Story Point Weight (Recommended)' },
+    { value: 'COUNT', label: 'Issue Count (Equal Weight)' }
+  ];
+
   constructor(
     private okrService: OkrService,
     private sanitizer: DomSanitizer
   ) {}
+
+  toggleStartEventDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isStartEventOpen = !this.isStartEventOpen;
+    this.isEndEventOpen = false;
+    this.isCalcModeOpen = false;
+  }
+
+  toggleEndEventDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isEndEventOpen = !this.isEndEventOpen;
+    this.isStartEventOpen = false;
+    this.isCalcModeOpen = false;
+  }
+
+  toggleCalcModeDropdown(event: Event): void {
+    event.stopPropagation();
+    this.isCalcModeOpen = !this.isCalcModeOpen;
+    this.isStartEventOpen = false;
+    this.isEndEventOpen = false;
+  }
+
+  selectStartEvent(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow1Config.startEvent = value;
+    this.isStartEventOpen = false;
+  }
+
+  selectEndEvent(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow1Config.endEvent = value;
+    this.isEndEventOpen = false;
+  }
+
+  selectCalcMode(value: string, event: Event): void {
+    event.stopPropagation();
+    this.flow1Config.calculationMode = value;
+    this.isCalcModeOpen = false;
+  }
+
+  getStartEventLabel(): string {
+    const opt = this.startEventOptions.find(o => o.value === this.flow1Config.startEvent);
+    return opt ? opt.label : this.flow1Config.startEvent || 'Chọn sự kiện';
+  }
+
+  getEndEventLabel(): string {
+    const opt = this.endEventOptions.find(o => o.value === this.flow1Config.endEvent);
+    return opt ? opt.label : this.flow1Config.endEvent || 'Chọn sự kiện';
+  }
+
+  getCalcModeLabel(): string {
+    const opt = this.calcModeOptions.find(o => o.value === this.flow1Config.calculationMode);
+    return opt ? opt.label : this.flow1Config.calculationMode || 'Chọn phương thức';
+  }
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event?: MouseEvent): void {
+    if (event) {
+      const target = event.target as HTMLElement;
+      if (!target.closest('.rules-dropdown-wrapper')) {
+        this.isStartEventOpen = false;
+        this.isEndEventOpen = false;
+        this.isCalcModeOpen = false;
+      }
+    }
+  }
 
   ngOnInit(): void {
     this.loadTeamObjectivesRules();
