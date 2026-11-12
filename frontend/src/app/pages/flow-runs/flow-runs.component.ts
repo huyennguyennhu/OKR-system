@@ -655,12 +655,6 @@ export interface RunDetailViewModel {
             </div>
           </details>
         </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" (click)="closePayloadModal()">
-            Đóng
-          </button>
-        </div>
       </div>
     </div>
 
