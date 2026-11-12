@@ -353,9 +353,6 @@ export interface RunDetailViewModel {
       <div class="modal-content payload-modal run-detail-modal" (click)="$event.stopPropagation()">
         <div class="modal-header">
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <div class="modal-icon-badge">
-              <i class="fa-solid fa-magnifying-glass-chart"></i>
-            </div>
             <div>
               <h3 class="modal-title">
                 Chi tiết lần chạy <span class="run-id-badge">{{ selectedRunForModal.run_id }}</span>
