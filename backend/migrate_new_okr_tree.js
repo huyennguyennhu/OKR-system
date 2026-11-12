@@ -258,17 +258,17 @@ async function migrate() {
       const krC1Children = [
         {
           id: `KR-${m.krPrefix}C1-01`,
-          title: 'Thời gian trung bình giải quyết sự cố nghiêm trọng (Bug P1) ≤ 4,0 giờ làm việc - Huyền Nguyễn Như',
+          title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Huyền Nguyễn Như',
           assignee: 'EMP001',
-          start: 8.0,
-          expected: 4.0,
+          start: 12.0,
+          expected: 8.0,
           current: parseFloat((3.5 / m.progressMultiplier).toFixed(1)),
           unit: 'giờ',
           direction: 'decrease'
         },
         {
           id: `KR-${m.krPrefix}C1-02`,
-          title: 'Thời gian trung bình giải quyết Bug Frontend (P2, P3) ≤ 8,0 giờ làm việc - Alexander Nguyen',
+          title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Alexander Nguyen',
           assignee: 'EMP004',
           start: 12.0,
           expected: 8.0,
@@ -278,7 +278,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}C1-03`,
-          title: 'Thời gian trung bình giải quyết Bug Backend (P1, P2) ≤ 8,0 giờ làm việc - Tran Than',
+          title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Tran Than',
           assignee: 'EMP005',
           start: 12.0,
           expected: 8.0,
@@ -288,7 +288,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}C1-04`,
-          title: 'Thời gian trung bình giải quyết Bug giao diện (P3, P4) ≤ 8,0 giờ làm việc - Nguyen Anh',
+          title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Nguyen Anh',
           assignee: 'EMP003',
           start: 12.0,
           expected: 8.0,
@@ -298,7 +298,7 @@ async function migrate() {
         },
         {
           id: `KR-${m.krPrefix}C1-05`,
-          title: 'Thời gian trung bình giải quyết Bug API (P2, P3) ≤ 8,0 giờ làm việc - Le An',
+          title: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) ≤ 8,0 giờ làm việc - Le An',
           assignee: 'EMP002',
           start: 12.0,
           expected: 8.0,
