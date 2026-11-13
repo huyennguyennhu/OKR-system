@@ -248,7 +248,7 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
               <span class="badge badge-light-secondary">{{ filteredObjectives.length }} OKRs</span>
             </div>
 
-            <div class="chart-body d-flex align-items-center justify-content-center flex-wrap gap-5 py-4">
+            <div class="chart-body donut-chart-body d-flex align-items-center justify-content-center flex-wrap py-4" style="column-gap: 5.5rem; row-gap: 2rem;">
               <div class="donut-chart-container">
                 <div class="conic-donut" [style.--on-track-pct]="onTrackPct" [style.--at-risk-pct]="atRiskPct">
                   <div class="donut-center">
@@ -1085,6 +1085,10 @@ import { OkrService, Objective, KeyResult, Space, Timeline, Team, Employee } fro
     }
 
     /* Conic Donut Chart */
+    .donut-chart-body {
+      column-gap: 5.5rem !important;
+      row-gap: 2rem !important;
+    }
     .donut-chart-container {
       position: relative;
       width: 140px;
