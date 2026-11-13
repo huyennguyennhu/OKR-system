@@ -767,10 +767,35 @@ const result = {
           commaIdx = i;
         }
       }
+
+      // Khoan dung cú pháp: Nếu người dùng quên đóng dấu ngoặc ngoài cùng của \frac(
+      // (ví dụ: \frac(sum(S_k * W(k)), sum(W(k)) * 100%)
+      if (commaIdx !== -1 && closeIdx === -1) {
+        let curDepth = 1;
+        for (let i = commaIdx + 1; i < res.length; i++) {
+          if (res[i] === '(') curDepth++;
+          else if (res[i] === ')') {
+            curDepth--;
+            if (curDepth === 0) {
+              closeIdx = i;
+              break;
+            }
+          }
+          if (curDepth === 1 && res.slice(i).match(/^\s*[\*\+\-\/]/)) {
+            closeIdx = i;
+            break;
+          }
+        }
+        if (closeIdx === -1) {
+          closeIdx = res.length;
+        }
+      }
+
       if (commaIdx !== -1 && closeIdx !== -1) {
         const num = res.slice(idx + 6, commaIdx).trim();
         const den = res.slice(commaIdx + 1, closeIdx).trim();
-        res = res.slice(0, idx) + `\\frac{${num}}{${den}}` + res.slice(closeIdx + 1);
+        const rest = closeIdx < res.length && res[closeIdx] === ')' ? res.slice(closeIdx + 1) : res.slice(closeIdx);
+        res = res.slice(0, idx) + `\\frac{${num}}{${den}}` + rest;
       } else {
         break;
       }
@@ -822,12 +847,48 @@ const result = {
       .replace(/\\text\{SLA\}_\{4\\text\{h\}\}/g, 'SLA_4h')
       .replace(/\\text\{SLA\}_\{8\\text\{h\}\}/g, 'SLA_8h');
 
-    // Convert \frac{a}{b} (iteratively for simple/nested braces)
-    let prev = '';
-    while (prev !== friendly) {
-      prev = friendly;
-      friendly = friendly.replace(/\\frac\{([^{}]+)\}\{([^{}]+)\}/g, '\\frac($1, $2)');
+    // Hỗ trợ bóc tách phân số \frac{numerator}{denominator} chuẩn xác theo cặp dấu {}
+    let fracIdx = friendly.indexOf('\\frac{');
+    while (fracIdx !== -1) {
+      let depth = 0;
+      let endNum = -1;
+      for (let i = fracIdx + 5; i < friendly.length; i++) {
+        if (friendly[i] === '{') depth++;
+        else if (friendly[i] === '}') {
+          depth--;
+          if (depth === 0) {
+            endNum = i;
+            break;
+          }
+        }
+      }
+      if (endNum !== -1) {
+        let startDen = friendly.indexOf('{', endNum);
+        if (startDen !== -1 && friendly.slice(endNum + 1, startDen).trim() === '') {
+          depth = 0;
+          let endDen = -1;
+          for (let i = startDen; i < friendly.length; i++) {
+            if (friendly[i] === '{') depth++;
+            else if (friendly[i] === '}') {
+              depth--;
+              if (depth === 0) {
+                endDen = i;
+                break;
+              }
+            }
+          }
+          if (endDen !== -1) {
+            const num = friendly.slice(fracIdx + 6, endNum).trim();
+            const den = friendly.slice(startDen + 1, endDen).trim();
+            friendly = friendly.slice(0, fracIdx) + `\\frac(${num}, ${den})` + friendly.slice(endDen + 1);
+            fracIdx = friendly.indexOf('\\frac{', fracIdx + 6);
+            continue;
+          }
+        }
+      }
+      break;
     }
+
     friendly = friendly.replace(/\\sum/g, 'sum');
     friendly = friendly.replace(/\s*\\cdot\s*/g, ' * ');
     friendly = friendly.replace(/\\times\s*100\\%/g, '* 100%');
