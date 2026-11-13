@@ -1345,6 +1345,67 @@ async function recalculateOkrProgress(krId, newCurrentValue, options = {}) {
 }
 
 // 4.1. Measurement Rules Endpoints
+function enrichRuleFormulas(flowCode, parsedConfig) {
+  const code = (flowCode || '').toUpperCase();
+  const existingFormulas = parsedConfig && parsedConfig.formulas ? parsedConfig.formulas : {};
+  
+  if (code.includes('A1') || code.includes('ISSUE')) {
+    return {
+      itemRule: existingFormulas.itemRule || {
+        friendly: 'S_k = if(T_resolved <= T_due, 1, 0)',
+        latex: 'S_k = \\begin{cases} 1 & \\text{nếu } T_{\\text{resolved}} \\le T_{\\text{due}} \\\\ 0 & \\text{nếu } T_{\\text{resolved}} > T_{\\text{due}} \\end{cases}',
+        description: 'Quy tắc xác định 1 Issue hoàn thành đạt hạn cam kết'
+      },
+      individual: existingFormulas.individual || {
+        friendly: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: 'KR(u) = \\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn có trọng số của nhân sự u'
+      },
+      team: existingFormulas.team || {
+        friendly: parsedConfig?.friendlyFormula || '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: parsedConfig?.latexFormula || 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m \\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{u=1}^m \\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn tổng hợp toàn đội ngũ'
+      }
+    };
+  } else if (code.includes('B1') || code.includes('MR') || code.includes('MERGE')) {
+    return {
+      itemRule: existingFormulas.itemRule || {
+        friendly: 'R_i = if(delta_t_working <= 4.0, 1, 0)',
+        latex: 'R_i = \\begin{cases} 1 & \\text{nếu } \\Delta t_{\\text{working}} \\le 4\\text{h} \\\\ 0 & \\text{nếu } \\Delta t_{\\text{working}} > 4\\text{h} \\end{cases}',
+        description: 'Quy tắc xác định 1 lượt phân công Review phản hồi trong 4h làm việc'
+      },
+      individual: existingFormulas.individual || {
+        friendly: '\\frac(N_ontime(u), N_total(u)) * 100%',
+        latex: 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%',
+        description: 'Tỷ lệ phân công review phản hồi trong 4 giờ làm việc của cá nhân u'
+      },
+      team: existingFormulas.team || {
+        friendly: parsedConfig?.friendlyFormula || '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+        latex: parsedConfig?.latexFormula || 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%',
+        description: 'Tỷ lệ phản hồi đúng hạn SLA tổng hợp toàn nhóm'
+      }
+    };
+  } else {
+    return {
+      itemRule: existingFormulas.itemRule || {
+        friendly: 'delta_t_working(j) = (T_resolved - T_started) - delta_t_paused',
+        latex: '\\Delta t_{\\text{working}}(j) = (T_{\\text{resolved}} - T_{\\text{started}}) - \\Delta t_{\\text{paused}}',
+        description: 'Quy tắc tính thời gian xử lý thực tế của sự cố Bug j'
+      },
+      individual: existingFormulas.individual || {
+        friendly: '\\frac(sum(delta_t_working(j)), |B_u|)',
+        latex: '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}',
+        description: 'Thời gian giải quyết Bug trung bình (MTTR) của thành viên u'
+      },
+      team: existingFormulas.team || {
+        friendly: parsedConfig?.friendlyFormula || '\\frac(sum(delta_t_working(j)), |B_Team|)',
+        latex: parsedConfig?.latexFormula || '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ'
+      }
+    };
+  }
+}
+
 app.get(['/api/measurement-rules', '/api/rules'], async (req, res) => {
   try {
     const { objective_id, kr_id } = req.query;
@@ -1369,51 +1430,60 @@ app.get(['/api/measurement-rules', '/api/rules'], async (req, res) => {
     query += ` ORDER BY r.rule_id ASC`;
 
     const rules = await all(query, params);
-    const parseRuleConfig = (rawFilters) => {
-      if (!rawFilters) return {};
-      if (typeof rawFilters === 'object') return rawFilters;
-      try { return JSON.parse(rawFilters); } catch { return { raw: rawFilters }; }
+    const parseRuleConfig = (rawFilters, flowCode) => {
+      let cfg = {};
+      if (rawFilters && typeof rawFilters === 'object') cfg = rawFilters;
+      else if (rawFilters) {
+        try { cfg = JSON.parse(rawFilters); } catch { cfg = { raw: rawFilters }; }
+      }
+      cfg.formulas = enrichRuleFormulas(flowCode, cfg);
+      return cfg;
     };
-    const mapped = rules.map(r => ({
-      rule_id: r.rule_id,
-      kr_id: r.kr_id,
-      krId: r.kr_id,
-      objective_id: r.objective_id,
-      objectiveId: r.objective_id,
-      flow_code: r.flow_code || `FLOW-${r.objective_id || r.kr_id}`,
-      flowCode: r.flow_code || `FLOW-${r.objective_id || r.kr_id}`,
-      flow_name: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
-      flowName: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
-      flow_url: r.flow_url || `https://cloud.activepieces.com/flows/${(r.flow_code || r.objective_id || '').toLowerCase()}`,
-      flowUrl: r.flow_url || `https://cloud.activepieces.com/flows/${(r.flow_code || r.objective_id || '').toLowerCase()}`,
-      event_type: r.event_type,
-      start_event: r.start_event,
-      startTrigger: r.start_event,
-      end_event: r.end_event,
-      endTrigger: r.end_event,
-      sla_value: r.sla_value,
-      slaHours: r.sla_value,
-      threshold_percent: r.threshold_percent || 90,
-      thresholdPercent: r.threshold_percent || 90,
-      formula: r.formula,
-      businessLogicNote: r.formula,
-      filters: r.filters,
-      filterCriteria: r.filters,
-      config: parseRuleConfig(r.filters),
-      overtime_handling: r.overtime_handling,
-      overtimeHandling: r.overtime_handling,
-      lunch_break_rule: r.lunch_break_rule,
-      lunchBreakRule: r.lunch_break_rule,
-      weekend_holiday_rule: r.weekend_holiday_rule,
-      weekendHolidayRule: r.weekend_holiday_rule,
-      version: r.version,
-      updated_at: r.updated_at,
-      kr_title: r.kr_title,
-      objective_title: r.objective_title,
-      objective_progress: r.objective_progress,
-      kr_current_value: r.kr_current_value,
-      kr_unit: r.kr_unit
-    }));
+    const mapped = rules.map(r => {
+      const flowCode = r.flow_code || `FLOW-${r.objective_id || r.kr_id}`;
+      const config = parseRuleConfig(r.filters, flowCode);
+      return {
+        rule_id: r.rule_id,
+        kr_id: r.kr_id,
+        krId: r.kr_id,
+        objective_id: r.objective_id,
+        objectiveId: r.objective_id,
+        flow_code: flowCode,
+        flowCode: flowCode,
+        flow_name: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
+        flowName: r.flow_name || `GitLab SLA Webhook Flow - ${r.objective_title || r.kr_title || ''}`,
+        flow_url: r.flow_url || `https://cloud.activepieces.com/flows/${(flowCode || '').toLowerCase()}`,
+        flowUrl: r.flow_url || `https://cloud.activepieces.com/flows/${(flowCode || '').toLowerCase()}`,
+        event_type: r.event_type,
+        start_event: r.start_event,
+        startTrigger: r.start_event,
+        end_event: r.end_event,
+        endTrigger: r.end_event,
+        sla_value: r.sla_value,
+        slaHours: r.sla_value,
+        threshold_percent: r.threshold_percent || 90,
+        thresholdPercent: r.threshold_percent || 90,
+        formula: r.formula,
+        businessLogicNote: r.formula,
+        filters: r.filters,
+        filterCriteria: r.filters,
+        config: config,
+        formulas: config.formulas,
+        overtime_handling: r.overtime_handling,
+        overtimeHandling: r.overtime_handling,
+        lunch_break_rule: r.lunch_break_rule,
+        lunchBreakRule: r.lunch_break_rule,
+        weekend_holiday_rule: r.weekend_holiday_rule,
+        weekendHolidayRule: r.weekend_holiday_rule,
+        version: r.version,
+        updated_at: r.updated_at,
+        kr_title: r.kr_title,
+        objective_title: r.objective_title,
+        objective_progress: r.objective_progress,
+        kr_current_value: r.kr_current_value,
+        kr_unit: r.kr_unit
+      };
+    });
     res.json(mapped);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1444,6 +1514,8 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
     } catch {
       parsedConfig = { raw: rule.filters };
     }
+    const flowCode = rule.flow_code || `FLOW-${rule.objective_id || rule.kr_id}`;
+    parsedConfig.formulas = enrichRuleFormulas(flowCode, parsedConfig);
 
     res.json({
       rule_id: rule.rule_id,
@@ -1451,8 +1523,8 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
       krId: rule.kr_id,
       objective_id: rule.objective_id,
       objectiveId: rule.objective_id,
-      flow_code: rule.flow_code,
-      flowCode: rule.flow_code,
+      flow_code: flowCode,
+      flowCode: flowCode,
       flow_name: rule.flow_name,
       flowName: rule.flow_name,
       flow_url: rule.flow_url,
@@ -1471,6 +1543,7 @@ app.get(['/api/measurement-rules/:id', '/api/rules/:id'], async (req, res) => {
       filters: rule.filters,
       filterCriteria: rule.filters,
       config: parsedConfig,
+      formulas: parsedConfig.formulas,
       overtime_handling: rule.overtime_handling,
       overtimeHandling: rule.overtime_handling,
       lunch_break_rule: rule.lunch_break_rule,
@@ -1514,7 +1587,22 @@ const saveMeasurementRuleHandler = async (req, res) => {
     const flow_name = body.flow_name || body.flowName || (existingRule ? existingRule.flow_name : `Activepieces Flow (${kr_id})`);
     const flow_url = body.flow_url || body.flowUrl || (existingRule ? existingRule.flow_url : `https://cloud.activepieces.com/flows/${flow_code.toLowerCase()}`);
     const event_type = body.event_type || body.type || (existingRule ? existingRule.event_type : 'merge_request');
-    const filters = typeof body.filters === 'string' ? body.filters : (body.filterCriteria ? body.filterCriteria : JSON.stringify(body.filters || (existingRule ? existingRule.filters : {})));
+    let finalFiltersObj = {};
+    if (typeof body.filters === 'string') {
+      try { finalFiltersObj = JSON.parse(body.filters); } catch { finalFiltersObj = {}; }
+    } else if (body.filters && typeof body.filters === 'object') {
+      finalFiltersObj = { ...body.filters };
+    } else if (body.filterCriteria) {
+      try {
+        finalFiltersObj = typeof body.filterCriteria === 'string' ? JSON.parse(body.filterCriteria) : { ...body.filterCriteria };
+      } catch { finalFiltersObj = {}; }
+    } else if (existingRule && existingRule.filters) {
+      try { finalFiltersObj = typeof existingRule.filters === 'string' ? JSON.parse(existingRule.filters) : { ...existingRule.filters }; } catch { finalFiltersObj = {}; }
+    }
+    if (body.formulas) {
+      finalFiltersObj.formulas = body.formulas;
+    }
+    const filters = JSON.stringify(finalFiltersObj);
     const start_event = body.start_event || body.startTrigger || (existingRule ? existingRule.start_event : 'reviewer_assigned');
     const end_event = body.end_event || body.endTrigger || (existingRule ? existingRule.end_event : 'approved');
     const sla_value = parseFloat(body.sla_value !== undefined ? body.sla_value : (body.slaHours !== undefined ? body.slaHours : (existingRule ? existingRule.sla_value : 4.0)));

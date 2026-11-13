@@ -69,3 +69,4 @@ resetExecutionData().catch(err => {
   console.error('Lỗi khi dọn dẹp:', err);
   process.exit(1);
 });
+

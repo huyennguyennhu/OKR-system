@@ -36,6 +36,19 @@ export interface FlowRuleTab {
   payloadSimulation: string;
 }
 
+export interface FormulaTierItem {
+  friendly: string;
+  latex: string;
+  description: string;
+  availableVariables?: string[];
+}
+
+export interface FormulaTiers {
+  itemRule: FormulaTierItem;
+  individual: FormulaTierItem;
+  team: FormulaTierItem;
+}
+
 export interface Flow1Config {
   scheduleTime: string;
   startEvent: string;
@@ -52,6 +65,7 @@ export interface Flow1Config {
   friendlyFormula: string;
   latexFormula: string;
   availableVariables: string[];
+  formulas: FormulaTiers;
 }
 
 export interface Flow2Config {
@@ -75,6 +89,7 @@ export interface Flow2Config {
   friendlyFormula: string;
   latexFormula: string;
   availableVariables: string[];
+  formulas: FormulaTiers;
 }
 
 export interface SeveritySlaRow {
@@ -98,6 +113,7 @@ export interface Flow3Config {
   friendlyFormula: string;
   latexFormula: string;
   availableVariables: string[];
+  formulas: FormulaTiers;
 }
 
 @Component({
@@ -116,6 +132,9 @@ export class MeasurementRulesComponent implements OnInit {
   flowTabs: FlowRuleTab[] = [];
   currentFlow!: FlowRuleTab;
 
+  // Phân tầng công thức 3 cấp: itemRule (Điều kiện tác vụ), individual (Cá nhân), team (Nhóm)
+  activeFormulaTier: 'itemRule' | 'individual' | 'team' = 'individual';
+
   // Flow 1 No-Code Structured Configuration
   flow1Config: Flow1Config = {
     scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
@@ -131,8 +150,28 @@ export class MeasurementRulesComponent implements OnInit {
     thresholdPercent: 90,
     noDataHandling: true,
     friendlyFormula: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
-    latexFormula: '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
-    availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+    latexFormula: 'KR(u) = \\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
+    availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date'],
+    formulas: {
+      itemRule: {
+        friendly: 'S_k = if(T_resolved <= T_due, 1, 0)',
+        latex: 'S_k = \\begin{cases} 1 & \\text{nếu } T_{\\text{resolved}} \\le T_{\\text{due}} \\\\ 0 & \\text{nếu } T_{\\text{resolved}} > T_{\\text{due}} \\end{cases}',
+        description: 'Quy tắc xác định 1 Issue hoàn thành đạt hạn cam kết',
+        availableVariables: ['T_resolved', 'T_due', 'S_k']
+      },
+      individual: {
+        friendly: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: 'KR(u) = \\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn có trọng số của nhân sự u',
+        availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+      },
+      team: {
+        friendly: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m \\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{u=1}^m \\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn tổng hợp toàn đội ngũ',
+        availableVariables: ['S_k', 'W(k)', 'Story_Point']
+      }
+    }
   };
 
   // Flow 2 No-Code Structured Configuration (KR-B1)
@@ -154,9 +193,29 @@ export class MeasurementRulesComponent implements OnInit {
     thresholdPercent: 90,
     gracePeriodDays: 1,
     targetBranches: ['develop', 'main', 'master', 'release/*'],
-    friendlyFormula: '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
-    latexFormula: '\\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%',
-    availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+    friendlyFormula: '\\frac(N_ontime(u), N_total(u)) * 100%',
+    latexFormula: 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%',
+    availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h'],
+    formulas: {
+      itemRule: {
+        friendly: 'R_i = if(delta_t_working <= 4.0, 1, 0)',
+        latex: 'R_i = \\begin{cases} 1 & \\text{nếu } \\Delta t_{\\text{working}} \\le 4\\text{h} \\\\ 0 & \\text{nếu } \\Delta t_{\\text{working}} > 4\\text{h} \\end{cases}',
+        description: 'Quy tắc xác định 1 lượt phân công Review phản hồi trong 4h làm việc',
+        availableVariables: ['delta_t_working', 'SLA_4h', 'R_i']
+      },
+      individual: {
+        friendly: '\\frac(N_ontime(u), N_total(u)) * 100%',
+        latex: 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%',
+        description: 'Tỷ lệ phân công review phản hồi trong 4 giờ làm việc của cá nhân u',
+        availableVariables: ['N_ontime', 'N_total', 'SLA_4h']
+      },
+      team: {
+        friendly: '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+        latex: 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%',
+        description: 'Tỷ lệ phản hồi đúng hạn SLA tổng hợp toàn nhóm',
+        availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+      }
+    }
   };
 
   // Flow 3 No-Code Structured Configuration (KR-C1)
@@ -174,9 +233,29 @@ export class MeasurementRulesComponent implements OnInit {
     pausedStatuses: ['WAITING_FOR_INFO', 'BLOCKED', 'NEED_CUSTOMER_REPLY'],
     mttrTargetHours: 8.0,
     thresholdPercent: 90,
-    friendlyFormula: '\\frac(sum(delta_t_working(j)), |B_Team|)',
-    latexFormula: 'MTTR(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}',
-    availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h']
+    friendlyFormula: '\\frac(sum(delta_t_working(j)), |B_u|)',
+    latexFormula: '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}',
+    availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h'],
+    formulas: {
+      itemRule: {
+        friendly: 'delta_t_working(j) = (T_resolved - T_started) - delta_t_paused',
+        latex: '\\Delta t_{\\text{working}}(j) = (T_{\\text{resolved}} - T_{\\text{started}}) - \\Delta t_{\\text{paused}}',
+        description: 'Quy tắc tính thời gian xử lý thực tế của sự cố Bug j',
+        availableVariables: ['T_resolved', 'T_started', 'delta_t_paused']
+      },
+      individual: {
+        friendly: '\\frac(sum(delta_t_working(j)), |B_u|)',
+        latex: '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}',
+        description: 'Thời gian giải quyết Bug trung bình (MTTR) của thành viên u',
+        availableVariables: ['delta_t_working(j)', '|B_u|', 'SLA_8h']
+      },
+      team: {
+        friendly: '\\frac(sum(delta_t_working(j)), |B_Team|)',
+        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ',
+        availableVariables: ['delta_t_working(j)', '|B_Team|', 'SLA_8h']
+      }
+    }
   };
 
   renderedLatexHtml: SafeHtml = '';
@@ -259,6 +338,105 @@ export class MeasurementRulesComponent implements OnInit {
     this.isCalcModeOpen = !this.isCalcModeOpen;
     this.isStartEventOpen = false;
     this.isEndEventOpen = false;
+  }
+
+  selectFormulaTier(tier: 'itemRule' | 'individual' | 'team'): void {
+    this.activeFormulaTier = tier;
+    this.renderActiveTierLatex();
+  }
+
+  getActiveTierConfig(): FormulaTierItem {
+    if (this.isFlow1(this.currentFlow)) {
+      return this.flow1Config.formulas ? this.flow1Config.formulas[this.activeFormulaTier] : { friendly: '', latex: '', description: '' };
+    } else if (this.isFlow2(this.currentFlow)) {
+      return this.flow2Config.formulas ? this.flow2Config.formulas[this.activeFormulaTier] : { friendly: '', latex: '', description: '' };
+    } else {
+      return this.flow3Config.formulas ? this.flow3Config.formulas[this.activeFormulaTier] : { friendly: '', latex: '', description: '' };
+    }
+  }
+
+  getActiveTierFriendly(): string {
+    return this.getActiveTierConfig()?.friendly || '';
+  }
+
+  getActiveTierLatex(): string {
+    return this.getActiveTierConfig()?.latex || '';
+  }
+
+  getActiveTierVariables(): string[] {
+    const item = this.getActiveTierConfig();
+    if (item && item.availableVariables && item.availableVariables.length > 0) {
+      return item.availableVariables;
+    }
+    if (this.isFlow1(this.currentFlow)) return this.flow1Config.availableVariables;
+    if (this.isFlow2(this.currentFlow)) return this.flow2Config.availableVariables;
+    return this.flow3Config.availableVariables;
+  }
+
+  getTierName(): string {
+    switch (this.activeFormulaTier) {
+      case 'itemRule': return 'Điều kiện tác vụ (Item Rule)';
+      case 'individual': return 'Cá nhân (Individual)';
+      case 'team': return 'Nhóm (Team Roll-up)';
+    }
+  }
+
+  getTierBadgeClass(): string {
+    switch (this.activeFormulaTier) {
+      case 'itemRule': return 'bg-secondary text-white';
+      case 'individual': return 'bg-primary text-white';
+      case 'team': return 'bg-success text-white';
+    }
+  }
+
+  getTierDescription(): string {
+    return this.getActiveTierConfig()?.description || '';
+  }
+
+  onActiveTierFriendlyChange(friendly: string): void {
+    this.onConfigChange();
+    const active = this.getActiveTierConfig();
+    if (active) {
+      active.friendly = friendly;
+      active.latex = this.convertFriendlyToLatexString(friendly);
+      this.syncActiveTierToLegacy(active.friendly, active.latex);
+      this.renderLatexPreview(active.latex);
+    }
+  }
+
+  onActiveTierLatexChange(latex: string): void {
+    this.onConfigChange();
+    const active = this.getActiveTierConfig();
+    if (active) {
+      active.latex = latex;
+      active.friendly = this.convertLatexToFriendlyString(latex);
+      this.syncActiveTierToLegacy(active.friendly, active.latex);
+      this.renderLatexPreview(latex);
+    }
+  }
+
+  syncActiveTierToLegacy(friendly: string, latex: string): void {
+    if (this.isFlow1(this.currentFlow)) {
+      this.flow1Config.friendlyFormula = friendly;
+      this.flow1Config.latexFormula = latex;
+    } else if (this.isFlow2(this.currentFlow)) {
+      this.flow2Config.friendlyFormula = friendly;
+      this.flow2Config.latexFormula = latex;
+    } else if (this.isFlow3(this.currentFlow)) {
+      this.flow3Config.friendlyFormula = friendly;
+      this.flow3Config.latexFormula = latex;
+    }
+  }
+
+  insertVariableToActiveTier(variable: string): void {
+    this.onConfigChange();
+    const curFriendly = this.getActiveTierFriendly();
+    const newFriendly = curFriendly ? `${curFriendly} * ${variable}` : variable;
+    this.onActiveTierFriendlyChange(newFriendly);
+  }
+
+  renderActiveTierLatex(): void {
+    this.renderLatexPreview(this.getActiveTierLatex());
   }
 
   selectStartEvent(value: string, event: Event): void {
@@ -608,6 +786,33 @@ const result = {
     const validCalc = this.calcModeOptions.find(o => o.value === calcVal);
     const selectedCalcMode = validCalc ? validCalc.value : 'STORY_POINT';
 
+    const defaultFlow1Formulas: FormulaTiers = {
+      itemRule: {
+        friendly: 'S_k = if(T_resolved <= T_due, 1, 0)',
+        latex: 'S_k = \\begin{cases} 1 & \\text{nếu } T_{\\text{resolved}} \\le T_{\\text{due}} \\\\ 0 & \\text{nếu } T_{\\text{resolved}} > T_{\\text{due}} \\end{cases}',
+        description: 'Quy tắc xác định 1 Issue hoàn thành đạt hạn cam kết',
+        availableVariables: ['T_resolved', 'T_due', 'S_k']
+      },
+      individual: {
+        friendly: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: 'KR(u) = \\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn có trọng số của nhân sự u',
+        availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+      },
+      team: {
+        friendly: '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
+        latex: 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m \\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{u=1}^m \\sum_{k \\in I_u} W(k)} \\times 100\\%',
+        description: 'Tỷ lệ Issue hoàn thành đúng hạn tổng hợp toàn đội ngũ',
+        availableVariables: ['S_k', 'W(k)', 'Story_Point']
+      }
+    };
+
+    const resolvedFlow1Formulas: FormulaTiers = {
+      itemRule: { ...defaultFlow1Formulas.itemRule, ...(parsedFilters.formulas?.itemRule || {}) },
+      individual: { ...defaultFlow1Formulas.individual, ...(parsedFilters.formulas?.individual || {}) },
+      team: { ...defaultFlow1Formulas.team, ...(parsedFilters.formulas?.team || {}) }
+    };
+
     this.flow1Config = {
       scheduleTime: parsedFilters.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
       startEvent: selectedStartEvent,
@@ -631,10 +836,11 @@ const result = {
       noDataHandling: parsedFilters.noDataHandling !== undefined ? parsedFilters.noDataHandling : true,
       friendlyFormula: parsedFilters.friendlyFormula || '\\frac(sum(S_k * W(k)), sum(W(k))) * 100%',
       latexFormula: parsedFilters.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : '\\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%'),
-      availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date']
+      availableVariables: ['S_k', 'W(k)', 'Story_Point', 'Due_Date'],
+      formulas: resolvedFlow1Formulas
     };
 
-    this.renderLatexPreview(this.flow1Config.latexFormula);
+    this.renderActiveTierLatex();
   }
 
   initFlow2Config(flow: FlowRuleTab): void {
@@ -645,7 +851,34 @@ const result = {
       } catch {}
     }
 
-    const defaultLatex = '\\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%';
+    const defaultLatex = 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%';
+    const defaultFlow2Formulas: FormulaTiers = {
+      itemRule: {
+        friendly: 'R_i = if(delta_t_working <= 4.0, 1, 0)',
+        latex: 'R_i = \\begin{cases} 1 & \\text{nếu } \\Delta t_{\\text{working}} \\le 4\\text{h} \\\\ 0 & \\text{nếu } \\Delta t_{\\text{working}} > 4\\text{h} \\end{cases}',
+        description: 'Quy tắc xác định 1 lượt phân công Review phản hồi trong 4h làm việc',
+        availableVariables: ['delta_t_working', 'SLA_4h', 'R_i']
+      },
+      individual: {
+        friendly: '\\frac(N_ontime(u), N_total(u)) * 100%',
+        latex: 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%',
+        description: 'Tỷ lệ phân công review phản hồi trong 4 giờ làm việc của cá nhân u',
+        availableVariables: ['N_ontime', 'N_total', 'SLA_4h']
+      },
+      team: {
+        friendly: '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+        latex: 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%',
+        description: 'Tỷ lệ phản hồi đúng hạn SLA tổng hợp toàn nhóm',
+        availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+      }
+    };
+
+    const resolvedFlow2Formulas: FormulaTiers = {
+      itemRule: { ...defaultFlow2Formulas.itemRule, ...(parsed.formulas?.itemRule || {}) },
+      individual: { ...defaultFlow2Formulas.individual, ...(parsed.formulas?.individual || {}) },
+      team: { ...defaultFlow2Formulas.team, ...(parsed.formulas?.team || {}) }
+    };
+
     this.flow2Config = {
       pollingInterval: parsed.pollingInterval || 'Mỗi 15 phút (08:00 – 22:00)',
       checkInSchedule: parsed.checkInSchedule || '21:00 (Thứ 2 – Thứ 6)',
@@ -668,11 +901,13 @@ const result = {
       targetBranches: Array.isArray(parsed.targetBranches) && parsed.targetBranches.length > 0
         ? parsed.targetBranches
         : ['develop', 'main', 'master', 'release/*'],
-      friendlyFormula: parsed.friendlyFormula || '\\frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%',
+      friendlyFormula: parsed.friendlyFormula || '\\frac(N_ontime(u), N_total(u)) * 100%',
       latexFormula: parsed.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : defaultLatex),
-      availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h']
+      availableVariables: ['N_ontime', 'N_total', 'N_unattributed', 'SLA_4h'],
+      formulas: resolvedFlow2Formulas
     };
-    this.renderLatexPreview(this.flow2Config.latexFormula);
+
+    this.renderActiveTierLatex();
   }
 
   initFlow3Config(flow: FlowRuleTab): void {
@@ -683,7 +918,34 @@ const result = {
       } catch {}
     }
 
-    const defaultLatex = 'MTTR(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}';
+    const defaultLatex = '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}';
+    const defaultFlow3Formulas: FormulaTiers = {
+      itemRule: {
+        friendly: 'delta_t_working(j) = (T_resolved - T_started) - delta_t_paused',
+        latex: '\\Delta t_{\\text{working}}(j) = (T_{\\text{resolved}} - T_{\\text{started}}) - \\Delta t_{\\text{paused}}',
+        description: 'Quy tắc tính thời gian xử lý thực tế của sự cố Bug j',
+        availableVariables: ['T_resolved', 'T_started', 'delta_t_paused']
+      },
+      individual: {
+        friendly: '\\frac(sum(delta_t_working(j)), |B_u|)',
+        latex: '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}',
+        description: 'Thời gian giải quyết Bug trung bình (MTTR) của thành viên u',
+        availableVariables: ['delta_t_working(j)', '|B_u|', 'SLA_8h']
+      },
+      team: {
+        friendly: '\\frac(sum(delta_t_working(j)), |B_Team|)',
+        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ',
+        availableVariables: ['delta_t_working(j)', '|B_Team|', 'SLA_8h']
+      }
+    };
+
+    const resolvedFlow3Formulas: FormulaTiers = {
+      itemRule: { ...defaultFlow3Formulas.itemRule, ...(parsed.formulas?.itemRule || {}) },
+      individual: { ...defaultFlow3Formulas.individual, ...(parsed.formulas?.individual || {}) },
+      team: { ...defaultFlow3Formulas.team, ...(parsed.formulas?.team || {}) }
+    };
+
     this.flow3Config = {
       scheduleTime: parsed.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
       startEvent: this.flow3StartOptions.some(o => o.value === parsed.startEvent) ? parsed.startEvent : 'status_in_progress',
@@ -704,11 +966,13 @@ const result = {
         : ['WAITING_FOR_INFO', 'BLOCKED', 'NEED_CUSTOMER_REPLY'],
       mttrTargetHours: typeof parsed.mttrTargetHours === 'number' ? parsed.mttrTargetHours : (flow.slaHours || 8.0),
       thresholdPercent: typeof parsed.thresholdPercent === 'number' ? parsed.thresholdPercent : (flow.thresholdPercent || 90),
-      friendlyFormula: parsed.friendlyFormula || '\\frac(sum(delta_t_working(j)), |B_Team|)',
+      friendlyFormula: parsed.friendlyFormula || '\\frac(sum(delta_t_working(j)), |B_u|)',
       latexFormula: parsed.latexFormula || (flow.businessLogicNote && flow.businessLogicNote.includes('\\') ? flow.businessLogicNote : defaultLatex),
-      availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h']
+      availableVariables: ['delta_t_working(j)', 'delta_t_paused', '|B_Team|', 'SLA_8h'],
+      formulas: resolvedFlow3Formulas
     };
-    this.renderLatexPreview(this.flow3Config.latexFormula);
+
+    this.renderActiveTierLatex();
   }
 
   addTagFlow2(category: 'excludedBots' | 'targetBranches', event: Event): void {
@@ -1031,7 +1295,8 @@ const result = {
         thresholdPercent: this.flow1Config.thresholdPercent,
         noDataHandling: this.flow1Config.noDataHandling,
         friendlyFormula: this.flow1Config.friendlyFormula,
-        latexFormula: this.flow1Config.latexFormula
+        latexFormula: this.flow1Config.latexFormula,
+        formulas: this.flow1Config.formulas
       });
     } else if (this.isFlow2(this.currentFlow)) {
       this.currentFlow.startTrigger = this.flow2Config.startEvent;
@@ -1053,7 +1318,8 @@ const result = {
         gracePeriodDays: this.flow2Config.gracePeriodDays,
         targetBranches: this.flow2Config.targetBranches,
         friendlyFormula: this.flow2Config.friendlyFormula,
-        latexFormula: this.flow2Config.latexFormula
+        latexFormula: this.flow2Config.latexFormula,
+        formulas: this.flow2Config.formulas
       });
     } else if (this.isFlow3(this.currentFlow)) {
       this.currentFlow.startTrigger = this.flow3Config.startEvent;
@@ -1071,7 +1337,8 @@ const result = {
         mttrTargetHours: this.flow3Config.mttrTargetHours,
         thresholdPercent: this.flow3Config.thresholdPercent,
         friendlyFormula: this.flow3Config.friendlyFormula,
-        latexFormula: this.flow3Config.latexFormula
+        latexFormula: this.flow3Config.latexFormula,
+        formulas: this.flow3Config.formulas
       });
     }
 

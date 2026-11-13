@@ -2,6 +2,7 @@ import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute, RouterModule } from '@angular/router';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { OkrService, FlowSummary, FlowRun, FlowRunsResponse } from '../../services/okr.service';
 import { ConfirmDialogService } from '../../services/confirm-dialog.service';
 
@@ -47,6 +48,8 @@ export interface RunDetailViewModel {
   members: MemberBreakdown[];
   evidences: EvidenceItem[];
   slaRuleText: string;
+  formulaIndividualHtml?: SafeHtml;
+  formulaTeamHtml?: SafeHtml;
 }
 
 @Component({
@@ -625,7 +628,7 @@ export interface RunDetailViewModel {
               <i class="fa-solid fa-scale-balanced text-secondary me-2"></i>
               Quy tắc đo lường áp dụng
             </div>
-            <ul class="rules-snapshot-list">
+            <ul class="rules-snapshot-list mb-3">
               <li>
                 <strong>Lịch làm việc chuẩn:</strong> 8.0 giờ/ngày (09:00 – 12:00 &amp; 13:30 – 18:30). Nghỉ trưa tự động trừ 1.5h. Thứ 7, Chủ Nhật đóng băng tính giờ.
               </li>
@@ -633,6 +636,40 @@ export interface RunDetailViewModel {
                 <strong>Quy chuẩn SLA:</strong> Đạt khi thời gian xử lý thực tế &le; Hạn định mức SLA cam kết. {{ vm.slaRuleText }}
               </li>
             </ul>
+
+            <!-- Mô hình toán học KaTeX phân tầng áp dụng -->
+            <div class="rules-snapshot-formulas pt-2.5 border-top" *ngIf="vm.formulaIndividualHtml || vm.formulaTeamHtml">
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <span class="text-muted fw-bold" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">
+                  <i class="fa-solid fa-square-root-variable text-primary me-1"></i> Mô hình toán học áp dụng
+                </span>
+                <span class="badge bg-light text-secondary border" style="font-size: 10.5px;">Chuẩn KaTeX</span>
+              </div>
+              <div class="row g-2.5">
+                <div class="col-md-6" *ngIf="vm.formulaIndividualHtml">
+                  <div class="formula-card p-2.5 bg-white rounded border">
+                    <div class="formula-card-label d-flex align-items-center justify-content-between mb-1.5">
+                      <span class="badge bg-light text-primary border" style="font-size: 10.5px;">
+                        <i class="fa-solid fa-user me-1"></i> Cấp cá nhân
+                      </span>
+                      <span class="text-muted" style="font-size: 11px;">Điểm số thành viên u</span>
+                    </div>
+                    <div class="katex-rendered-math text-center py-1" [innerHTML]="vm.formulaIndividualHtml"></div>
+                  </div>
+                </div>
+                <div class="col-md-6" *ngIf="vm.formulaTeamHtml">
+                  <div class="formula-card p-2.5 bg-white rounded border">
+                    <div class="formula-card-label d-flex align-items-center justify-content-between mb-1.5">
+                      <span class="badge bg-light text-success border" style="font-size: 10.5px;">
+                        <i class="fa-solid fa-users me-1"></i> Cấp nhóm (Roll-up)
+                      </span>
+                      <span class="text-muted" style="font-size: 11px;">Tổng hợp toàn Team</span>
+                    </div>
+                    <div class="katex-rendered-math text-center py-1" [innerHTML]="vm.formulaTeamHtml"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- KHỐI 5: Kỹ thuật: Payload JSON gốc (Dành cho Developer / IT) -->
@@ -1753,6 +1790,17 @@ export interface RunDetailViewModel {
       gap: 0.3rem;
     }
 
+    .rules-snapshot-formulas {
+      border-top: 1px dashed #e2e8f0;
+    }
+
+    .formula-card {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+    }
+
     /* Khối 5: Collapsible Technical Payload */
     .tech-payload-details {
       border: 1px solid #e2e8f0;
@@ -2205,7 +2253,8 @@ export class FlowRunsComponent implements OnInit {
     private okrService: OkrService,
     private confirmService: ConfirmDialogService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private sanitizer: DomSanitizer
   ) {}
 
   ngOnInit(): void {
@@ -2768,6 +2817,43 @@ export class FlowRunsComponent implements OnInit {
       slaRuleText = 'Áp dụng cho Issue Bug: Thời gian trung bình giải quyết sự cố (MTTR) ≤ 8.0 giờ làm việc.';
     }
 
+    // Trích xuất công thức toán học phân tầng (Individual & Team) áp dụng cho lần chạy
+    let individualLatex = '';
+    let teamLatex = '';
+    
+    if (parsed && (parsed.config_snapshot?.formulas || parsed.config?.formulas)) {
+      const f = parsed.config_snapshot?.formulas || parsed.config?.formulas;
+      individualLatex = f.individual?.latex || '';
+      teamLatex = f.team?.latex || '';
+    }
+
+    if (!individualLatex) {
+      if (isB1) {
+        individualLatex = 'KR(u) = \\frac{N_{\\text{on-time}}(u)}{N_{\\text{total}}(u)} \\times 100\\%';
+        teamLatex = 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m N_{\\text{on-time}}(u)}{\\sum_{u=1}^m N_{\\text{total}}(u) + N_{\\text{unattributed}}} \\times 100\\%';
+      } else if (isC1) {
+        individualLatex = '\\text{MTTR}(u) = \\frac{\\sum_{j \\in B_u} \\Delta t_{\\text{working}}(j)}{|B_u|}';
+        teamLatex = '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}';
+      } else {
+        individualLatex = 'KR(u) = \\frac{\\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{k \\in I_u} W(k)} \\times 100\\%';
+        teamLatex = 'KR(\\text{Team}) = \\frac{\\sum_{u=1}^m \\sum_{k \\in I_u} S_k \\cdot W(k)}{\\sum_{u=1}^m \\sum_{k \\in I_u} W(k)} \\times 100\\%';
+      }
+    }
+
+    const renderKatexSafe = (latex: string) => {
+      if (!latex) return undefined;
+      try {
+        if (typeof (window as any).katex !== 'undefined') {
+          const html = (window as any).katex.renderToString(latex, { throwOnError: false, displayMode: true });
+          return this.sanitizer.bypassSecurityTrustHtml(html);
+        }
+      } catch {}
+      return this.sanitizer.bypassSecurityTrustHtml(`<span class="font-monospace text-primary">${latex}</span>`);
+    };
+
+    const formulaIndividualHtml = renderKatexSafe(individualLatex);
+    const formulaTeamHtml = renderKatexSafe(teamLatex);
+
     return {
       totalCount,
       totalUnitLabel,
@@ -2779,7 +2865,9 @@ export class FlowRunsComponent implements OnInit {
       overallLabel: overallPass ? 'ĐẠT CHUẨN' : 'CẦN CẢI THIỆN',
       members,
       evidences,
-      slaRuleText
+      slaRuleText,
+      formulaIndividualHtml,
+      formulaTeamHtml
     };
   }
 

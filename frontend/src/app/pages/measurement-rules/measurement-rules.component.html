@@ -310,25 +310,59 @@
         </div>
 
         <!-- ======================================================== -->
-        <!-- CỤM 4: KHU VỰC SOẠN THẢO CÔNG THỨC ĐO LƯỜNG 2 CHIỀU     -->
+        <!-- CỤM 4: KHU VỰC SOẠN THẢO CÔNG THỨC ĐO LƯỜNG 3 PHÂN TẦNG -->
         <!-- ======================================================== -->
-        <div class="rules-section-title">
-          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
-          <span>Cụm 4: Formula Editor</span>
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="rules-section-title mb-0">
+            <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+            <span>Cụm 4: Mô hình Công thức Phân tầng (3 Cấp)</span>
+          </div>
+          <!-- Segmented Tab Pills -->
+          <div class="btn-group btn-group-sm formula-tier-pills" role="group">
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'itemRule'" 
+                    [class.btn-light]="activeFormulaTier !== 'itemRule'"
+                    (click)="selectFormulaTier('itemRule')">
+              <i class="fa-solid fa-check-double me-1"></i> Điều kiện tác vụ
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'individual'" 
+                    [class.btn-light]="activeFormulaTier !== 'individual'"
+                    (click)="selectFormulaTier('individual')">
+              <i class="fa-solid fa-user me-1"></i> Cá nhân
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'team'" 
+                    [class.btn-light]="activeFormulaTier !== 'team'"
+                    (click)="selectFormulaTier('team')">
+              <i class="fa-solid fa-users me-1"></i> Nhóm (Team Roll-up)
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh thông tin giải thích cấp độ đang chọn -->
+        <div class="formula-tier-badge mb-2 py-1.5 px-3 bg-light rounded border d-flex align-items-center justify-content-between" style="font-size: 12px;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge" [ngClass]="getTierBadgeClass()">{{ getTierName() }}</span>
+            <span class="text-secondary fw-medium">{{ getTierDescription() }}</span>
+          </div>
+          <span class="text-muted fst-italic" style="font-size: 11px;">
+            <i class="fa-solid fa-arrows-rotate me-1 text-primary"></i>Đồng bộ 2 chiều (Friendly &harr; LaTeX)
+          </span>
         </div>
 
         <div class="rules-two-col-grid">
           <!-- KHUNG TRÁI: Nhập biểu thức thân thiện -->
           <div class="rules-form-group mb-0">
             <textarea class="rules-control font-monospace" rows="2" 
-                      [(ngModel)]="flow1Config.friendlyFormula" 
-                      (ngModelChange)="syncFromFriendlyToLatex($event)"
-                      placeholder="Ví dụ: \frac(sum(S_k * W(k)), sum(W(k))) * 100%"></textarea>
+                      [ngModel]="getActiveTierFriendly()" 
+                      (ngModelChange)="onActiveTierFriendlyChange($event)"
+                      placeholder="Nhập biểu thức thân thiện..."></textarea>
             <!-- Thẻ biến gợi ý bấm chèn nhanh -->
             <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
               <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip" 
-                    *ngFor="let v of flow1Config.availableVariables" 
-                    (click)="insertVariableChip(v)" 
+                    *ngFor="let v of getActiveTierVariables()" 
+                    (click)="insertVariableToActiveTier(v)" 
                     title="Bấm để chèn biến vào công thức">
                 + {{ v }}
               </span>
@@ -339,14 +373,14 @@
           <!-- KHUNG PHẢI: Chỉnh LaTeX trực tiếp (2 chiều) & Render KaTeX -->
           <div class="rules-form-group mb-0 d-flex flex-column">
             <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
-                      [(ngModel)]="flow1Config.latexFormula"
-                      (ngModelChange)="syncFromLatexToFriendly($event)"
+                      [ngModel]="getActiveTierLatex()" 
+                      (ngModelChange)="onActiveTierLatexChange($event)"
                       placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <!-- Khung render KaTeX toán học trực quan -->
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động theo cấp độ {{ getTierName() }}</span>
           </div>
         </div>
       </div>
@@ -551,22 +585,56 @@
           <span><strong>Ràng buộc trách nhiệm tập thể &amp; thiếu dữ liệu:</strong> Mẫu số cấp Team bao gồm <code>N_unattributed</code> (MR chưa gán Reviewer tồn đọng &gt; 4h). Cá nhân có <code>N_total(u) = 0</code> ghi nhận <code>NO_DATA</code>.</span>
         </div>
 
-        <!-- CỤM 4: FORMULA EDITOR -->
-        <div class="rules-section-title">
-          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
-          <span>Cụm 4: Formula Editor</span>
+        <!-- CỤM 4: MÔ HÌNH CÔNG THỨC PHÂN TẦNG (3 CẤP) -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="rules-section-title mb-0">
+            <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+            <span>Cụm 4: Mô hình Công thức Phân tầng (3 Cấp)</span>
+          </div>
+          <!-- Segmented Tab Pills -->
+          <div class="btn-group btn-group-sm formula-tier-pills" role="group">
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'itemRule'" 
+                    [class.btn-light]="activeFormulaTier !== 'itemRule'"
+                    (click)="selectFormulaTier('itemRule')">
+              <i class="fa-solid fa-check-double me-1"></i> Điều kiện tác vụ
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'individual'" 
+                    [class.btn-light]="activeFormulaTier !== 'individual'"
+                    (click)="selectFormulaTier('individual')">
+              <i class="fa-solid fa-user me-1"></i> Cá nhân
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'team'" 
+                    [class.btn-light]="activeFormulaTier !== 'team'"
+                    (click)="selectFormulaTier('team')">
+              <i class="fa-solid fa-users me-1"></i> Nhóm (Team Roll-up)
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh thông tin giải thích cấp độ đang chọn -->
+        <div class="formula-tier-badge mb-2 py-1.5 px-3 bg-light rounded border d-flex align-items-center justify-content-between" style="font-size: 12px;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge" [ngClass]="getTierBadgeClass()">{{ getTierName() }}</span>
+            <span class="text-secondary fw-medium">{{ getTierDescription() }}</span>
+          </div>
+          <span class="text-muted fst-italic" style="font-size: 11px;">
+            <i class="fa-solid fa-arrows-rotate me-1 text-primary"></i>Đồng bộ 2 chiều (Friendly &harr; LaTeX)
+          </span>
         </div>
 
         <div class="rules-two-col-grid">
           <div class="rules-form-group mb-0">
             <textarea class="rules-control font-monospace" rows="2"
-                      [(ngModel)]="flow2Config.friendlyFormula"
-                      (ngModelChange)="syncFlow2ToLatex($event)"
-                      placeholder="Ví dụ: \frac(sum(N_ontime), sum(N_total) + N_unattributed) * 100%"></textarea>
+                      [ngModel]="getActiveTierFriendly()"
+                      (ngModelChange)="onActiveTierFriendlyChange($event)"
+                      placeholder="Nhập biểu thức thân thiện..."></textarea>
             <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
               <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip"
-                    *ngFor="let v of flow2Config.availableVariables"
-                    (click)="insertFlow2Chip(v)"
+                    *ngFor="let v of getActiveTierVariables()"
+                    (click)="insertVariableToActiveTier(v)"
                     title="Bấm để chèn biến vào công thức">
                 + {{ v }}
               </span>
@@ -576,13 +644,13 @@
 
           <div class="rules-form-group mb-0 d-flex flex-column">
             <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
-                      [(ngModel)]="flow2Config.latexFormula"
-                      (ngModelChange)="syncFlow2FromLatex($event)"
+                      [ngModel]="getActiveTierLatex()"
+                      (ngModelChange)="onActiveTierLatexChange($event)"
                       placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động theo cấp độ {{ getTierName() }}</span>
           </div>
         </div>
       </div>
@@ -741,22 +809,56 @@
           <span><strong>Xử lý ngoại lệ thiếu dữ liệu:</strong> Nếu trong kỳ đánh giá không có Bug nào hoàn tất (<code>|B_i| = 0</code>) &rArr; Kết quả tự động ghi nhận là <code>NO_DATA</code> (không quy kết 0 giờ).</span>
         </div>
 
-        <!-- CỤM 4: FORMULA EDITOR -->
-        <div class="rules-section-title">
-          <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
-          <span>Cụm 4: Formula Editor</span>
+        <!-- CỤM 4: MÔ HÌNH CÔNG THỨC PHÂN TẦNG (3 CẤP) -->
+        <div class="d-flex align-items-center justify-content-between mb-2">
+          <div class="rules-section-title mb-0">
+            <i class="fa-solid fa-square-root-variable" style="color: #7c3aed;"></i>
+            <span>Cụm 4: Mô hình Công thức Phân tầng (3 Cấp)</span>
+          </div>
+          <!-- Segmented Tab Pills -->
+          <div class="btn-group btn-group-sm formula-tier-pills" role="group">
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'itemRule'" 
+                    [class.btn-light]="activeFormulaTier !== 'itemRule'"
+                    (click)="selectFormulaTier('itemRule')">
+              <i class="fa-solid fa-check-double me-1"></i> Điều kiện tác vụ
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'individual'" 
+                    [class.btn-light]="activeFormulaTier !== 'individual'"
+                    (click)="selectFormulaTier('individual')">
+              <i class="fa-solid fa-user me-1"></i> Cá nhân
+            </button>
+            <button type="button" class="btn btn-sm" 
+                    [class.btn-primary]="activeFormulaTier === 'team'" 
+                    [class.btn-light]="activeFormulaTier !== 'team'"
+                    (click)="selectFormulaTier('team')">
+              <i class="fa-solid fa-users me-1"></i> Nhóm (Team Roll-up)
+            </button>
+          </div>
+        </div>
+
+        <!-- Thanh thông tin giải thích cấp độ đang chọn -->
+        <div class="formula-tier-badge mb-2 py-1.5 px-3 bg-light rounded border d-flex align-items-center justify-content-between" style="font-size: 12px;">
+          <div class="d-flex align-items-center gap-2">
+            <span class="badge" [ngClass]="getTierBadgeClass()">{{ getTierName() }}</span>
+            <span class="text-secondary fw-medium">{{ getTierDescription() }}</span>
+          </div>
+          <span class="text-muted fst-italic" style="font-size: 11px;">
+            <i class="fa-solid fa-arrows-rotate me-1 text-primary"></i>Đồng bộ 2 chiều (Friendly &harr; LaTeX)
+          </span>
         </div>
 
         <div class="rules-two-col-grid">
           <div class="rules-form-group mb-0">
             <textarea class="rules-control font-monospace" rows="2"
-                      [(ngModel)]="flow3Config.friendlyFormula"
-                      (ngModelChange)="syncFlow3ToLatex($event)"
-                      placeholder="Ví dụ: \frac(sum(delta_t_working(j)), |B_Team|)"></textarea>
+                      [ngModel]="getActiveTierFriendly()"
+                      (ngModelChange)="onActiveTierFriendlyChange($event)"
+                      placeholder="Nhập biểu thức thân thiện..."></textarea>
             <div class="rules-variable-chips mt-1.5 d-flex gap-1.5 flex-wrap">
               <span class="badge bg-light text-primary border cursor-pointer rules-variable-chip"
-                    *ngFor="let v of flow3Config.availableVariables"
-                    (click)="insertFlow3Chip(v)"
+                    *ngFor="let v of getActiveTierVariables()"
+                    (click)="insertVariableToActiveTier(v)"
                     title="Bấm để chèn biến vào công thức">
                 + {{ v }}
               </span>
@@ -766,13 +868,13 @@
 
           <div class="rules-form-group mb-0 d-flex flex-column">
             <textarea class="rules-control font-monospace text-primary mb-2" rows="2"
-                      [(ngModel)]="flow3Config.latexFormula"
-                      (ngModelChange)="syncFlow3FromLatex($event)"
+                      [ngModel]="getActiveTierLatex()"
+                      (ngModelChange)="onActiveTierLatexChange($event)"
                       placeholder="Nhập hoặc chỉnh sửa mã LaTeX trực tiếp..."></textarea>
             <div class="rules-latex-preview-card flex-grow-1">
               <div class="katex-rendered-math" [innerHTML]="renderedLatexHtml"></div>
             </div>
-            <span class="rules-hint">Đồng bộ 2 chiều giữa biểu thức bên trái, mã LaTeX và KaTeX preview</span>
+            <span class="rules-hint">Mô hình toán học KaTeX được hiển thị trực quan tự động theo cấp độ {{ getTierName() }}</span>
           </div>
         </div>
       </div>
