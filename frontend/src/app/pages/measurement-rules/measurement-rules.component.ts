@@ -251,7 +251,7 @@ export class MeasurementRulesComponent implements OnInit {
       },
       team: {
         friendly: '\\frac(sum(delta_t_working(j)), |B_Team|)',
-        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}',
         description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ',
         availableVariables: ['delta_t_working(j)', '|B_Team|', 'SLA_8h']
       }
@@ -934,7 +934,7 @@ const result = {
       },
       team: {
         friendly: '\\frac(sum(delta_t_working(j)), |B_Team|)',
-        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        latex: '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}',
         description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ',
         availableVariables: ['delta_t_working(j)', '|B_Team|', 'SLA_8h']
       }
@@ -1243,15 +1243,16 @@ const result = {
 
   renderLatexPreview(latex: string): void {
     try {
+      const balanced = this.balanceLatexBraces(latex);
       if (typeof (window as any).katex !== 'undefined') {
-        const html = (window as any).katex.renderToString(latex, {
+        const html = (window as any).katex.renderToString(balanced, {
           throwOnError: false,
           displayMode: true
         });
         this.renderedLatexHtml = this.sanitizer.bypassSecurityTrustHtml(html);
       } else {
         this.renderedLatexHtml = this.sanitizer.bypassSecurityTrustHtml(
-          `<span class="font-monospace text-primary" style="font-size: 13px;">${this.escapeHtml(latex)}</span>`
+          `<span class="font-monospace text-primary" style="font-size: 13px;">${this.escapeHtml(balanced)}</span>`
         );
       }
     } catch (err) {
@@ -1259,6 +1260,21 @@ const result = {
         `<span class="text-danger small">Lỗi cú pháp LaTeX</span>`
       );
     }
+  }
+
+  balanceLatexBraces(latex: string): string {
+    if (!latex) return '';
+    let depth = 0;
+    for (let i = 0; i < latex.length; i++) {
+      if (latex[i] === '{') depth++;
+      else if (latex[i] === '}') {
+        if (depth > 0) depth--;
+      }
+    }
+    if (depth > 0) {
+      return latex + '}'.repeat(depth);
+    }
+    return latex;
   }
 
   escapeHtml(text: string): string {

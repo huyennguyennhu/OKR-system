@@ -1399,7 +1399,7 @@ function enrichRuleFormulas(flowCode, parsedConfig) {
       },
       team: existingFormulas.team || {
         friendly: parsedConfig?.friendlyFormula || '\\frac(sum(delta_t_working(j)), |B_Team|)',
-        latex: parsedConfig?.latexFormula || '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|',
+        latex: parsedConfig?.latexFormula || '\\text{MTTR}(\\text{Team}) = \\frac{\\sum_{j \\in B_{\\text{Team}}} \\Delta t_{\\text{working}}(j)}{|B_{\\text{Team}}|}',
         description: 'Thời gian trung bình giải quyết sự cố Bug (MTTR) của toàn đội ngũ'
       }
     };
