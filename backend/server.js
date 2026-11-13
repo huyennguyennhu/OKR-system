@@ -2557,6 +2557,28 @@ app.post('/api/simulate-event', async (req, res) => {
   }
 });
 
+// Endpoint: Reset Execution Runs & Check-in Data (Giữ nguyên toàn bộ Setup & Config)
+app.post('/api/reset-runs', async (req, res) => {
+  try {
+    await run('DELETE FROM EventAssignments');
+    await run('DELETE FROM GitLabEvents');
+    await run('DELETE FROM MetricResults');
+    await run('DELETE FROM ProcessingLogs');
+    await run('DELETE FROM FlowRuns');
+    await run('DELETE FROM Comments');
+    await run('DELETE FROM AuditLogs');
+    await run('UPDATE KeyResults SET current_value = start_value');
+    await run('UPDATE Objectives SET progress = 0.0');
+
+    res.json({
+      success: true,
+      message: 'Đã dọn dẹp sạch toàn bộ lịch sử chạy và check-in. Toàn bộ cài đặt hệ thống (Objectives, KRs, Rules, Calendar) vẫn được giữ nguyên vẹn!'
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // 9. Reset / Seed Endpoint
 app.post('/api/seed', async (req, res) => {
   try {
