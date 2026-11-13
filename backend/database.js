@@ -538,7 +538,7 @@ async function seedInitialData() {
         [compId, `Mục tiêu chiến lược Tháng ${m.num}/2026`, m.tl, m.compP, defaultSpaceId]);
 
       await run(`INSERT INTO Objectives (objective_id, parent_id, level, title, description, timeline_id, progress, assignee_id, metric_id, category, start_value, expected_value, space_id)
-        VALUES (?, ?, 'TEAM', 'Nâng cao hiệu quả thực hiện công việc và năng lực cộng tác kỹ thuật', 'Tối ưu hóa quy trình giải quyết Issue và phản hồi Code Review', ?, ?, 'TEAM-FE', 'METRIC-01', 'Objective', 50, 100, ?)`,
+        VALUES (?, ?, 'TEAM', 'Nâng cao hiệu quả thực hiện công việc và năng lực cộng tác kỹ thuật', 'Tối ưu hóa quy trình giải quyết Issue và phản hồi Code Review', ?, ?, 'TEAM-FE', 'METRIC-01', 'Objective', 0, 100, ?)`,
         [t1Id, compId, m.tl, m.t1P, defaultSpaceId]);
 
       await run(`INSERT INTO Objectives (objective_id, parent_id, level, title, description, timeline_id, progress, assignee_id, metric_id, category, start_value, expected_value, space_id)
