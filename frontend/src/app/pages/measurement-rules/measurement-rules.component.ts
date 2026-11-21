@@ -847,6 +847,7 @@ const result = {
     };
 
     this.flow1Config = {
+      projectIds: prjVal1,
       scheduleTime: parsedFilters.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
       startEvent: selectedStartEvent,
       endEvent: selectedEndEvent,
