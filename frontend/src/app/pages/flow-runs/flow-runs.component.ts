@@ -395,11 +395,11 @@ export interface RunDetailViewModel {
             </div>
             <div class="member-trace-metrics mt-2 pt-2 border-top border-primary-subtle" *ngIf="getMemberTraceDetails(selectedRunForModal, pendingTraceMember) as m">
               <div class="d-flex align-items-center gap-3 flex-wrap" style="font-size: 12.5px;">
-                <span *ngIf="m.IC_i !== undefined || m.ic_percent !== undefined">
-                  Chỉ số đúng hạn (IC_i): <strong class="text-primary">{{ m.IC_i !== undefined ? m.IC_i : m.ic_percent }}%</strong>
+                <span *ngIf="m.IC_i != null">
+                  Chỉ số đúng hạn (IC_i): <strong class="text-primary">{{ m.IC_i }}%</strong>
                 </span>
-                <span *ngIf="m.Ni !== undefined || m.ontime_issues !== undefined">
-                  Số Issue đạt: <strong class="text-dark">{{ m.Ni !== undefined ? m.Ni : m.ontime_issues }}/{{ m.Di !== undefined ? m.Di : m.due_issues }}</strong>
+                <span *ngIf="m.Di !== undefined">
+                  Số {{ m.unitLabel || 'tác vụ' }} đạt: <strong class="text-dark">{{ m.Ni }}/{{ m.Di }}</strong>
                 </span>
                 <span *ngIf="m.due_sp !== undefined">
                   Story Points: <strong class="text-dark">{{ m.ontime_sp }}/{{ m.due_sp }} SP</strong>
@@ -2415,57 +2415,69 @@ export class FlowRunsComponent implements OnInit {
 
   getMemberTraceDetails(run: FlowRun | null, memberName: string | null): any {
     if (!run || !memberName) return null;
+    const isB1 = run.flow_code ? (run.flow_code.includes('B1') || run.flow_code.includes('KR-B1')) : false;
+    const isC1 = run.flow_code ? (run.flow_code.includes('C1') || run.flow_code.includes('KR-C1')) : false;
+    const unitLabel = isB1 ? 'lượt Review' : (isC1 ? 'Bug' : 'Issue');
+
     try {
+      // Tìm thành viên trong danh sách members đã phân tích của Modal (khớp 100% với Bảng Bằng chứng Khối 3)
+      const vmMember = this.runDetailVm?.members?.find(m =>
+        (m.name && m.name.toLowerCase().includes(memberName.toLowerCase())) ||
+        (memberName.toLowerCase().includes((m.name || '').toLowerCase())) ||
+        (m.username && memberName.toLowerCase().includes(m.username.toLowerCase()))
+      );
+
       const payload = typeof run.payload_json === 'string' ? JSON.parse(run.payload_json) : run.payload_json;
-      if (!payload) return null;
+      if (!payload && !vmMember) return null;
 
       // 1. Check standardized summary_metrics.individual_breakdown (4-part structure)
-      const breakdown = payload.summary_metrics?.individual_breakdown || payload.individual_breakdown;
+      const breakdown = payload?.summary_metrics?.individual_breakdown || payload?.individual_breakdown;
+      let found: any = null;
       if (Array.isArray(breakdown)) {
-        const found = breakdown.find((m: any) =>
+        found = breakdown.find((m: any) =>
           (m.name && m.name.toLowerCase().includes(memberName.toLowerCase())) ||
           (memberName.toLowerCase().includes((m.name || '').toLowerCase())) ||
           (m.employee && m.employee.toLowerCase().includes(memberName.toLowerCase())) ||
           (m.emp_id && memberName.toLowerCase().includes(m.emp_id.toLowerCase()))
         );
-        if (found) {
-          return {
-            ...found,
-            IC_i: found.ic_percent !== undefined ? found.ic_percent : found.IC_i,
-            Ni: found.ontime_issues !== undefined ? found.ontime_issues : (found.ontime !== undefined ? found.ontime : found.Ni),
-            Di: found.due_issues !== undefined ? found.due_issues : (found.reviews !== undefined ? found.reviews : found.Di),
-            status: found.status || found.sla_status || 'PASS'
-          };
-        }
       }
 
       // 2. Check legacy / alternative member_results
-      if (Array.isArray(payload.member_results)) {
-        const found = payload.member_results.find((m: any) => 
+      if (!found && Array.isArray(payload?.member_results)) {
+        found = payload.member_results.find((m: any) => 
           (m.employee && m.employee.toLowerCase().includes(memberName.toLowerCase())) ||
           (memberName.toLowerCase().includes((m.employee || '').toLowerCase()))
         );
-        if (found) return found;
       }
 
-      // 3. Check direct author, reviewer, developer
-      if (payload.author === memberName || payload.reviewer === memberName || payload.developer === memberName) {
-        return payload;
+      let icVal = (found && found.ic_percent != null) ? found.ic_percent : (found?.IC_i != null ? found.IC_i : null);
+      let niVal = (found && (found.ontime != null || found.ontime_issues != null)) ? (found.ontime ?? found.ontime_issues) : null;
+      let diVal = (found && (found.reviews != null || found.due_issues != null)) ? (found.reviews ?? found.due_issues) : null;
+
+      // Đồng bộ với Bảng Bằng chứng hiển thị: Nếu payload không có số liệu (0/0 hoặc null) nhưng bảng bằng chứng hiển thị các task của nhân sự này
+      if ((icVal == null || diVal === 0 || diVal == null) && vmMember && vmMember.tasks && vmMember.tasks.length > 0) {
+        const evaluated = vmMember.tasks.filter(t => t.slaStatus === 'PASS' || t.slaStatus === 'FAIL');
+        const pass = vmMember.tasks.filter(t => t.slaStatus === 'PASS');
+        if (evaluated.length > 0) {
+          icVal = vmMember.slaRate;
+          niVal = pass.length;
+          diVal = evaluated.length;
+        }
       }
 
-      // 4. Check source_records for this member
-      if (Array.isArray(payload.source_records)) {
-        const matchingRecord = payload.source_records.find((r: any) =>
-          (r.assignee && memberName.toLowerCase().includes(r.assignee.toLowerCase())) ||
-          (r.reviewer && memberName.toLowerCase().includes(r.reviewer.toLowerCase())) ||
-          (r.developer && memberName.toLowerCase().includes(r.developer.toLowerCase()))
-        );
-        if (matchingRecord) return matchingRecord;
-      }
+      return {
+        ...(found || {}),
+        IC_i: icVal,
+        Ni: niVal !== null ? niVal : 0,
+        Di: diVal !== null ? diVal : 0,
+        unitLabel,
+        isB1,
+        isC1,
+        status: (found && found.status) || (vmMember && vmMember.isPass ? 'PASS' : 'FAIL') || 'PASS'
+      };
     } catch {
       return null;
     }
-    return null;
   }
 
   // Mở trang chi tiết bảng lần chạy cho flow được chọn
