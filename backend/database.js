@@ -1,5 +1,6 @@
 const { Pool } = require('pg');
-require('dotenv').config();
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -471,8 +472,9 @@ async function initDatabase() {
 
   for (const c of constraints) {
     try {
-      await run(`ALTER TABLE "${c.table}" DROP CONSTRAINT IF EXISTS "${c.name}"`);
-      await run(`ALTER TABLE "${c.table}" ADD CONSTRAINT "${c.name}" ${c.sql}`);
+      const tableName = c.table.toLowerCase();
+      await pool.query(`ALTER TABLE ${tableName} DROP CONSTRAINT IF EXISTS ${c.name}`);
+      await pool.query(`ALTER TABLE ${tableName} ADD CONSTRAINT ${c.name} ${c.sql}`);
     } catch (e) {
       // Ignore if table or constraint already structured
     }

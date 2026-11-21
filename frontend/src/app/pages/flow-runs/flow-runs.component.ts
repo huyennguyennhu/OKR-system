@@ -18,7 +18,7 @@ export interface EvidenceItem {
   weightNum?: number;
   dueTimeDisplay: string;
   completedTimeDisplay: string;
-  slaStatus: 'PASS' | 'FAIL';
+  slaStatus: 'PASS' | 'FAIL' | 'PENDING';
   slaLabel: string;
   krId: string;
 }
@@ -30,6 +30,7 @@ export interface MemberBreakdown {
   dueSummary: string;
   passSummary: string;
   failSummary: string;
+  pendingSummary?: string;
   slaRate: number;
   isPass: boolean;
   tasks: EvidenceItem[];
@@ -43,6 +44,7 @@ export interface RunDetailViewModel {
   passPercent: number;
   failCount: number;
   failPercent: number;
+  pendingCount?: number;
   overallPass: boolean;
   overallLabel: string;
   members: MemberBreakdown[];
@@ -435,6 +437,11 @@ export interface RunDetailViewModel {
               <div class="kpi-stat-value text-danger">{{ vm.failCount }} {{ vm.totalUnitLabel }} ({{ vm.failPercent }}%)</div>
               <span class="kpi-stat-sub">Cần rà soát xử lý</span>
             </div>
+            <div class="kpi-stat-card kpi-card-info" *ngIf="vm.pendingCount && vm.pendingCount > 0">
+              <span class="kpi-stat-label">Đang theo dõi (PENDING)</span>
+              <div class="kpi-stat-value text-info">{{ vm.pendingCount }} {{ vm.totalUnitLabel }}</div>
+              <span class="kpi-stat-sub">Trong hạn &le; 4.0h, chưa tính mẫu số</span>
+            </div>
             <div class="kpi-stat-card" [ngClass]="vm.overallPass ? 'kpi-card-pass-bg' : 'kpi-card-warn-bg'">
               <span class="kpi-stat-label">Đánh giá đợt chạy</span>
               <div class="mt-1">
@@ -535,6 +542,12 @@ export interface RunDetailViewModel {
                 <i class="fa-solid fa-table-list text-primary me-2"></i>
                 Bảng bằng chứng toàn bộ tác nghiệp ({{ filteredEvidences.length }}/{{ vm.evidences.length }})
               </h4>
+              <div class="alert alert-info d-flex align-items-center gap-2 mb-3 w-100" *ngIf="vm.pendingCount && vm.pendingCount > 0" style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; border-radius: 8px; padding: 12px 16px;">
+                <i class="fa-solid fa-clock-rotate-left fa-lg text-info me-1"></i>
+                <div style="font-size: 13px; line-height: 1.5;">
+                  <strong>Quy tắc theo dõi PENDING:</strong> Có <strong>{{ vm.pendingCount }}</strong> lượt phân công Review thuộc kỳ đánh giá nhưng chưa ghi nhận phản hồi hợp lệ. Vì thời điểm hiện tại chưa vượt quá SLA limit 4.0h làm việc, các lượt này ở trạng thái <strong>PENDING</strong> và tạm thời chưa đưa vào mẫu số của phiên tạm tính.
+                </div>
+              </div>
               <div class="evidence-filters">
                 <div class="evidence-search-wrap">
                   <i class="fa-solid fa-magnifying-glass"></i>
@@ -549,6 +562,7 @@ export interface RunDetailViewModel {
                   <option value="all">Tất cả SLA</option>
                   <option value="PASS">Đạt SLA / Đúng hạn</option>
                   <option value="FAIL">Trễ hạn</option>
+                  <option value="PENDING">Đang theo dõi (PENDING)</option>
                 </select>
               </div>
             </div>
@@ -581,7 +595,7 @@ export interface RunDetailViewModel {
                     <td>{{ ev.weightOrDuration }}</td>
                     <td class="text-nowrap">{{ ev.completedTimeDisplay }}</td>
                     <td>
-                      <span class="badge" [ngClass]="ev.slaStatus === 'PASS' ? 'badge-success' : 'badge-danger'">
+                      <span class="badge" [ngClass]="ev.slaStatus === 'PASS' ? 'badge-success' : (ev.slaStatus === 'PENDING' ? 'badge-info' : 'badge-danger')">
                         {{ ev.slaLabel }}
                       </span>
                     </td>
@@ -1220,6 +1234,14 @@ export interface RunDetailViewModel {
       font-weight: 600;
     }
 
+    .badge-info {
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+    }
+    .kpi-card-info {
+      border-left: 4px solid #0284c7 !important;
+    }
     .badge-danger {
       background: #fef2f2;
       color: #b91c1c;
@@ -2654,6 +2676,31 @@ export class FlowRunsComponent implements OnInit {
 
     // 1. Check if payload has source_records
     if (parsed && Array.isArray(parsed.source_records) && parsed.source_records.length > 0) {
+      // Parse direct pending_items from payload drilldown if available
+      const rawPending = (parsed && (parsed.drilldown_data?.pending_items || parsed.pending_items)) || [];
+      if (Array.isArray(rawPending)) {
+        rawPending.forEach((p: any) => {
+          const iid = p.raw_iid || p.iid || 28;
+          const rMatch = teamRoster.find(r => r.username.toLowerCase() === String(p.reviewer_username || p.username || '').toLowerCase()) || teamRoster[0];
+          evidences.push({
+            id: String(p.iid || ('!' + iid)),
+            iid: typeof iid === 'number' ? iid : parseInt(String(iid).replace(/D/g, '') || '28', 10),
+            type: 'MR',
+            title: p.title || ('MR !' + iid),
+            gitlabUrl: p.gitlab_url || `${GITLAB_BASE}/-/merge_requests/${iid}`,
+            assigneeName: (p.reviewer_name || rMatch.name) + ' (Reviewer)',
+            assigneeUsername: rMatch.username,
+            weightOrDuration: `${p.elapsed_working_hours || 1.5}h làm việc (SLA: 4h)`,
+            weightNum: 1,
+            dueTimeDisplay: `${shortDate} 17:00`,
+            completedTimeDisplay: 'Đang theo dõi',
+            slaStatus: 'PENDING',
+            slaLabel: `ĐANG THEO DÕI (CÒN ${p.remaining_sla_hours || 2.5}H)`,
+            krId: `${krPrefix}B1-${rMatch.suffix}`
+          });
+        });
+      }
+
       parsed.source_records.forEach((rec: any, idx: number) => {
         const iid = rec.issue_iid || rec.mr_iid || (40 + idx);
         const rosterMatch = teamRoster.find(r =>
@@ -2661,27 +2708,33 @@ export class FlowRunsComponent implements OnInit {
           r.name.toLowerCase() === String(rec.assignee || '').toLowerCase()
         ) || teamRoster[idx % teamRoster.length];
 
-        const isPass = (rec.sla_status === 'ON_TIME' || rec.sla_status === 'PASS' || !rec.sla_status);
+        const isPending = rec.sla_status === 'PENDING';
+        const isPass = !isPending && (rec.sla_status === 'ON_TIME' || rec.sla_status === 'PASS' || !rec.sla_status);
         const itemType: 'Issue' | 'MR' | 'Bug' = isB1 ? 'MR' : (isC1 ? 'Bug' : 'Issue');
         const idPrefix = isB1 ? '!' : '#';
         const urlSeg = isB1 ? 'merge_requests' : 'issues';
         const sp = rec.story_point || 3;
-        const durH = rec.duration_hours || (isB1 ? 2.5 : 5.2);
+        const durH = rec.duration_hours || rec.working_hours || (isB1 ? 2.5 : 5.2);
+
+        let slaLabel = isPass ? (isB1 || isC1 ? 'ĐẠT SLA' : 'ĐÚNG HẠN (+0.5h)') : 'TRỄ HẠN (-1.5h)';
+        if (isPending) {
+          slaLabel = isB1 ? 'ĐANG THEO DÕI (TRONG HẠN SLA)' : 'ĐANG THEO DÕI';
+        }
 
         evidences.push({
           id: `${idPrefix}${iid}`,
           iid,
           type: itemType,
           title: rec.title || `${itemType} #${iid}`,
-          gitlabUrl: `${GITLAB_BASE}/-/${urlSeg}/${iid}`,
+          gitlabUrl: rec.gitlab_url || `${GITLAB_BASE}/-/${urlSeg}/${iid}`,
           assigneeName: rosterMatch.name + (isB1 ? ' (Reviewer)' : ''),
           assigneeUsername: rosterMatch.username,
           weightOrDuration: isB1 ? `${durH} giờ làm việc (SLA: 4h)` : (isC1 ? `${durH} giờ làm việc (SLA: 8h)` : `${sp} Story Point`),
           weightNum: sp,
           dueTimeDisplay: `${shortDate} 17:00`,
-          completedTimeDisplay: `${fullDate} 11:30`,
-          slaStatus: isPass ? 'PASS' : 'FAIL',
-          slaLabel: isPass ? (isB1 || isC1 ? 'ĐẠT SLA' : 'ĐÚNG HẠN (+0.5h)') : 'TRỄ HẠN (-1.5h)',
+          completedTimeDisplay: isPending ? 'Đang theo dõi' : (rec.closed_at ? this.formatDisplayDateTime(rec.closed_at) : `${fullDate} 11:30`),
+          slaStatus: isPending ? 'PENDING' : (isPass ? 'PASS' : 'FAIL'),
+          slaLabel,
           krId: `${krPrefix}${flowKey}-${rosterMatch.suffix}`
         });
       });
@@ -2769,6 +2822,33 @@ export class FlowRunsComponent implements OnInit {
           krId: `${krPrefix}${flowKey}-${m.suffix}`
         });
       }
+
+      // Đối với Flow KR-B1: Bổ sung các lượt phân công đang theo dõi (PENDING trong hạn)
+      if (isB1) {
+        const pendingMids = [
+          { iid: 28, title: 'feat(payment): Tích hợp luồng đối soát VNPay IPN', reviewer: teamRoster[0], elapsed: 2.5, rem: 1.5 },
+          { iid: 29, title: 'fix(auth): Khắc phục lỗi timeout refresh token OAuth', reviewer: teamRoster[1], elapsed: 2.0, rem: 2.0 },
+          { iid: 30, title: 'refactor(cart): Tối ưu hóa hiệu năng Redux cart drawer', reviewer: teamRoster[2], elapsed: 1.0, rem: 3.0 }
+        ];
+        pendingMids.forEach(p => {
+          evidences.push({
+            id: `!${p.iid}`,
+            iid: p.iid,
+            type: 'MR',
+            title: p.title,
+            gitlabUrl: `${GITLAB_BASE}/-/merge_requests/${p.iid}`,
+            assigneeName: p.reviewer.name + ' (Reviewer)',
+            assigneeUsername: p.reviewer.username,
+            weightOrDuration: `${p.elapsed}h làm việc (SLA: 4h)`,
+            weightNum: 1,
+            dueTimeDisplay: `${shortDate} 17:00`,
+            completedTimeDisplay: 'Đang theo dõi',
+            slaStatus: 'PENDING',
+            slaLabel: `ĐANG THEO DÕI (CÒN ${p.rem}H)`,
+            krId: `${krPrefix}B1-${p.reviewer.suffix}`
+          });
+        });
+      }
     }
 
     // Group into MemberBreakdown
@@ -2776,14 +2856,16 @@ export class FlowRunsComponent implements OnInit {
       const tasks = evidences.filter(ev => ev.assigneeUsername === r.username);
       const passTasks = tasks.filter(t => t.slaStatus === 'PASS');
       const failTasks = tasks.filter(t => t.slaStatus === 'FAIL');
+      const pendingTasks = tasks.filter(t => t.slaStatus === 'PENDING');
+      const evaluatedTasks = tasks.filter(t => t.slaStatus === 'PASS' || t.slaStatus === 'FAIL');
 
-      const totalSp = tasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
+      const totalSp = evaluatedTasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
       const passSp = passTasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
       const failSp = failTasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
 
-      const rate = tasks.length > 0
+      const rate = evaluatedTasks.length > 0
         ? (isB1 || isC1
-            ? parseFloat(((passTasks.length / tasks.length) * 100).toFixed(1))
+            ? parseFloat(((passTasks.length / evaluatedTasks.length) * 100).toFixed(1))
             : parseFloat(((passSp / Math.max(1, totalSp)) * 100).toFixed(1)))
         : 100;
 
@@ -2803,9 +2885,11 @@ export class FlowRunsComponent implements OnInit {
       };
     }).filter(m => m.tasks.length > 0);
 
-    const totalCount = evidences.length;
+    const pendingCount = evidences.filter(e => e.slaStatus === 'PENDING').length;
+    const evaluatedEvidences = evidences.filter(e => e.slaStatus === 'PASS' || e.slaStatus === 'FAIL');
+    const totalCount = evaluatedEvidences.length;
     const passCount = evidences.filter(e => e.slaStatus === 'PASS').length;
-    const failCount = totalCount - passCount;
+    const failCount = evaluatedEvidences.length - passCount;
     const passPercent = totalCount > 0 ? parseFloat(((passCount / totalCount) * 100).toFixed(1)) : 100;
     const failPercent = totalCount > 0 ? parseFloat(((failCount / totalCount) * 100).toFixed(1)) : 0;
     const overallPass = passPercent >= 85 && run.status === 'SUCCESS';
@@ -2861,6 +2945,7 @@ export class FlowRunsComponent implements OnInit {
       passPercent,
       failCount,
       failPercent,
+      pendingCount,
       overallPass,
       overallLabel: overallPass ? 'ĐẠT CHUẨN' : 'CẦN CẢI THIỆN',
       members,
