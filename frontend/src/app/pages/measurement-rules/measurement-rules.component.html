@@ -110,18 +110,6 @@
             </a>
           </div>
         </div>
-
-        <!-- HÀNG 3: GitLab Project IDs -->
-        <div class="flow-info-row-3">
-          <div class="form-group">
-            <label>GitLab Project IDs (Dự án theo dõi — Phân tách bởi dấu phẩy ,)</label>
-            <div class="rules-input-unit">
-              <input type="text" class="form-control" [(ngModel)]="currentFlow.projectIds" (ngModelChange)="onProjectIdsChange($event)" name="projectIds" placeholder="Ví dụ: 86650434, 86650435">
-              <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
-            </div>
-            <small class="text-muted" style="font-size: 11px;">Hỗ trợ gom và đo lường đồng thời từ nhiều GitLab Projects. Các Project ID phân tách nhau bởi dấu phẩy (,)</small>
-          </div>
-        </div>
       </form>
     </div>
 
@@ -144,16 +132,16 @@
           <span>Cụm 1: Lịch trình Quét Định kỳ & Mốc Dữ liệu Đo lường</span>
         </div>
         
-        <div class="rules-two-col-grid mb-3">
-          <div class="rules-form-group mb-0">
-            <label class="rules-label">GitLab Project IDs (Theo dõi nhiều dự án)</label>
-            <div class="rules-input-unit">
-              <input type="text" class="rules-control" [(ngModel)]="flow1Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
-              <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
-            </div>
-            <span class="rules-hint">Nhập các GitLab Project IDs phân tách bằng dấu phẩy (,)</span>
+        <div class="rules-form-group mb-3">
+          <label class="rules-label">GitLab Project IDs (Dự án theo dõi — Phân tách bởi dấu phẩy ,)</label>
+          <div class="rules-input-unit">
+            <input type="text" class="rules-control" [(ngModel)]="flow1Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
+            <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
           </div>
+          <span class="rules-hint">Hỗ trợ gom và đo lường đồng thời từ nhiều GitLab Projects. Các Project ID phân tách nhau bởi dấu phẩy (,)</span>
+        </div>
 
+        <div class="rules-two-col-grid mb-3">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Daily Check-in Schedule</label>
             <div class="rules-input-unit">
@@ -405,16 +393,16 @@
           <span>Cụm 1: Lịch trình Quét Tác nghiệp &amp; Mốc Dữ liệu Đo lường</span>
         </div>
 
-        <div class="rules-two-col-grid mb-3">
-          <div class="rules-form-group mb-0">
-            <label class="rules-label">GitLab Project IDs (Theo dõi nhiều dự án)</label>
-            <div class="rules-input-unit">
-              <input type="text" class="rules-control" [(ngModel)]="flow2Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
-              <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
-            </div>
-            <span class="rules-hint">Nhập các GitLab Project IDs phân tách bằng dấu phẩy (,)</span>
+        <div class="rules-form-group mb-3">
+          <label class="rules-label">GitLab Project IDs (Dự án theo dõi — Phân tách bởi dấu phẩy ,)</label>
+          <div class="rules-input-unit">
+            <input type="text" class="rules-control" [(ngModel)]="flow2Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
+            <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
           </div>
+          <span class="rules-hint">Hỗ trợ gom và đo lường đồng thời từ nhiều GitLab Projects. Các Project ID phân tách nhau bởi dấu phẩy (,)</span>
+        </div>
 
+        <div class="rules-two-col-grid mb-3">
           <div class="rules-form-group mb-0">
             <label class="rules-label">SLA Reminder Polling</label>
             <div class="rules-input-unit">
@@ -673,15 +661,16 @@
           <span>Cụm 1: Lịch trình Quét Định kỳ &amp; Mốc Dữ liệu Đo lường</span>
         </div>
 
-        <div class="rules-two-col-grid mb-3">
-          <div class="rules-form-group mb-0">
-            <label class="rules-label">GitLab Project IDs (Theo dõi nhiều dự án)</label>
-            <div class="rules-input-unit">
-              <input type="text" class="rules-control" [(ngModel)]="flow3Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
-              <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
-            </div>
-            <span class="rules-hint">Nhập các GitLab Project IDs phân tách bằng dấu phẩy (,)</span>
+        <div class="rules-form-group mb-3">
+          <label class="rules-label">GitLab Project IDs (Dự án theo dõi — Phân tách bởi dấu phẩy ,)</label>
+          <div class="rules-input-unit">
+            <input type="text" class="rules-control" [(ngModel)]="flow3Config.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
+            <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
           </div>
+          <span class="rules-hint">Hỗ trợ gom và đo lường đồng thời từ nhiều GitLab Projects. Các Project ID phân tách nhau bởi dấu phẩy (,)</span>
+        </div>
+
+        <div class="rules-two-col-grid mb-3">
           <div class="rules-form-group mb-0">
             <label class="rules-label">Daily Check-in Schedule</label>
             <div class="rules-input-unit">
@@ -891,6 +880,15 @@
         <div class="rules-section-title rules-section-first">
           <i class="fa-solid fa-bolt text-warning"></i>
           <span>Cấu hình Trigger & Mốc Bắt đầu / Kết thúc</span>
+        </div>
+
+        <div class="rules-form-group mb-3">
+          <label class="rules-label">GitLab Project IDs (Dự án theo dõi — Phân tách bởi dấu phẩy ,)</label>
+          <div class="rules-input-unit">
+            <input type="text" class="rules-control" [(ngModel)]="currentFlow.projectIds" (ngModelChange)="onProjectIdsChange($event)" placeholder="Ví dụ: 86650434, 86650435...">
+            <span class="rules-unit-addon"><i class="fa-brands fa-gitlab text-danger"></i></span>
+          </div>
+          <span class="rules-hint">Hỗ trợ gom và đo lường đồng thời từ nhiều GitLab Projects. Các Project ID phân tách nhau bởi dấu phẩy (,)</span>
         </div>
 
         <div class="rules-two-col-grid">

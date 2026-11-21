@@ -1299,17 +1299,3 @@ select.rules-control option,
   background: #f8fafc;
   border: 1px solid #e2e8f0;
 }
-
-
-
-
-/* Flow Info Form Hàng 3 (GitLab Project IDs) */
-.flow-info-row-3 {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 100%;
-  margin-top: 14px;
-  padding-top: 14px;
-  border-top: 1px dashed #e2e8f0;
-}
