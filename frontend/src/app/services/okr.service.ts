@@ -215,9 +215,9 @@ export class OkrService {
         return 'http://localhost:3000/api';
       }
       // Production trên Vercel: kết nối trực tiếp Backend Render
-      return 'https://okr-system.onrender.com/api';
+      return 'https://okr-system-backend-njat.onrender.com/api';
     }
-    return 'https://okr-system.onrender.com/api';
+    return 'https://okr-system-backend-njat.onrender.com/api';
   }
 
   constructor(private http: HttpClient) {}
