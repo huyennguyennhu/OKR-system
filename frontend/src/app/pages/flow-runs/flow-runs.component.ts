@@ -542,12 +542,6 @@ export interface RunDetailViewModel {
                 <i class="fa-solid fa-table-list text-primary me-2"></i>
                 Bảng bằng chứng toàn bộ tác nghiệp ({{ filteredEvidences.length }}/{{ vm.evidences.length }})
               </h4>
-              <div class="alert alert-info d-flex align-items-center gap-2 mb-3 w-100" *ngIf="vm.pendingCount && vm.pendingCount > 0" style="background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; border-radius: 8px; padding: 12px 16px;">
-                <i class="fa-solid fa-clock-rotate-left fa-lg text-info me-1"></i>
-                <div style="font-size: 13px; line-height: 1.5;">
-                  <strong>Quy tắc theo dõi PENDING:</strong> Có <strong>{{ vm.pendingCount }}</strong> lượt phân công Review thuộc kỳ đánh giá nhưng chưa ghi nhận phản hồi hợp lệ. Vì thời điểm hiện tại chưa vượt quá SLA limit 4.0h làm việc, các lượt này ở trạng thái <strong>PENDING</strong> và tạm thời chưa đưa vào mẫu số của phiên tạm tính.
-                </div>
-              </div>
               <div class="evidence-filters">
                 <div class="evidence-search-wrap">
                   <i class="fa-solid fa-magnifying-glass"></i>
