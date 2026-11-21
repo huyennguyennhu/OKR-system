@@ -651,7 +651,6 @@ export interface RunDetailViewModel {
                 <span class="text-muted fw-bold" style="font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;">
                   <i class="fa-solid fa-square-root-variable text-primary me-1"></i> Mô hình toán học áp dụng
                 </span>
-                <span class="badge bg-light text-secondary border" style="font-size: 10.5px;">Chuẩn KaTeX</span>
               </div>
               <div class="row g-2.5">
                 <div class="col-md-6" *ngIf="vm.formulaIndividualHtml">
