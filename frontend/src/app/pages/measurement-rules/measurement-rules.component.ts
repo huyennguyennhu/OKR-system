@@ -729,6 +729,15 @@ export class MeasurementRulesComponent implements OnInit {
             lunchBreakRule: dbRule?.lunch_break_rule || dbRule?.lunchBreakRule || 'Tự động trừ 1.5h giờ trưa (12:00 - 13:30) nếu thời gian xử lý vắt qua trưa.',
             weekendHolidayRule: dbRule?.weekend_holiday_rule || dbRule?.weekendHolidayRule || 'Đóng băng SLA trong toàn bộ Thứ 7, Chủ Nhật và các ngày nghỉ Lễ Quốc gia (01/01, Tết, 30/04-01/05, 02/09).',
             businessLogicNote: dbRule?.formula || dbRule?.businessLogicNote || formula,
+            projectIds: (() => {
+              if (dbRule?.filters) {
+                try {
+                  const p = typeof dbRule.filters === 'string' ? JSON.parse(dbRule.filters) : dbRule.filters;
+                  return p.projectIds || p.project_ids || '86650434';
+                } catch {}
+              }
+              return '86650434';
+            })(),
             payloadSimulation: `// Activepieces GitLab Hook Trigger for ${kr.kr_id}
 const { reviewer_assigned_at, approved_at } = event.object_attributes;
 
@@ -903,7 +912,11 @@ const result = {
       team: { ...defaultFlow2Formulas.team, ...(parsed.formulas?.team || {}) }
     };
 
+    const prjVal2 = parsed.projectIds || parsed.project_ids || parsed.projectId || flow.projectIds || '86650434';
+    flow.projectIds = prjVal2;
+
     this.flow2Config = {
+      projectIds: prjVal2,
       pollingInterval: parsed.pollingInterval || 'Mỗi 15 phút (08:00 – 22:00)',
       checkInSchedule: parsed.checkInSchedule || '21:00 (Thứ 2 – Thứ 6)',
       startEvent: this.flow2StartOptions.some(o => o.value === parsed.startEvent) ? parsed.startEvent : 'max_assigned_ready',
@@ -970,7 +983,11 @@ const result = {
       team: { ...defaultFlow3Formulas.team, ...(parsed.formulas?.team || {}) }
     };
 
+    const prjVal3 = parsed.projectIds || parsed.project_ids || parsed.projectId || flow.projectIds || '86650434';
+    flow.projectIds = prjVal3;
+
     this.flow3Config = {
+      projectIds: prjVal3,
       scheduleTime: parsed.scheduleTime || '21:00 (Thứ 2 – Thứ 6)',
       startEvent: this.flow3StartOptions.some(o => o.value === parsed.startEvent) ? parsed.startEvent : 'status_in_progress',
       endEvent: this.flow3EndOptions.some(o => o.value === parsed.endEvent) ? parsed.endEvent : 'status_resolved',
