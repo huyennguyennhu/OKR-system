@@ -34,6 +34,7 @@ export interface FlowRuleTab {
   weekendHolidayRule: string;
   businessLogicNote: string;
   payloadSimulation: string;
+  projectIds?: string;
 }
 
 export interface FormulaTierItem {
@@ -50,6 +51,7 @@ export interface FormulaTiers {
 }
 
 export interface Flow1Config {
+  projectIds?: string;
   scheduleTime: string;
   startEvent: string;
   endEvent: string;
@@ -69,6 +71,7 @@ export interface Flow1Config {
 }
 
 export interface Flow2Config {
+  projectIds?: string;
   pollingInterval: string;
   checkInSchedule: string;
   startEvent: string;
@@ -102,6 +105,7 @@ export interface SeveritySlaRow {
 }
 
 export interface Flow3Config {
+  projectIds?: string;
   scheduleTime: string;
   startEvent: string;
   endEvent: string;
@@ -137,6 +141,7 @@ export class MeasurementRulesComponent implements OnInit {
 
   // Flow 1 No-Code Structured Configuration
   flow1Config: Flow1Config = {
+    projectIds: '86650434',
     scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
     startEvent: 'issue_assigned',
     endEvent: 'status_resolved',
@@ -176,6 +181,7 @@ export class MeasurementRulesComponent implements OnInit {
 
   // Flow 2 No-Code Structured Configuration (KR-B1)
   flow2Config: Flow2Config = {
+    projectIds: '86650434',
     pollingInterval: 'Mỗi 15 phút (08:00 – 22:00)',
     checkInSchedule: '21:00 (Thứ 2 – Thứ 6)',
     startEvent: 'max_assigned_ready',
@@ -220,6 +226,7 @@ export class MeasurementRulesComponent implements OnInit {
 
   // Flow 3 No-Code Structured Configuration (KR-C1)
   flow3Config: Flow3Config = {
+    projectIds: '86650434',
     scheduleTime: '21:00 (Thứ 2 – Thứ 6)',
     startEvent: 'status_in_progress',
     endEvent: 'status_resolved',
@@ -314,6 +321,20 @@ export class MeasurementRulesComponent implements OnInit {
     private okrService: OkrService,
     private sanitizer: DomSanitizer
   ) {}
+
+  onProjectIdsChange(val: string): void {
+    this.onConfigChange();
+    if (this.currentFlow) {
+      this.currentFlow.projectIds = val;
+    }
+    if (this.isFlow1(this.currentFlow)) {
+      this.flow1Config.projectIds = val;
+    } else if (this.isFlow2(this.currentFlow)) {
+      this.flow2Config.projectIds = val;
+    } else if (this.isFlow3(this.currentFlow)) {
+      this.flow3Config.projectIds = val;
+    }
+  }
 
   onConfigChange(): void {
     this.isRuleSaved = false;
@@ -768,6 +789,9 @@ const result = {
         // legacy string
       }
     }
+    const prjVal1 = parsedFilters.projectIds || parsedFilters.project_ids || parsedFilters.projectId || flow.projectIds || '86650434';
+    this.flow1Config.projectIds = prjVal1;
+    flow.projectIds = prjVal1;
 
     // Resolve Start Event strictly against startEventOptions (pre-selected Default: 'issue_assigned')
     let startVal = parsedFilters.startEvent || flow.startTrigger || 'issue_assigned';
@@ -1298,6 +1322,7 @@ const result = {
       this.currentFlow.slaHours = 24.0;
       this.currentFlow.businessLogicNote = this.flow1Config.latexFormula;
       this.currentFlow.filterCriteria = JSON.stringify({
+        projectIds: this.flow1Config.projectIds || this.currentFlow.projectIds || '86650434',
         scheduleTime: this.flow1Config.scheduleTime,
         startEvent: this.flow1Config.startEvent,
         endEvent: this.flow1Config.endEvent,
@@ -1321,6 +1346,7 @@ const result = {
       this.currentFlow.thresholdPercent = this.flow2Config.thresholdPercent;
       this.currentFlow.businessLogicNote = this.flow2Config.latexFormula;
       this.currentFlow.filterCriteria = JSON.stringify({
+        projectIds: this.flow2Config.projectIds || this.currentFlow.projectIds || '86650434',
         pollingInterval: this.flow2Config.pollingInterval,
         checkInSchedule: this.flow2Config.checkInSchedule,
         startEvent: this.flow2Config.startEvent,
@@ -1344,6 +1370,7 @@ const result = {
       this.currentFlow.thresholdPercent = this.flow3Config.thresholdPercent;
       this.currentFlow.businessLogicNote = this.flow3Config.latexFormula;
       this.currentFlow.filterCriteria = JSON.stringify({
+        projectIds: this.flow3Config.projectIds || this.currentFlow.projectIds || '86650434',
         scheduleTime: this.flow3Config.scheduleTime,
         startEvent: this.flow3Config.startEvent,
         endEvent: this.flow3Config.endEvent,

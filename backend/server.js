@@ -215,6 +215,25 @@ app.post('/api/webhooks/activepieces', async (req, res) => {
     });
   } catch (error) {
     console.error('Webhook processing error:', error);
+    try {
+      const failId = req.body?.run_id || `RUN-ERR-${Date.now()}`;
+      await run(`
+        INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json, error_message)
+        VALUES (?, ?, ?, 'Webhook', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 1000, 'FAILED', 0, 0, ?, ?, ?)
+        ON CONFLICT (run_id) DO UPDATE SET
+          status = 'FAILED',
+          error_message = EXCLUDED.error_message
+      `, [
+        failId,
+        req.body?.flow_code || 'FLOW-WEBHOOK',
+        'Activepieces Webhook Integration',
+        `Lỗi xử lý webhook: ${error.message}`,
+        JSON.stringify({ error: error.message, payload: req.body, stack: error.stack }),
+        error.message
+      ]);
+    } catch (saveErr) {
+      console.error('Failed to log failed webhook run:', saveErr.message);
+    }
     return res.status(500).json({ error: 'Internal Server Error', details: error.message });
   }
 });
@@ -1602,6 +1621,9 @@ const saveMeasurementRuleHandler = async (req, res) => {
     if (body.formulas) {
       finalFiltersObj.formulas = body.formulas;
     }
+    if (body.projectIds || body.project_ids) {
+      finalFiltersObj.projectIds = body.projectIds || body.project_ids;
+    }
     const filters = JSON.stringify(finalFiltersObj);
     const start_event = body.start_event || body.startTrigger || (existingRule ? existingRule.start_event : 'reviewer_assigned');
     const end_event = body.end_event || body.endTrigger || (existingRule ? existingRule.end_event : 'approved');
@@ -2312,49 +2334,64 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
     let dataCreated = '';
     let payload = {};
 
+    // Pre-insert FlowRuns to satisfy metricresults_run_id_fkey foreign key constraint!
+    await run(`
+      INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
+      VALUES (?, ?, ?, ?, ?, ?, 0, 'RUNNING', 0, 0, 'Đang thực thi luồng đo lường...', '{}')
+      ON CONFLICT (run_id) DO NOTHING
+    `, [runId, flow_code || 'FLOW-KR-A1', flowName, triggerType, startTime, startTime]);
+
     if (flow_code === 'FLOW-KR-A1') {
       flowName = 'Activepieces SLA Issue Tracker (KR-A1)';
       triggerType = 'Schedule';
-      inputCount = 15;
+      inputCount = 16;
       outputCount = 5;
       
-      const krA1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-A1'");
-      let newVal = krA1 ? Math.min(98, parseFloat((krA1.current_value + (Math.random() > 0.5 ? 0.3 : -0.2)).toFixed(1))) : 92.0;
+      const targetTeamKrsA1 = await all("SELECT * FROM KeyResults WHERE (kr_id = 'KR-M11-A1' OR kr_id = 'KR-A1') AND parent_kr_id IS NULL");
+      let newVal = 73.3;
+      if (targetTeamKrsA1.length > 0) {
+        newVal = parseFloat(targetTeamKrsA1[0].current_value) || 73.3;
+      }
 
-      dataCreated = `Quét 15 issues GitLab, tính tỷ lệ hoàn thành đúng hạn của 5 thành viên (Ni/Di). Cập nhật Team KR-A1 đạt ${newVal}%.`;
+      dataCreated = `Quét 16 issues GitLab, tính tỷ lệ hoàn thành đúng hạn của 5 thành viên (Ni/Di). Cập nhật Team KR-A1 / KR-M11-A1 đạt ${newVal}%.`;
 
-      // Update Team KR-A1
-      await recalculateOkrProgress('KR-A1', newVal, {
-        author: 'bot',
-        source: 'activepieces',
-        run_id: runId,
-        flow_code: flow_code,
-        note: dataCreated
-      });
-
-      // Update 5 child personal KRs under KR-A1
-      const childKrsA1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-A1'");
       const memberResults = [];
-      for (const ckr of childKrsA1) {
-        let childVal = Math.min(98, Math.max(85, parseFloat((ckr.current_value + (Math.random() > 0.5 ? 0.3 : -0.2)).toFixed(1))));
-        const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
-        const memberNote = `Kịch bản ${flow_code} quét Issue GitLab: Thành viên ${empName} đạt tỷ lệ đúng hạn ${childVal}%.`;
-        await recalculateOkrProgress(ckr.kr_id, childVal, {
+
+      // Update both active Month 11 KR and base KR
+      for (const tkr of targetTeamKrsA1) {
+        await recalculateOkrProgress(tkr.kr_id, newVal, {
           author: 'bot',
           source: 'activepieces',
           run_id: runId,
           flow_code: flow_code,
-          note: memberNote
+          note: dataCreated
         });
-        memberResults.push({
-          kr_id: ckr.kr_id,
-          employee: empName,
-          assignee_id: ckr.assignee_id,
-          Ni: Math.floor(childVal * 0.25),
-          Di: 25,
-          IC_i: childVal,
-          status: 'ON_TIME'
-        });
+
+        // Update child personal KRs
+        const childKrsA1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = ?", [tkr.kr_id]);
+        for (const ckr of childKrsA1) {
+          let childVal = parseFloat(ckr.current_value) || 70.0;
+          const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+          const memberNote = `Kịch bản ${flow_code} quét Issue GitLab: Thành viên ${empName} đạt tỷ lệ đúng hạn ${childVal}%.`;
+          await recalculateOkrProgress(ckr.kr_id, childVal, {
+            author: 'bot',
+            source: 'activepieces',
+            run_id: runId,
+            flow_code: flow_code,
+            note: memberNote
+          });
+          if (memberResults.findIndex(m => m.employee === empName) === -1) {
+            memberResults.push({
+              kr_id: ckr.kr_id,
+              employee: empName,
+              assignee_id: ckr.assignee_id,
+              Ni: Math.floor(childVal * 0.25),
+              Di: 25,
+              IC_i: childVal,
+              status: childVal >= 90 ? 'PASS' : 'NEEDS_IMPROVEMENT'
+            });
+          }
+        }
       }
 
       payload = {
@@ -2417,47 +2454,53 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       inputCount = 1;
       outputCount = 1;
 
-      const krB1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-B1'");
-      let newVal = krB1 ? Math.min(99, parseFloat((krB1.current_value + (Math.random() > 0.5 ? 0.2 : -0.1)).toFixed(1))) : 94.5;
+      const targetTeamKrsB1 = await all("SELECT * FROM KeyResults WHERE (kr_id = 'KR-M11-B1' OR kr_id = 'KR-B1') AND parent_kr_id IS NULL");
+      let newVal = 47.1;
+      if (targetTeamKrsB1.length > 0) {
+        newVal = parseFloat(targetTeamKrsB1[0].current_value) || 47.1;
+      }
       const mrNum = Math.floor(Math.random() * 40) + 50;
-
-      const childKrsB1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-B1'");
       const memberResults = [];
       let reviewerName = 'Huyền Nguyễn Như';
 
-      if (childKrsB1.length > 0) {
-        for (const ckr of childKrsB1) {
-          let childVal = Math.min(99, Math.max(88, parseFloat((ckr.current_value + (Math.random() > 0.5 ? 0.2 : -0.1)).toFixed(1))));
-          const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
-          const memberNote = `Kịch bản ${flow_code}: Rà soát MR !${mrNum} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Tỷ lệ phản hồi đúng hạn của ${empName} đạt ${childVal}%.`;
-          await recalculateOkrProgress(ckr.kr_id, childVal, {
-            author: 'bot',
-            source: 'activepieces',
-            run_id: runId,
-            flow_code: flow_code,
-            note: memberNote
-          });
-          memberResults.push({
-            kr_id: ckr.kr_id,
-            employee: empName,
-            working_hours_spent: 2.2,
-            sla_limit_hours: 4.0,
-            new_value: childVal,
-            status: 'ON_TIME'
-          });
+      for (const tkr of targetTeamKrsB1) {
+        const childKrsB1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = ?", [tkr.kr_id]);
+        if (childKrsB1.length > 0) {
+          for (const ckr of childKrsB1) {
+            let childVal = parseFloat(ckr.current_value) || 50.0;
+            const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+            const memberNote = `Kịch bản ${flow_code}: Rà soát MR !${mrNum} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Tỷ lệ phản hồi đúng hạn của ${empName} đạt ${childVal}%.`;
+            await recalculateOkrProgress(ckr.kr_id, childVal, {
+              author: 'bot',
+              source: 'activepieces',
+              run_id: runId,
+              flow_code: flow_code,
+              note: memberNote
+            });
+            if (memberResults.findIndex(m => m.employee === empName) === -1) {
+              memberResults.push({
+                kr_id: ckr.kr_id,
+                employee: empName,
+                working_hours_spent: 2.2,
+                sla_limit_hours: 4.0,
+                new_value: childVal,
+                status: childVal >= 90 ? 'PASS' : 'NEEDS_IMPROVEMENT'
+              });
+            }
+          }
+          reviewerName = memberResults[0].employee;
         }
-        reviewerName = memberResults[0].employee;
+
+        dataCreated = `Xử lý MR !${mrNum} do ${reviewerName} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Ghi nhận EventAssignment. Cập nhật ${tkr.kr_id} đạt ${newVal}%.`;
+
+        await recalculateOkrProgress(tkr.kr_id, newVal, {
+          author: 'bot',
+          source: 'activepieces',
+          run_id: runId,
+          flow_code: flow_code,
+          note: dataCreated
+        });
       }
-
-      dataCreated = `Xử lý MR !${mrNum} do ${reviewerName} phản hồi sau 2.2h làm việc (Đạt SLA 4h). Ghi nhận EventAssignment. Cập nhật KR-B1 đạt ${newVal}%.`;
-
-      await recalculateOkrProgress('KR-B1', newVal, {
-        author: 'bot',
-        source: 'activepieces',
-        run_id: runId,
-        flow_code: flow_code,
-        note: dataCreated
-      });
 
       payload = {
         session_info: {
@@ -2506,50 +2549,56 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
     } else {
       flowName = 'Activepieces MTTR Bug Resolution Tracker (KR-C1)';
       triggerType = 'Webhook';
-      inputCount = 1;
-      outputCount = 1;
+      inputCount = 10;
+      outputCount = 5;
 
-      const krC1 = await get("SELECT * FROM KeyResults WHERE kr_id = 'KR-C1'");
-      let newVal = krC1 ? Math.max(4.0, parseFloat((krC1.current_value + (Math.random() > 0.5 ? -0.1 : 0.1)).toFixed(1))) : 6.2;
+      const targetTeamKrsC1 = await all("SELECT * FROM KeyResults WHERE (kr_id = 'KR-M11-C1' OR kr_id = 'KR-C1') AND parent_kr_id IS NULL");
+      let newVal = 5.76;
+      if (targetTeamKrsC1.length > 0) {
+        newVal = parseFloat(targetTeamKrsC1[0].current_value) || 5.76;
+      }
       const bugNum = Math.floor(Math.random() * 50) + 100;
-
-      const childKrsC1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = 'KR-C1'");
       const memberResults = [];
       let devName = 'Tran Than';
 
-      if (childKrsC1.length > 0) {
-        for (const ckr of childKrsC1) {
-          let childVal = Math.max(3.8, parseFloat((ckr.current_value + (Math.random() > 0.5 ? -0.1 : 0.1)).toFixed(1)));
-          const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
-          const memberNote = `Kịch bản ${flow_code}: Khắc phục sự cố Bug #${bugNum} trong 5.5h làm việc (Đạt SLA 8.0h). MTTR của ${empName} đạt ${childVal} giờ.`;
-          await recalculateOkrProgress(ckr.kr_id, childVal, {
-            author: 'bot',
-            source: 'activepieces',
-            run_id: runId,
-            flow_code: flow_code,
-            note: memberNote
-          });
-          memberResults.push({
-            kr_id: ckr.kr_id,
-            employee: empName,
-            resolve_time_hours: 5.5,
-            sla_hours: 8.0,
-            new_value: childVal,
-            status: 'ON_TIME'
-          });
+      for (const tkr of targetTeamKrsC1) {
+        const childKrsC1 = await all("SELECT * FROM KeyResults WHERE parent_kr_id = ?", [tkr.kr_id]);
+        if (childKrsC1.length > 0) {
+          for (const ckr of childKrsC1) {
+            let childVal = parseFloat(ckr.current_value) || 5.5;
+            const empName = ckr.title.includes(' - ') ? ckr.title.split(' - ').pop().trim() : ckr.assignee_id;
+            const memberNote = `Kịch bản ${flow_code}: Khắc phục sự cố Bug #${bugNum} trong 5.5h làm việc (Đạt SLA 8.0h). MTTR của ${empName} đạt ${childVal} giờ.`;
+            await recalculateOkrProgress(ckr.kr_id, childVal, {
+              author: 'bot',
+              source: 'activepieces',
+              run_id: runId,
+              flow_code: flow_code,
+              note: memberNote
+            });
+            if (memberResults.findIndex(m => m.employee === empName) === -1) {
+              memberResults.push({
+                kr_id: ckr.kr_id,
+                employee: empName,
+                resolve_time_hours: 5.5,
+                sla_hours: 8.0,
+                new_value: childVal,
+                status: childVal <= 8.0 ? 'PASS' : 'NEEDS_IMPROVEMENT'
+              });
+            }
+          }
+          devName = memberResults[0].employee;
         }
-        devName = memberResults[0].employee;
+
+        dataCreated = `Khắc phục Bug P2 #${bugNum} do ${devName} xử lý trong 5.5h làm việc (Đạt SLA 8.0h). Cập nhật MTTR ${tkr.kr_id} đạt ${newVal} giờ.`;
+
+        await recalculateOkrProgress(tkr.kr_id, newVal, {
+          author: 'bot',
+          source: 'activepieces',
+          run_id: runId,
+          flow_code: flow_code,
+          note: dataCreated
+        });
       }
-
-      dataCreated = `Khắc phục Bug P2 #${bugNum} do ${devName} xử lý trong 5.5h làm việc (Đạt SLA 8.0h). Cập nhật MTTR KR-C1 đạt ${newVal} giờ.`;
-
-      await recalculateOkrProgress('KR-C1', newVal, {
-        author: 'bot',
-        source: 'activepieces',
-        run_id: runId,
-        flow_code: flow_code,
-        note: dataCreated
-      });
 
       payload = {
         session_info: {
@@ -2597,11 +2646,44 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
     await run(`
       INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json)
       VALUES (?, ?, ?, ?, ?, ?, ?, 'SUCCESS', ?, ?, ?, ?)
+      ON CONFLICT (run_id) DO UPDATE SET
+        flow_name = EXCLUDED.flow_name,
+        end_time = EXCLUDED.end_time,
+        duration_ms = EXCLUDED.duration_ms,
+        status = 'SUCCESS',
+        input_count = EXCLUDED.input_count,
+        output_count = EXCLUDED.output_count,
+        data_created = EXCLUDED.data_created,
+        payload_json = EXCLUDED.payload_json,
+        error_message = NULL
     `, [runId, flow_code || 'FLOW-KR-A1', flowName, triggerType, startTime, endTime, 1850, inputCount, outputCount, dataCreated, JSON.stringify(payload, null, 2)]);
 
     const createdRun = await get('SELECT * FROM FlowRuns WHERE run_id = ?', [runId]);
     res.json({ success: true, run: createdRun });
   } catch (error) {
+    console.error('Flow simulation error:', error);
+    try {
+      const failTime = getVnIsoString();
+      await run(`
+        INSERT INTO FlowRuns (run_id, flow_code, flow_name, trigger_type, start_time, end_time, duration_ms, status, input_count, output_count, data_created, payload_json, error_message)
+        VALUES (?, ?, ?, 'Schedule', ?, ?, 1500, 'FAILED', 0, 0, ?, ?, ?)
+        ON CONFLICT (run_id) DO UPDATE SET
+          status = 'FAILED',
+          end_time = EXCLUDED.end_time,
+          error_message = EXCLUDED.error_message
+      `, [
+        runId,
+        req.body?.flow_code || 'FLOW-KR-A1',
+        'Activepieces Automation Flow',
+        failTime,
+        failTime,
+        `Thất bại khi thực thi flow: ${error.message}`,
+        JSON.stringify({ error: error.message, stack: error.stack }),
+        error.message
+      ]);
+    } catch (saveErr) {
+      console.error('Failed to log failed flow run:', saveErr.message);
+    }
     res.status(500).json({ error: error.message });
   }
 });
