@@ -3025,7 +3025,7 @@ export class FlowRunsComponent implements OnInit {
       failCardValue = `${failCount} MR (${failPercent}%)`;
       failSubText = 'Cần rà soát xử lý';
     } else if (isC1) {
-      const teamMttr = parsed?.summary_metrics?.team_avg_mttr_hours ?? 5.19;
+      const teamMttr = parsed?.summary_metrics?.team_avg_mttr_hours ?? 5.16;
       totalCardLabel = 'Bug hoàn tất tính mẫu số';
       totalCardSubText = `${totalCount}/${evidences.length} Bug giải quyết trong kỳ`;
       pendingSubText = 'Đang xử lý trong hạn SLA, chưa tính mẫu số';
