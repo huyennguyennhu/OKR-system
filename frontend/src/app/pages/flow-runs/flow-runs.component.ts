@@ -2662,16 +2662,19 @@ export class FlowRunsComponent implements OnInit {
     })();
 
     const teamRoster = [
-      { name: 'Huyền Nguyễn Như', username: 'huyennn23406', suffix: '01' },
-      { name: 'Nguyen Anh', username: 'nguyentuananh2221', suffix: '04' },
-      { name: 'Le An', username: 'thaian2221', suffix: '05' },
-      { name: 'Alexander Nguyen', username: 'AlexanderNguyen26', suffix: '02' },
-      { name: 'Tran Than', username: 'tranthan26', suffix: '03' }
+      { name: 'Huyền Nguyễn Như', username: 'huyennn23406', suffix: '01', aliases: ['huyennn23406', 'huyennguyennhu'] },
+      { name: 'Nguyen Anh', username: 'nguyentuananh2221', suffix: '04', aliases: ['nguyentuananh2221', 'nguyenanh'] },
+      { name: 'Le An', username: 'LeThaiAn', suffix: '05', aliases: ['lethaian', 'thaian2221'] },
+      { name: 'Alexander Nguyen', username: 'AlexanderNguyen26', suffix: '02', aliases: ['alexandernguyen26'] },
+      { name: 'Tran Than', username: 'TranLongThan', suffix: '03', aliases: ['tranlongthan', 'tranthan26'] }
     ];
 
     let parsed: any = null;
     try {
       parsed = typeof run.payload_json === 'string' ? JSON.parse(run.payload_json) : run.payload_json;
+      if (typeof parsed === 'string') {
+        parsed = JSON.parse(parsed);
+      }
     } catch {
       parsed = null;
     }
@@ -2707,10 +2710,14 @@ export class FlowRunsComponent implements OnInit {
       }
 
       parsed.source_records.forEach((rec: any, idx: number) => {
-        const iid = rec.issue_iid || rec.mr_iid || (40 + idx);
+        const iid = rec.issue_iid || rec.iid || rec.mr_iid || (40 + idx);
+        const rawAssignee = String(rec.assignee_username || rec.assignee_name || rec.assignee || rec.reviewer_username || rec.reviewer_name || rec.reviewer || '').toLowerCase().trim();
         const rosterMatch = teamRoster.find(r =>
-          r.username.toLowerCase() === String(rec.assignee || '').toLowerCase() ||
-          r.name.toLowerCase() === String(rec.assignee || '').toLowerCase()
+          r.username.toLowerCase() === rawAssignee ||
+          r.name.toLowerCase() === rawAssignee ||
+          (r.aliases && r.aliases.some((a: string) => a.toLowerCase() === rawAssignee)) ||
+          r.name.toLowerCase().includes(rawAssignee) ||
+          (rawAssignee && rawAssignee.includes(r.name.toLowerCase()))
         ) || teamRoster[idx % teamRoster.length];
 
         const isPending = rec.sla_status === 'PENDING';
@@ -2726,6 +2733,8 @@ export class FlowRunsComponent implements OnInit {
           slaLabel = isB1 ? 'ĐANG THEO DÕI (TRONG HẠN SLA)' : 'ĐANG THEO DÕI';
         }
 
+        const dueDisplay = rec.due_date ? rec.due_date.replace(' 23:59:59', '') : `${shortDate} 17:00`;
+
         evidences.push({
           id: `${idPrefix}${iid}`,
           iid,
@@ -2736,7 +2745,7 @@ export class FlowRunsComponent implements OnInit {
           assigneeUsername: rosterMatch.username,
           weightOrDuration: isB1 ? `${durH} giờ làm việc (SLA: 4h)` : (isC1 ? `${durH} giờ làm việc (SLA: 8h)` : `${sp} Story Point`),
           weightNum: sp,
-          dueTimeDisplay: `${shortDate} 17:00`,
+          dueTimeDisplay: dueDisplay,
           completedTimeDisplay: isPending ? 'Đang theo dõi' : (rec.closed_at ? this.formatDisplayDateTime(rec.closed_at) : `${fullDate} 11:30`),
           slaStatus: isPending ? 'PENDING' : (isPass ? 'PASS' : 'FAIL'),
           slaLabel,
@@ -2868,11 +2877,20 @@ export class FlowRunsComponent implements OnInit {
       const passSp = passTasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
       const failSp = failTasks.reduce((acc, t) => acc + (t.weightNum || 0), 0);
 
-      const rate = evaluatedTasks.length > 0
-        ? (isB1 || isC1
-            ? parseFloat(((passTasks.length / evaluatedTasks.length) * 100).toFixed(1))
-            : parseFloat(((passSp / Math.max(1, totalSp)) * 100).toFixed(1)))
-        : 100;
+      const ibMatch = parsed?.summary_metrics?.individual_breakdown?.find((ib: any) =>
+        ib.gitlab_username?.toLowerCase() === r.username.toLowerCase() ||
+        (r.aliases && r.aliases.some((a: string) => a.toLowerCase() === (ib.gitlab_username || '').toLowerCase())) ||
+        (ib.name && r.name && ib.name.toLowerCase().includes(r.name.toLowerCase())) ||
+        (ib.name && r.name && r.name.toLowerCase().includes(ib.name.toLowerCase()))
+      );
+
+      const rate = ibMatch && ibMatch.ic_percent != null
+        ? ibMatch.ic_percent
+        : (evaluatedTasks.length > 0
+            ? (isB1 || isC1
+                ? parseFloat(((passTasks.length / evaluatedTasks.length) * 100).toFixed(1))
+                : parseFloat(((passSp / Math.max(1, totalSp)) * 100).toFixed(1)))
+            : 100);
 
       const isPass = rate >= 90;
 
@@ -2880,7 +2898,7 @@ export class FlowRunsComponent implements OnInit {
         name: r.name,
         username: r.username,
         krId: `${krPrefix}${flowKey}-${r.suffix}`,
-        dueSummary: isB1 || isC1 ? `${tasks.length} ${totalUnitLabel}` : `${tasks.length} Issue (${totalSp} SP)`,
+        dueSummary: isB1 || isC1 ? `${tasks.length} ${totalUnitLabel}` : `${evaluatedTasks.length} Issue (${totalSp} SP)`,
         passSummary: isB1 || isC1 ? `${passTasks.length} ${totalUnitLabel}` : `${passTasks.length} Issue (${passSp} SP)`,
         failSummary: failTasks.length === 0 ? '0' : (isB1 || isC1 ? `${failTasks.length} ${totalUnitLabel}` : `${failTasks.length} Issue (${failSp} SP)`),
         slaRate: rate,
@@ -2895,9 +2913,17 @@ export class FlowRunsComponent implements OnInit {
     const totalCount = evaluatedEvidences.length;
     const passCount = evidences.filter(e => e.slaStatus === 'PASS').length;
     const failCount = evaluatedEvidences.length - passCount;
-    const passPercent = totalCount > 0 ? parseFloat(((passCount / totalCount) * 100).toFixed(1)) : 100;
-    const failPercent = totalCount > 0 ? parseFloat(((failCount / totalCount) * 100).toFixed(1)) : 0;
-    const overallPass = passPercent >= 85 && run.status === 'SUCCESS';
+
+    const totalSpAll = evaluatedEvidences.reduce((acc, t) => acc + (t.weightNum || 0), 0);
+    const passSpAll = evaluatedEvidences.filter(e => e.slaStatus === 'PASS').reduce((acc, t) => acc + (t.weightNum || 0), 0);
+
+    const passPercent = parsed?.summary_metrics?.team_sla_score_percent != null
+      ? parsed.summary_metrics.team_sla_score_percent
+      : (!isB1 && !isC1 && totalSpAll > 0
+          ? parseFloat(((passSpAll / totalSpAll) * 100).toFixed(1))
+          : (totalCount > 0 ? parseFloat(((passCount / totalCount) * 100).toFixed(1)) : 100));
+    const failPercent = parseFloat((100 - passPercent).toFixed(1));
+    const overallPass = passPercent >= 80 && run.status === 'SUCCESS';
 
     let slaRuleText = 'Áp dụng cho Issue hợp lệ (Story/Task/Improvement) trọng số Story Point, hoàn thành trước hạn Due Date.';
     if (isB1) {
@@ -2999,7 +3025,8 @@ export class FlowRunsComponent implements OnInit {
     }
     try {
       if (typeof raw === 'string') {
-        const parsed = JSON.parse(raw);
+        let parsed = JSON.parse(raw);
+        if (typeof parsed === 'string') parsed = JSON.parse(parsed);
         return JSON.stringify(parsed, null, 2);
       }
       return JSON.stringify(raw, null, 2);

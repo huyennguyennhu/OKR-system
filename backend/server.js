@@ -2553,9 +2553,9 @@ app.post('/api/flow-runs/simulate', async (req, res) => {
       outputCount = 5;
 
       const targetTeamKrsC1 = await all("SELECT * FROM KeyResults WHERE (kr_id = 'KR-M11-C1' OR kr_id = 'KR-C1') AND parent_kr_id IS NULL");
-      let newVal = 5.76;
+      let newVal = 5.19;
       if (targetTeamKrsC1.length > 0) {
-        newVal = parseFloat(targetTeamKrsC1[0].current_value) || 5.76;
+        newVal = parseFloat(targetTeamKrsC1[0].current_value) || 5.19;
       }
       const bugNum = Math.floor(Math.random() * 50) + 100;
       const memberResults = [];
